@@ -1,0 +1,192 @@
+{"input": "KLM one two three four, turn left heading zero one zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 10, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM1243, turn right heading zero one zero", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 10, "turn": "right"}], "expectedIssues": []}
+{"input": "BAW 432, turn left heading zero three zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "left"}], "expectedIssues": []}
+{"input": "Easy 45MP, turn right heading zero three zero", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, turn left heading zero four five", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 45, "turn": "left"}], "expectedIssues": []}
+{"input": "alfa foxtrot romeo one eight four five, turn right heading zero four five", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 45, "turn": "right"}], "expectedIssues": []}
+{"input": "Ryanair seven hotel bravo, turn left heading zero niner zero", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "heading", "heading": 90, "turn": "left"}], "expectedIssues": []}
+{"input": "UAE148, turn right heading zero niner zero", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "heading", "heading": 90, "turn": "right"}], "expectedIssues": []}
+{"input": "DAL 72, turn left heading one two zero", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "heading", "heading": 120, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM 87C, turn right heading one two zero", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "heading", "heading": 120, "turn": "right"}], "expectedIssues": []}
+{"input": "Orange three five six, turn left heading one five zero", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "heading", "heading": 150, "turn": "left"}], "expectedIssues": []}
+{"input": "kilo lima mike one two three four, turn right heading one five zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 150, "turn": "right"}], "expectedIssues": []}
+{"input": "KLM one two four three, turn left heading one eight zero", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 180, "turn": "left"}], "expectedIssues": []}
+{"input": "BAW432, turn right heading one eight zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 180, "turn": "right"}], "expectedIssues": []}
+{"input": "EZY 45MP, turn left heading two one zero", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 210, "turn": "left"}], "expectedIssues": []}
+{"input": "Lufthansa 9LK, turn right heading two one zero", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 210, "turn": "right"}], "expectedIssues": []}
+{"input": "Air France one eight four five, turn left heading two four zero", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 240, "turn": "left"}], "expectedIssues": []}
+{"input": "romeo yankee romeo seven hotel bravo, turn right heading two four zero", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "heading", "heading": 240, "turn": "right"}], "expectedIssues": []}
+{"input": "Emirates one four eight, turn left heading two seven zero", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "DAL72, turn right heading two seven zero", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "right"}], "expectedIssues": []}
+{"input": "KLM 87C, turn left heading three zero zero", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "heading", "heading": 300, "turn": "left"}], "expectedIssues": []}
+{"input": "Orange 356, turn right heading three zero zero", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "heading", "heading": 300, "turn": "right"}], "expectedIssues": []}
+{"input": "KLM one two three four, turn left heading three three zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 330, "turn": "left"}], "expectedIssues": []}
+{"input": "kilo lima mike one two four three, turn right heading three three zero", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 330, "turn": "right"}], "expectedIssues": []}
+{"input": "Speedbird four three two, turn left heading three six zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 360, "turn": "left"}], "expectedIssues": []}
+{"input": "EZY45MP, turn right heading three six zero", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 360, "turn": "right"}], "expectedIssues": []}
+{"input": "DLH 9LK, turn left heading zero zero five", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 5, "turn": "left"}], "expectedIssues": []}
+{"input": "Air France 1845, turn right heading zero zero five", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 5, "turn": "right"}], "expectedIssues": []}
+{"input": "Ryanair seven hotel bravo, turn left heading one eight five", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "heading", "heading": 185, "turn": "left"}], "expectedIssues": []}
+{"input": "uniform alfa echo one four eight, turn right heading one eight five", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "heading", "heading": 185, "turn": "right"}], "expectedIssues": []}
+{"input": "Delta seven two, turn left heading two seven five", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "heading", "heading": 275, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM87C, turn right heading two seven five", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "heading", "heading": 275, "turn": "right"}], "expectedIssues": []}
+{"input": "TFL 356 turn left heading 010", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "heading", "heading": 10, "turn": "left"}], "expectedIssues": []}
+{"input": "Orange 356, fly heading zero one zero", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "heading", "heading": 10}], "expectedIssues": ["heading-direction"]}
+{"input": "KLM 1234 turn left heading 030", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM one two three four, fly heading zero three zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 30}], "expectedIssues": ["heading-direction"]}
+{"input": "KLM one two four three turn left heading 045", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 45, "turn": "left"}], "expectedIssues": []}
+{"input": "kilo lima mike one two four three, fly heading zero four five", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 45}], "expectedIssues": ["heading-direction"]}
+{"input": "bravo alfa whiskey four three two turn left heading 090", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 90, "turn": "left"}], "expectedIssues": []}
+{"input": "Speedbird four three two, fly heading zero niner zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 90}], "expectedIssues": ["heading-direction"]}
+{"input": "Easy four five mike papa turn left heading 120", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 120, "turn": "left"}], "expectedIssues": []}
+{"input": "EZY45MP, fly heading one two zero", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 120}], "expectedIssues": ["heading-direction"]}
+{"input": "DLH9LK turn left heading 150", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 150, "turn": "left"}], "expectedIssues": []}
+{"input": "DLH 9LK, fly heading one five zero", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 150}], "expectedIssues": ["heading-direction"]}
+{"input": "AFR 1845 turn left heading 180", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 180, "turn": "left"}], "expectedIssues": []}
+{"input": "Air France 1845, fly heading one eight zero", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 180}], "expectedIssues": ["heading-direction"]}
+{"input": "Ryanair 7HB turn left heading 210", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "heading", "heading": 210, "turn": "left"}], "expectedIssues": []}
+{"input": "Ryanair seven hotel bravo, fly heading two one zero", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "heading", "heading": 210}], "expectedIssues": ["heading-direction"]}
+{"input": "KLM one two three four, continue present heading", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "presentHeading"}], "expectedIssues": []}
+{"input": "kilo lima mike one two four three, continue present heading", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "presentHeading"}], "expectedIssues": []}
+{"input": "Speedbird four three two, continue present heading", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "presentHeading"}], "expectedIssues": []}
+{"input": "EZY45MP, continue present heading", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "presentHeading"}], "expectedIssues": []}
+{"input": "DLH 9LK, continue present heading", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "presentHeading"}], "expectedIssues": []}
+{"input": "Air France 1845, continue present heading", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "presentHeading"}], "expectedIssues": []}
+{"input": "Speedbird four three two, descend flight level four zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 4000, "fl": true}], "expectedIssues": []}
+{"input": "bravo alfa whiskey four three two descend FL040", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 4000, "fl": true}], "expectedIssues": []}
+{"input": "alfa foxtrot romeo one eight four five, climb flight level four zero", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "altitude", "altitude": 4000, "fl": true}], "expectedIssues": []}
+{"input": "Air France one eight four five climb FL040", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "altitude", "altitude": 4000, "fl": true}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, descend flight level five zero", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "altitude", "altitude": 5000, "fl": true}], "expectedIssues": []}
+{"input": "DLH9LK descend FL050", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "altitude", "altitude": 5000, "fl": true}], "expectedIssues": []}
+{"input": "UAE148, descend flight level five zero", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 5000, "fl": true}], "expectedIssues": []}
+{"input": "UAE 148 descend FL050", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 5000, "fl": true}], "expectedIssues": []}
+{"input": "RYR 7HB, descend flight level six zero", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": []}
+{"input": "Ryanair 7HB descend FL060", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": []}
+{"input": "Emirates 148, climb flight level seven zero", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 7000, "fl": true}], "expectedIssues": []}
+{"input": "Emirates one four eight climb FL070", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 7000, "fl": true}], "expectedIssues": []}
+{"input": "Delta seven two, descend flight level eight zero", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "altitude", "altitude": 8000, "fl": true}], "expectedIssues": []}
+{"input": "delta alfa lima seven two descend FL080", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "altitude", "altitude": 8000, "fl": true}], "expectedIssues": []}
+{"input": "kilo lima mike one two three four, climb flight level eight zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 8000, "fl": true}], "expectedIssues": []}
+{"input": "KLM one two three four climb FL080", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 8000, "fl": true}], "expectedIssues": []}
+{"input": "Orange three five six, climb flight level niner zero", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "altitude", "altitude": 9000, "fl": true}], "expectedIssues": []}
+{"input": "TFL356 climb FL090", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "altitude", "altitude": 9000, "fl": true}], "expectedIssues": []}
+{"input": "BAW432, climb flight level niner zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 9000, "fl": true}], "expectedIssues": []}
+{"input": "BAW 432 climb FL090", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 9000, "fl": true}], "expectedIssues": []}
+{"input": "KLM 1243, climb flight level one hundred", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 10000, "fl": true}], "expectedIssues": []}
+{"input": "KLM 1243 climb FL100", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 10000, "fl": true}], "expectedIssues": []}
+{"input": "Speedbird 432, descend altitude two thousand, QNH one zero one three", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "Speedbird four three two descend altitude 2000 QNH 1013", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "Speedbird 432, descend altitude two thousand", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false}], "expectedIssues": []}
+{"input": "Emirates one four eight, descend altitude two thousand, QNH one zero one three", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "uniform alfa echo one four eight descend altitude 2000 QNH 1013", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "kilo lima mike eight seven charlie, descend altitude two thousand, QNH one zero one three", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM eight seven charlie descend altitude 2000 QNH 1013", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "kilo lima mike eight seven charlie, descend altitude two thousand", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "altitude", "altitude": 2000, "fl": false}], "expectedIssues": []}
+{"input": "Orange three five six, descend altitude three thousand, QNH one zero one three", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "TFL356 descend altitude 3000 QNH 1013", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM1243, descend altitude three thousand, QNH one zero one three", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM 1243 descend altitude 3000 QNH 1013", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM1243, descend altitude three thousand", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false}], "expectedIssues": []}
+{"input": "UAE 148, descend altitude two thousand five hundred, QNH one zero one three", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "Emirates 148 descend altitude 2500 QNH 1013", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM 1243, descend altitude two thousand five hundred, QNH one zero one three", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM one two four three descend altitude 2500 QNH 1013", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "KLM 1243, descend altitude two thousand five hundred", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false}], "expectedIssues": []}
+{"input": "Easy four five mike papa, descend altitude two thousand five hundred, QNH one zero one three", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "echo zulu yankee four five mike papa descend altitude 2500 QNH 1013", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "altitude", "altitude": 2500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "tango foxtrot lima three five six, descend altitude one thousand five hundred, QNH one zero one three", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "altitude", "altitude": 1500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "Orange three five six descend altitude 1500 QNH 1013", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "altitude", "altitude": 1500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, descend altitude one thousand five hundred, QNH one zero one three", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "altitude", "altitude": 1500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "DLH9LK descend altitude 1500 QNH 1013", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "altitude", "altitude": 1500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "RYR7HB, descend altitude one thousand five hundred, QNH one zero one three", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "altitude", "altitude": 1500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "RYR 7HB descend altitude 1500 QNH 1013", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "altitude", "altitude": 1500, "fl": false, "qnh": 1013}], "expectedIssues": []}
+{"input": "BAW 432, reduce speed one six zero knots", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "speed", "speed": 160}], "expectedIssues": []}
+{"input": "Speedbird 432 reduce speed 160 knots", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "speed", "speed": 160}], "expectedIssues": []}
+{"input": "Ryanair 7HB, reduce speed one six zero knots", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "speed", "speed": 160}], "expectedIssues": []}
+{"input": "Ryanair seven hotel bravo reduce speed 160 knots", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "speed", "speed": 160}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, reduce speed one eight zero knots", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "speed", "speed": 180}], "expectedIssues": []}
+{"input": "delta lima hotel niner lima kilo reduce speed 180 knots", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "speed", "speed": 180}], "expectedIssues": []}
+{"input": "delta alfa lima seven two, reduce speed one eight zero knots", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "speed", "speed": 180}], "expectedIssues": []}
+{"input": "Delta seven two reduce speed 180 knots", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "speed", "speed": 180}], "expectedIssues": []}
+{"input": "Ryanair seven hotel bravo, reduce speed two zero zero knots", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "speed", "speed": 200}], "expectedIssues": []}
+{"input": "RYR7HB reduce speed 200 knots", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "speed", "speed": 200}], "expectedIssues": []}
+{"input": "TFL356, reduce speed two zero zero knots", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "speed", "speed": 200}], "expectedIssues": []}
+{"input": "TFL 356 reduce speed 200 knots", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "speed", "speed": 200}], "expectedIssues": []}
+{"input": "DAL 72, reduce speed two one zero knots", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "speed", "speed": 210}], "expectedIssues": []}
+{"input": "Delta 72 reduce speed 210 knots", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "speed", "speed": 210}], "expectedIssues": []}
+{"input": "KLM 1243, reduce speed two one zero knots", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "speed", "speed": 210}], "expectedIssues": []}
+{"input": "KLM one two four three reduce speed 210 knots", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "speed", "speed": 210}], "expectedIssues": []}
+{"input": "Orange three five six, reduce speed two two zero knots", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "speed", "speed": 220}], "expectedIssues": []}
+{"input": "tango foxtrot lima three five six reduce speed 220 knots", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "speed", "speed": 220}], "expectedIssues": []}
+{"input": "kilo lima mike one two three four, maintain one eight zero knots until four miles final", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "speed", "speed": 180, "untilDme": 4}], "expectedIssues": []}
+{"input": "KLM one two three four maintain 180 knots until 4 miles final", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "speed", "speed": 180, "untilDme": 4}], "expectedIssues": []}
+{"input": "KLM one two four three, maintain one six zero knots until four miles final", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "speed", "speed": 160, "untilDme": 4}], "expectedIssues": []}
+{"input": "KLM1243 maintain 160 knots until 4 miles final", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "speed", "speed": 160, "untilDme": 4}], "expectedIssues": []}
+{"input": "BAW432, maintain one seven zero knots until five miles final", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "speed", "speed": 170, "untilDme": 5}], "expectedIssues": []}
+{"input": "BAW 432 maintain 170 knots until 5 miles final", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "speed", "speed": 170, "untilDme": 5}], "expectedIssues": []}
+{"input": "EZY 45MP, maintain one eight zero knots until six miles final", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "speed", "speed": 180, "untilDme": 6}], "expectedIssues": []}
+{"input": "Easy 45MP maintain 180 knots until 6 miles final", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "speed", "speed": 180, "untilDme": 6}], "expectedIssues": []}
+{"input": "KLM 1234, resume normal speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
+{"input": "KLM one two four three, resume normal speed", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
+{"input": "bravo alfa whiskey four three two, resume normal speed", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
+{"input": "Easy four five mike papa, resume normal speed", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
+{"input": "DLH9LK, resume normal speed", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
+{"input": "KLM 87C, proceed direct ARTIP", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "direct", "fix": "ARTIP"}], "expectedIssues": []}
+{"input": "Orange 356, proceed direct RIVER", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "direct", "fix": "RIVER"}], "expectedIssues": []}
+{"input": "KLM one two three four, proceed direct SUGOL", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "direct", "fix": "SUGOL"}], "expectedIssues": []}
+{"input": "kilo lima mike one two four three, proceed direct SPL", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "direct", "fix": "SPL"}], "expectedIssues": []}
+{"input": "Speedbird four three two, proceed direct NIRSI", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "direct", "fix": "NIRSI"}], "expectedIssues": []}
+{"input": "EZY45MP, proceed direct PAM", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "direct", "fix": "PAM"}], "expectedIssues": []}
+{"input": "DLH 9LK, proceed direct EH608", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "direct", "fix": "EH608"}], "expectedIssues": []}
+{"input": "Air France 1845, proceed direct NARIX", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "direct", "fix": "NARIX"}], "expectedIssues": []}
+{"input": "KLM one two three four, cleared ILS approach runway one eight right", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "kilo lima mike one two three four cleared ILS approach runway 18R", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "kilo lima mike one two four three, cleared ILS approach runway one eight right", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "KLM one two four three cleared ILS approach runway 18R", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Speedbird four three two, cleared ILS approach runway one eight right", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "BAW432 cleared ILS approach runway 18R", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "EZY45MP, cleared ILS approach runway one eight right", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "EZY 45MP cleared ILS approach runway 18R", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "DLH 9LK, cleared ILS approach runway one eight right", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Lufthansa 9LK cleared ILS approach runway 18R", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Air France 1845, cleared ILS approach runway one eight right", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Air France one eight four five cleared ILS approach runway 18R", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Ryanair seven hotel bravo, cleared ILS approach runway one eight right", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "romeo yankee romeo seven hotel bravo cleared ILS approach runway 18R", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "uniform alfa echo one four eight, cleared ILS approach runway one eight right", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Emirates one four eight cleared ILS approach runway 18R", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "ils", "runway": "18R"}], "expectedIssues": []}
+{"input": "Easy four five mike papa, hold at ARTIP as published", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "hold", "fix": "ARTIP"}], "expectedIssues": []}
+{"input": "AFR1845, hold at ARTIP as published", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "hold", "fix": "ARTIP"}], "expectedIssues": []}
+{"input": "AFR 1845, hold at RIVER as published", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "hold", "fix": "RIVER"}], "expectedIssues": []}
+{"input": "Emirates 148, hold at RIVER as published", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "hold", "fix": "RIVER"}], "expectedIssues": []}
+{"input": "Emirates one four eight, hold at SUGOL as published", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "hold", "fix": "SUGOL"}], "expectedIssues": []}
+{"input": "kilo lima mike eight seven charlie, hold at SUGOL as published", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "hold", "fix": "SUGOL"}], "expectedIssues": []}
+{"input": "KLM one two three four, contact Schiphol Tower 118.280", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "KLM1234, contact Schiphol Tower one one eight decimal two eight zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "KLM1243, contact Schiphol Tower 118.280", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "KLM 1243, contact Schiphol Tower one one eight decimal two eight zero", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "BAW 432, contact Schiphol Tower 118.280", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "Speedbird 432, contact Schiphol Tower one one eight decimal two eight zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "Easy 45MP, contact Schiphol Tower 118.280", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "Easy four five mike papa, contact Schiphol Tower one one eight decimal two eight zero", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, contact Schiphol Tower 118.280", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "delta lima hotel niner lima kilo, contact Schiphol Tower one one eight decimal two eight zero", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "alfa foxtrot romeo one eight four five, contact Schiphol Tower 118.280", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "Air France one eight four five, contact Schiphol Tower one one eight decimal two eight zero", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "handoff", "to": "tower"}], "expectedIssues": []}
+{"input": "Transavia six zero one five, contact Amsterdam Radar 125.750", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "radar"}], "expectedIssues": []}
+{"input": "TRA6015 contact Amsterdam Radar one two five decimal seven five zero", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "radar"}], "expectedIssues": []}
+{"input": "KLM one two three four, go around", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
+{"input": "KLM1234, Schiphol Approach, identified", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
+{"input": "KLM 1234, say again", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}
+{"input": "KLM1243, go around", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
+{"input": "KLM 1243, Schiphol Approach, identified", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
+{"input": "KLM 1243, say again", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}
+{"input": "BAW 432, go around", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
+{"input": "Speedbird 432, Schiphol Approach, identified", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
+{"input": "Speedbird four three two, say again", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}
+{"input": "Easy 45MP, go around", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
+{"input": "Easy four five mike papa, Schiphol Approach, identified", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
+{"input": "echo zulu yankee four five mike papa, say again", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, go around", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
+{"input": "delta lima hotel niner lima kilo, Schiphol Approach, identified", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
+{"input": "Lufthansa niner lima kilo, say again", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}

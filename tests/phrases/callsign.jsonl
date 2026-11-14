@@ -1,0 +1,44 @@
+{"input": "KLM9999 turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "Speedbird one one one descend flight level 70", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "descend flight level 70", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "hello", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "Lufthansa turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "one two three four turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "Qantas 12 turn right heading 090", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "KLM one two four turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-ambiguous"]}
+{"input": "KLM 12 turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "KLM 1244 descend flight level 60", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-ambiguous"]}
+{"input": "KLM1234 turn left heading 270", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM1243 turn left heading 270", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM one two four three turn left heading two seven zero", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "kilo lima mike one two three four turn left heading two seven zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "bravo alfa whiskey four three two turn left heading two seven zero", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "BAW432 turn left heading 270", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "echo zulu yankee four five mike papa turn right heading zero three zero", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "EZY45MP turn right heading 030", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Easy 45MP turn right heading 030", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "DLH9LK turn right heading 030", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "delta lima hotel niner lima kilo turn right heading zero three zero", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Delta 72 turn right heading 030", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "delta alfa lima seven two turn right heading zero three zero", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Ryanair 7HB turn right heading 030", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Emirates 148 turn right heading 030", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Emirate 148 turn right heading 030", "expectedCallsign": "UAE148", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Orange 356 turn right heading 060", "expectedCallsign": "TFL356", "expectedCommands": [{"type": "heading", "heading": 60, "turn": "right"}], "expectedIssues": []}
+{"input": "Transavia 6015 turn right heading 260", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "heading", "heading": 260, "turn": "right"}], "expectedIssues": []}
+{"input": "Transavia 6016 turn right heading 260", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "heading", "heading": 260, "turn": "right"}], "expectedIssues": []}
+{"input": "Air France 1845 turn right heading 030", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "Air Franz 1845 turn right heading 030", "expectedCallsign": "AFR1845", "expectedCommands": [{"type": "heading", "heading": 30, "turn": "right"}], "expectedIssues": []}
+{"input": "KLM 87 Charlie turn right heading 090", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "heading", "heading": 90, "turn": "right"}], "expectedIssues": []}
+{"input": "KLM87C turn right heading 090", "expectedCallsign": "KLM87C", "expectedCommands": [{"type": "heading", "heading": 90, "turn": "right"}], "expectedIssues": []}
+{"input": "KLM1234 blah blah", "expectedCallsign": "KLM1234", "expectedCommands": [], "expectedIssues": ["not-understood"]}
+{"input": "KLM1234", "expectedCallsign": "KLM1234", "expectedCommands": [], "expectedIssues": ["not-understood"]}
+{"input": "KLM1234 turn left", "expectedCallsign": "KLM1234", "expectedCommands": [], "expectedIssues": ["not-understood"]}
+{"input": "KLM1234 turn left heading 400", "expectedCallsign": "KLM1234", "expectedCommands": [], "expectedIssues": ["not-understood"]}
+{"input": "KLM1234 wind 200 degrees 12 knots", "expectedCallsign": "KLM1234", "expectedCommands": [], "expectedIssues": [], "anyIssues": true}
+{"input": "turn left heading 270", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": [], "defaultCallsign": "KLM1234"}
+{"input": "descend flight level 60", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": [], "defaultCallsign": "DLH9LK"}
+{"input": "BAW432 turn left heading 270", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": [], "defaultCallsign": "KLM1234"}
+{"input": "l 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}

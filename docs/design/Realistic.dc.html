@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Approach scope — realistic mode</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#000}
+a{color:#E0E0E0}a:hover{color:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 100%; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #000; color: #E0E0E0; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+
+<nav aria-label="Display control bar" style="display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: #000; border-bottom: 1px solid #3A3A3A">
+<sc-for list="{{dcb}}" as="b" hint-placeholder-count="14">
+<button type="button" style="font: inherit; font-size: 11px; line-height: 1.15; min-width: 64px; height: 44px; padding: 0 6px; border: 1px solid #4A4A4A; background: {{b.bg}}; color: #E0E0E0; cursor: pointer; white-space: pre-line; text-align: center">{{b.label}}</button>
+</sc-for>
+</nav>
+
+<main style="flex: 1 1 auto; min-height: 0; position: relative; background: #000">
+<svg viewBox="0 0 800 700" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Realistic radar scope with the same nine aircraft" style="position: absolute; inset: 0; width: 100%; height: 100%; font-family: 'JetBrains Mono', monospace">
+<g fill="none" stroke="#2E2E2E" stroke-width="1">
+<circle cx="400" cy="380" r="80"></circle>
+<circle cx="400" cy="380" r="160"></circle>
+<circle cx="400" cy="380" r="240"></circle>
+<circle cx="400" cy="380" r="320"></circle>
+</g>
+<path d="M120 640 L210 470 L170 330 L260 120 L520 70 L690 160 L720 420 L600 650 Z" fill="none" stroke="#5A5A5A" stroke-width="1"></path>
+<path d="M210 470 L400 380 M170 330 L400 380 M690 160 L400 380" fill="none" stroke="#2A2A2A" stroke-width="1"></path>
+<line x1="380" y1="335" x2="380" y2="120" stroke="#6A6A6A" stroke-width="1"></line>
+<g stroke="#6A6A6A" stroke-width="1"><line x1="374" y1="300" x2="386" y2="300"></line><line x1="374" y1="260" x2="386" y2="260"></line><line x1="374" y1="220" x2="386" y2="220"></line><line x1="374" y1="180" x2="386" y2="180"></line></g>
+<g stroke="#8A8A8A" stroke-width="2">
+<line x1="380" y1="340" x2="380" y2="408"></line>
+<line x1="362" y1="404" x2="432" y2="372"></line>
+<line x1="408" y1="350" x2="408" y2="400"></line>
+</g>
+<g fill="#6A6A6A" font-size="10">
+<text x="556" y="150">+ARTIP</text><text x="176" y="560">+RIVER</text><text x="166" y="170">+SUGOL</text>
+</g>
+
+<g fill="#2F5FD0">
+<circle cx="536" cy="222" r="2" opacity="0.9"></circle><circle cx="552" cy="214" r="2" opacity="0.7"></circle><circle cx="568" cy="206" r="2" opacity="0.5"></circle><circle cx="584" cy="198" r="2" opacity="0.35"></circle>
+<circle cx="288" cy="186" r="2" opacity="0.9"></circle><circle cx="276" cy="172" r="2" opacity="0.7"></circle><circle cx="264" cy="158" r="2" opacity="0.5"></circle>
+<circle cx="634" cy="408" r="2" opacity="0.9"></circle><circle cx="648" cy="396" r="2" opacity="0.7"></circle><circle cx="662" cy="384" r="2" opacity="0.5"></circle>
+<circle cx="684" cy="482" r="2" opacity="0.9"></circle><circle cx="703" cy="484" r="2" opacity="0.7"></circle><circle cx="722" cy="486" r="2" opacity="0.5"></circle>
+<circle cx="418" cy="334" r="2" opacity="0.9"></circle><circle cx="413" cy="348" r="2" opacity="0.7"></circle>
+<circle cx="236" cy="490" r="2" opacity="0.9"></circle><circle cx="222" cy="500" r="2" opacity="0.7"></circle><circle cx="208" cy="510" r="2" opacity="0.5"></circle>
+<circle cx="146" cy="300" r="2" opacity="0.9"></circle><circle cx="142" cy="280" r="2" opacity="0.7"></circle>
+<circle cx="596" cy="584" r="2" opacity="0.9"></circle><circle cx="608" cy="596" r="2" opacity="0.7"></circle>
+<circle cx="390" cy="264" r="2" opacity="0.9"></circle><circle cx="390" cy="250" r="2" opacity="0.7"></circle>
+</g>
+
+<g font-size="12">
+<text x="515" y="234" fill="#FFFFFF" font-weight="700">A</text>
+<line x1="526" y1="226" x2="546" y2="206" stroke="#FFFFFF"></line>
+<text x="548" y="196" fill="#FFFFFF">KLM1234</text>
+<text x="548" y="210" fill="#FFFFFF">080 21</text>
+
+<text x="295" y="204" fill="#FFFFFF" font-weight="700">A</text>
+<line x1="294" y1="198" x2="274" y2="214" stroke="#FFFFFF"></line>
+<text x="206" y="226" fill="#FFFFFF">EZY45MP</text>
+<text x="206" y="240" fill="#FFFFFF">070 22</text>
+
+<text x="615" y="428" fill="#FF4040" font-weight="700">A</text>
+<line x1="614" y1="416" x2="600" y2="396" stroke="#FF4040"></line>
+<text x="560" y="378" fill="#FF4040">BAW432</text>
+<text x="560" y="392" fill="#FF4040">100 25</text>
+
+<text x="660" y="488" fill="#FF4040" font-weight="700">A</text>
+<line x1="671" y1="486" x2="686" y2="502" stroke="#FF4040"></line>
+<text x="686" y="516" fill="#FF4040">DLH9LK</text>
+<text x="686" y="530" fill="#FF4040">100 26</text>
+<text x="630" y="462" fill="#FF4040" font-weight="700">CA</text>
+
+<text x="420" y="328" fill="#FFFFFF" font-weight="700">A</text>
+<line x1="431" y1="322" x2="448" y2="326" stroke="#FFFFFF"></line>
+<text x="450" y="330" fill="#FFFFFF">TRA6015</text>
+<text x="450" y="344" fill="#FFFFFF">025 18</text>
+
+<text x="245" y="488" fill="#FFFFFF" font-weight="700">A</text>
+<line x1="244" y1="484" x2="228" y2="500" stroke="#FFFFFF"></line>
+<text x="150" y="512" fill="#FFFFFF">KLM87C</text>
+<text x="150" y="526" fill="#FFFFFF">060 23</text>
+
+<path d="M146 320 L154 320 M150 316 L150 324" stroke="#3FD13F" stroke-width="1.5"></path>
+<text x="98" y="342" fill="#3FD13F">240</text>
+
+<text x="581" y="580" fill="#FFFFFF" font-weight="700">A</text>
+<line x1="580" y1="576" x2="566" y2="590" stroke="#FFFFFF"></line>
+<text x="498" y="604" fill="#FFFFFF">TFL1FX</text>
+<text x="498" y="618" fill="#FFFFFF">110 27</text>
+
+<text x="385" y="284" fill="#FFFFFF" font-weight="700">A</text>
+<line x1="384" y1="278" x2="368" y2="284" stroke="#FFFFFF"></line>
+<text x="300" y="286" fill="#FFFFFF">KLM66P</text>
+<text x="300" y="300" fill="#FFFFFF">020 16</text>
+</g>
+</svg>
+
+<div style="position: absolute; left: 14px; top: 12px; display: flex; flex-direction: column; gap: 2px; color: #3FD13F; font-size: 12px; line-height: 1.35">
+<span>1402/31 1013</span>
+<span>OK/OK/NA 40 RR5</span>
+<span>EHAM 200/12</span>
+<span style="color: #FF4040">CA BAW432*DLH9LK</span>
+</div>
+
+<div style="position: absolute; right: 14px; top: 12px; display: flex; flex-direction: column; gap: 2px; color: #3FD13F; font-size: 12px; line-height: 1.35; text-align: right">
+<span>ARR LIST</span>
+<span>1 KLM66P  A332</span>
+<span>2 KLM1234 B738</span>
+<span>3 EZY45MP A320</span>
+<span>4 KLM87C  E195</span>
+<span>5 BAW432  A321</span>
+<span>6 DLH9LK  A20N</span>
+<span>7 TFL1FX  B38M</span>
+</div>
+
+<div style="position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 3px; font-size: 13px; line-height: 1.35">
+<span style="color: #3FD13F">RDBK ERR EZY45MP 5000/4000</span>
+<span style="color: #E0E0E0">BAW432 RH220<span style="color: #FFFFFF">▍</span></span>
+<span style="color: #6A6A6A; font-size: 11px">VOICE 92% · PTT SPACE</span>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var labels = ['RANGE\n40', 'PLACE\nCNTR', 'OFF\nCNTR', 'RR\n5', 'PLACE\nRR', 'RR\nCNTR', 'MAPS', 'BRITE', 'LDR DIR\nNE', 'LDR\n2', 'CHAR\nSIZE', 'MODE\nFSL', 'SITE\nEHAM', 'PREF', 'SSA\nFILTER', 'SHIFT'];
+    return {
+      dcb: labels.map(function (l, i) {
+        return { label: l, bg: (i === 0 || i === 3 || i === 9) ? '#004A00' : '#1A1A1A' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

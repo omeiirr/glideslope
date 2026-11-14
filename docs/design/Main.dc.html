@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Approach scope — modern mode</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0F1A}
+a{color:#5CC8FF}a:hover{color:#9ADCFF}
+</style>
+</helmet>
+<div style="width: 100%; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #0A0F1A; color: #E6EBF2; font-family: Inter, system-ui, sans-serif; font-size: 13px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 10px 20px; border-bottom: 1px solid #1F2A3D; background: #0D1422">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5CC8FF" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.5"></circle><path d="M12 12 L19 6"></path></svg>
+<span style="font-weight: 700; font-size: 15px; letter-spacing: 0.2px">Schiphol Approach</span>
+<span style="font-family: 'JetBrains Mono', monospace; color: #8B97AB">EHAM · APP 119.055</span>
+</div>
+<div style="display: flex; gap: 6px; padding: 3px; background: #111A2B; border: 1px solid #1F2A3D; border-radius: 8px">
+<button type="button" style="font: inherit; font-weight: 600; padding: 6px 12px; border-radius: 6px; border: 0; background: #1E3350; color: #E6EBF2; cursor: pointer">Modern</button>
+<button type="button" style="font: inherit; padding: 6px 12px; border-radius: 6px; border: 0; background: transparent; color: #8B97AB; cursor: pointer">Realistic</button>
+</div>
+<div style="flex: 1 1 auto"></div>
+<div style="display: flex; gap: 22px; align-items: center; font-family: 'JetBrains Mono', monospace">
+<div><span style="color: #8B97AB">UTC </span>14:02:31</div>
+<div><span style="color: #8B97AB">Traffic </span>9</div>
+<div><span style="color: #8B97AB">Landed </span>14</div>
+<div><span style="color: #8B97AB">Score </span><span style="color: #7AD7A8">2,480</span></div>
+</div>
+<div style="display: flex; gap: 6px">
+<button type="button" aria-label="Pause" style="width: 34px; height: 34px; border-radius: 8px; border: 1px solid #1F2A3D; background: #111A2B; color: #E6EBF2; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M8 5v14M16 5v14"></path></svg></button>
+<button type="button" style="font: inherit; font-family: 'JetBrains Mono', monospace; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #1F2A3D; background: #111A2B; color: #E6EBF2; cursor: pointer">1×</button>
+</div>
+</header>
+
+<div style="flex: 1 1 auto; min-height: 0; display: flex">
+
+<aside style="width: 270px; flex: 0 0 270px; border-right: 1px solid #1F2A3D; background: #0D1422; display: flex; flex-direction: column; overflow: auto">
+<div style="padding: 14px 16px 8px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #8B97AB">ARRIVAL SEQUENCE</span>
+<span style="font-size: 11px; color: #8B97AB">RWY 18R</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 0 10px">
+<sc-for list="{{arrivals}}" as="s" hint-placeholder-count="5">
+<div style="display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: {{s.bg}}; border: 1px solid {{s.border}}">
+<span style="width: 20px; height: 20px; border-radius: 10px; background: #1A2538; color: #8B97AB; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{s.n}}</span>
+<div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: {{s.color}}"><span>{{s.cs}}</span><span style="font-weight: 400; color: #8B97AB">{{s.eta}}</span></div>
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8B97AB"><span>{{s.type}}</span><span>{{s.fix}}</span><span>{{s.alt}}</span></div>
+</div>
+<svg width="10" height="16" viewBox="0 0 10 16" fill="#3A4860" aria-hidden="true"><circle cx="2" cy="3" r="1.4"></circle><circle cx="8" cy="3" r="1.4"></circle><circle cx="2" cy="8" r="1.4"></circle><circle cx="8" cy="8" r="1.4"></circle><circle cx="2" cy="13" r="1.4"></circle><circle cx="8" cy="13" r="1.4"></circle></svg>
+</div>
+</sc-for>
+</div>
+<div style="padding: 18px 16px 8px; font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #8B97AB">DEPARTURES</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 0 10px 16px">
+<div style="padding: 8px 10px; border-radius: 8px; background: #111A2B; border: 1px solid #1F2A3D; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-weight: 700"><span>TRA6015</span><span style="font-weight: 400; color: #8B97AB">airborne</span></div>
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8B97AB"><span>B738/M</span><span>LOPIK 1V</span><span>↑ 060</span></div>
+</div>
+<div style="padding: 8px 10px; border-radius: 8px; background: #111A2B; border: 1px dashed #2A3850; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #8B97AB"><span>KLM1601</span><span style="font-weight: 400">holding short</span></div>
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8B97AB"><span>E190/M</span><span>RWY 24</span><span>—</span></div>
+</div>
+</div>
+</aside>
+
+<main style="flex: 1 1 auto; min-width: 0; position: relative; background: radial-gradient(circle at 50% 52%, #0F1828 0%, #0A0F1A 70%)">
+<svg viewBox="0 0 800 700" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Radar scope with nine aircraft around Schiphol" style="position: absolute; inset: 0; width: 100%; height: 100%; font-family: 'JetBrains Mono', monospace">
+<g fill="none" stroke="#1A2638" stroke-width="1">
+<circle cx="400" cy="380" r="80"></circle>
+<circle cx="400" cy="380" r="160"></circle>
+<circle cx="400" cy="380" r="240"></circle>
+<circle cx="400" cy="380" r="320"></circle>
+</g>
+<g fill="#4A5870" font-size="10">
+<text x="484" y="376">10</text><text x="564" y="376">20</text><text x="644" y="376">30</text><text x="724" y="376">40 NM</text>
+</g>
+<path d="M120 640 L210 470 L170 330 L260 120 L520 70 L690 160 L720 420 L600 650 Z" fill="none" stroke="#22324A" stroke-width="1" stroke-dasharray="2 5"></path>
+<line x1="380" y1="335" x2="380" y2="120" stroke="#2C4466" stroke-width="1" stroke-dasharray="6 6"></line>
+<g stroke="#2C4466" stroke-width="1"><line x1="372" y1="300" x2="388" y2="300"></line><line x1="372" y1="260" x2="388" y2="260"></line><line x1="372" y1="220" x2="388" y2="220"></line><line x1="372" y1="180" x2="388" y2="180"></line></g>
+<g stroke="#C9D3E2" stroke-width="4" stroke-linecap="round">
+<line x1="380" y1="340" x2="380" y2="408"></line>
+<line x1="362" y1="404" x2="432" y2="372"></line>
+<line x1="408" y1="350" x2="408" y2="400"></line>
+</g>
+<g fill="none" stroke="#5E6E88" stroke-width="1.2">
+<path d="M560 142 L567 154 L553 154 Z"></path>
+<path d="M180 552 L187 564 L173 564 Z"></path>
+<path d="M170 162 L177 174 L163 174 Z"></path>
+<path d="M380 128 L387 140 L373 140 Z"></path>
+</g>
+<g fill="#6B7A93" font-size="10">
+<text x="572" y="152">ARTIP</text><text x="192" y="562">RIVER</text><text x="182" y="172">SUGOL</text><text x="392" y="138">IAF 18R</text>
+</g>
+
+<sc-if value="{{showIntent}}" hint-placeholder-val="{{ true }}">
+<g fill="none" stroke-width="1.2" stroke-dasharray="3 4">
+<line x1="520" y1="230" x2="400" y2="230" stroke="#5CC8FF" stroke-opacity="0.7"></line>
+<line x1="300" y1="200" x2="370" y2="250" stroke="#8B97AB" stroke-opacity="0.5"></line>
+<line x1="620" y1="420" x2="560" y2="470" stroke="#8B97AB" stroke-opacity="0.5"></line>
+<line x1="665" y1="480" x2="590" y2="475" stroke="#8B97AB" stroke-opacity="0.5"></line>
+<line x1="425" y1="320" x2="470" y2="250" stroke="#8B97AB" stroke-opacity="0.5"></line>
+<line x1="250" y1="480" x2="320" y2="440" stroke="#8B97AB" stroke-opacity="0.5"></line>
+</g>
+</sc-if>
+
+<sc-if value="{{showTrails}}" hint-placeholder-val="{{ true }}">
+<g fill="#8B97AB">
+<circle cx="536" cy="222" r="1.6" opacity="0.55"></circle><circle cx="552" cy="214" r="1.6" opacity="0.4"></circle><circle cx="568" cy="206" r="1.6" opacity="0.25"></circle>
+<circle cx="288" cy="186" r="1.6" opacity="0.55"></circle><circle cx="276" cy="172" r="1.6" opacity="0.4"></circle><circle cx="264" cy="158" r="1.6" opacity="0.25"></circle>
+<circle cx="634" cy="408" r="1.6" opacity="0.55"></circle><circle cx="648" cy="396" r="1.6" opacity="0.4"></circle><circle cx="662" cy="384" r="1.6" opacity="0.25"></circle>
+<circle cx="684" cy="482" r="1.6" opacity="0.55"></circle><circle cx="703" cy="484" r="1.6" opacity="0.4"></circle><circle cx="722" cy="486" r="1.6" opacity="0.25"></circle>
+<circle cx="418" cy="334" r="1.6" opacity="0.55"></circle><circle cx="413" cy="348" r="1.6" opacity="0.4"></circle>
+<circle cx="236" cy="490" r="1.6" opacity="0.55"></circle><circle cx="222" cy="500" r="1.6" opacity="0.4"></circle><circle cx="208" cy="510" r="1.6" opacity="0.25"></circle>
+<circle cx="146" cy="300" r="1.6" opacity="0.55"></circle><circle cx="142" cy="280" r="1.6" opacity="0.4"></circle><circle cx="138" cy="260" r="1.6" opacity="0.25"></circle>
+<circle cx="596" cy="584" r="1.6" opacity="0.55"></circle><circle cx="608" cy="596" r="1.6" opacity="0.4"></circle>
+</g>
+</sc-if>
+
+<g>
+<circle cx="640" cy="450" r="62" fill="#F5B04C" fill-opacity="0.06" stroke="#F5B04C" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="4 4"></circle>
+<line x1="620" y1="420" x2="665" y2="480" stroke="#F5B04C" stroke-width="1.2"></line>
+<rect x="676" y="430" width="96" height="34" rx="5" fill="#2A1F0C" stroke="#F5B04C" stroke-opacity="0.7"></rect>
+<text x="684" y="444" fill="#F5B04C" font-size="10" font-weight="700">CONFLICT 45s</text>
+<text x="684" y="457" fill="#F2D29C" font-size="10">min 2.1 NM · 100</text>
+</g>
+
+<g>
+<circle cx="520" cy="230" r="14" fill="#5CC8FF" fill-opacity="0.12" stroke="#5CC8FF" stroke-width="1.5"></circle>
+<rect x="516" y="226" width="8" height="8" fill="#5CC8FF"></rect>
+<line x1="528" y1="222" x2="550" y2="196" stroke="#5CC8FF" stroke-width="1"></line>
+<rect x="550" y="166" width="98" height="38" rx="5" fill="#0E2337" stroke="#5CC8FF" stroke-width="1"></rect>
+<text x="558" y="182" fill="#E9F7FF" font-size="12" font-weight="700">KLM1234</text>
+<text x="558" y="197" fill="#9ADCFF" font-size="11">080↓030 210</text>
+<text x="626" y="182" fill="#9ADCFF" font-size="9">B738</text>
+</g>
+
+<g>
+<rect x="296" y="196" width="8" height="8" fill="#E6EBF2"></rect>
+<line x1="296" y1="196" x2="276" y2="214" stroke="#6B7A93" stroke-width="1"></line>
+<text x="206" y="226" fill="#E6EBF2" font-size="12" font-weight="700">EZY45MP</text>
+<text x="206" y="241" fill="#F5B04C" font-size="11">070↓040 220</text>
+</g>
+
+<g>
+<rect x="616" y="416" width="8" height="8" fill="#F5B04C"></rect>
+<line x1="616" y1="416" x2="600" y2="394" stroke="#6B7A93" stroke-width="1"></line>
+<text x="560" y="378" fill="#F5D59A" font-size="12" font-weight="700">BAW432</text>
+<text x="560" y="392" fill="#C7D0DE" font-size="11">100↓070 250</text>
+</g>
+
+<g>
+<rect x="661" y="476" width="8" height="8" fill="#F5B04C"></rect>
+<line x1="669" y1="484" x2="686" y2="502" stroke="#6B7A93" stroke-width="1"></line>
+<text x="686" y="516" fill="#F5D59A" font-size="12" font-weight="700">DLH9LK</text>
+<text x="686" y="530" fill="#C7D0DE" font-size="11">100 = 100 260</text>
+</g>
+
+<g>
+<path d="M421 316 L429 316 L425 324 Z" fill="#E6EBF2"></path>
+<line x1="429" y1="320" x2="448" y2="326" stroke="#6B7A93" stroke-width="1"></line>
+<text x="450" y="330" fill="#E6EBF2" font-size="12" font-weight="700">TRA6015</text>
+<text x="450" y="344" fill="#C7D0DE" font-size="11">025↑060 180</text>
+</g>
+
+<g>
+<rect x="246" y="476" width="8" height="8" fill="#E6EBF2"></rect>
+<line x1="246" y1="484" x2="228" y2="500" stroke="#6B7A93" stroke-width="1"></line>
+<text x="150" y="512" fill="#E6EBF2" font-size="12" font-weight="700">KLM87C</text>
+<text x="150" y="526" fill="#C7D0DE" font-size="11">060↓040 230</text>
+</g>
+
+<g>
+<rect x="146" y="316" width="8" height="8" fill="#8B97AB"></rect>
+<text x="98" y="342" fill="#8B97AB" font-size="11">RYR7HB</text>
+<text x="98" y="355" fill="#6B7A93" font-size="10">240 440</text>
+</g>
+
+<g>
+<rect x="582" y="568" width="8" height="8" fill="#E6EBF2"></rect>
+<line x1="582" y1="576" x2="566" y2="590" stroke="#6B7A93" stroke-width="1"></line>
+<text x="498" y="604" fill="#E6EBF2" font-size="12" font-weight="700">TFL1FX</text>
+<text x="498" y="618" fill="#C7D0DE" font-size="11">110↓070 270</text>
+</g>
+
+<g>
+<rect x="386" y="276" width="7" height="7" fill="#7AD7A8"></rect>
+<text x="300" y="286" fill="#7AD7A8" font-size="11" font-weight="700">KLM66P</text>
+<text x="300" y="299" fill="#7AD7A8" font-size="10">LOC 018 160</text>
+</g>
+</svg>
+
+<div style="position: absolute; left: 16px; bottom: 14px; display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 12px; border-radius: 8px; background: rgba(13,20,34,0.85); border: 1px solid #1F2A3D; font-size: 11px; color: #8B97AB">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; background: #5CC8FF"></span>Heard by voice</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; background: #7AD7A8"></span>Established ILS</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; background: #F5B04C"></span>Conflict / check</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; border-top: 1px dashed #8B97AB"></span>Cleared heading</span>
+</div>
+<div style="position: absolute; right: 16px; top: 14px; display: flex; gap: 6px">
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #1F2A3D; background: rgba(13,20,34,0.85); color: #C7D0DE; cursor: pointer">Range 40 NM</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #1F2A3D; background: rgba(13,20,34,0.85); color: #C7D0DE; cursor: pointer">QNH 1013</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #1F2A3D; background: rgba(13,20,34,0.85); color: #C7D0DE; cursor: pointer">Wind 200/12</button>
+</div>
+</main>
+
+<aside style="width: 340px; flex: 0 0 340px; border-left: 1px solid #1F2A3D; background: #0D1422; display: flex; flex-direction: column; min-height: 0">
+<div style="padding: 14px 16px; border-bottom: 1px solid #1F2A3D; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #8B97AB">RADIO</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C7D0DE">119.055</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #121F33; border: 1px solid #23395A">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #F5B04C"></span>
+<span style="font-family: 'JetBrains Mono', monospace; font-weight: 700">BAW432</span>
+<span style="color: #8B97AB; font-size: 12px">transmitting</span>
+<div style="flex: 1 1 auto"></div>
+<svg width="72" height="20" viewBox="0 0 72 20" fill="#F5B04C" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="6" y="5" width="3" height="10" rx="1"></rect><rect x="12" y="2" width="3" height="16" rx="1"></rect><rect x="18" y="6" width="3" height="8" rx="1"></rect><rect x="24" y="3" width="3" height="14" rx="1"></rect><rect x="30" y="7" width="3" height="6" rx="1"></rect><rect x="36" y="1" width="3" height="18" rx="1"></rect><rect x="42" y="5" width="3" height="10" rx="1"></rect><rect x="48" y="8" width="3" height="4" rx="1"></rect><rect x="54" y="4" width="3" height="12" rx="1"></rect><rect x="60" y="7" width="3" height="6" rx="1"></rect><rect x="66" y="9" width="3" height="2" rx="1"></rect></svg>
+</div>
+<div style="font-size: 11px; color: #8B97AB">Frequency busy — you'll block BAW432 if you key now.</div>
+</div>
+
+<div style="flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px">
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600; color: #5CC8FF">YOU</span><span>14:02:11</span></div>
+<div style="line-height: 1.45">KLM1234, turn left heading two seven zero, descend altitude three thousand</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px">
+<span style="padding: 2px 7px; border-radius: 4px; background: #0E2337; color: #9ADCFF; border: 1px solid #1E4466">KLM1234</span>
+<span style="padding: 2px 7px; border-radius: 4px; background: #182235; color: #C7D0DE">L HDG 270</span>
+<span style="padding: 2px 7px; border-radius: 4px; background: #182235; color: #C7D0DE">ALT 3000</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 2px solid #26354D">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600">KLM1234</span><span>14:02:14</span></div>
+<div style="line-height: 1.45; color: #C7D0DE">Left heading two seven zero, descending three thousand, KLM one two three four.</div>
+<div style="font-size: 11px; color: #7AD7A8; display: flex; align-items: center; gap: 5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>Readback correct</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600; color: #5CC8FF">YOU</span><span>14:01:52</span></div>
+<div style="line-height: 1.45">Easy four five Mike Papa, descend altitude four thousand</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; background: #241B0D; border: 1px solid #5C4419">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #C9B48F"><span style="font-weight: 600">EZY45MP</span><span>14:01:55</span></div>
+<div style="line-height: 1.45; color: #F2E6D2">Descend five thousand, Easy four five Mike Papa.</div>
+<div style="font-size: 12px; color: #F5B04C; font-weight: 600">Readback error: cleared 4000, read back 5000</div>
+<div style="display: flex; gap: 6px">
+<button type="button" style="font: inherit; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 6px; border: 0; background: #F5B04C; color: #1A1206; cursor: pointer">Correct it</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #5C4419; background: transparent; color: #F2E6D2; cursor: pointer">Play audio</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600; color: #5CC8FF">YOU</span><span>14:01:30</span></div>
+<div style="line-height: 1.45; color: #8B97AB">…lima kilo, turn … heading two …</div>
+<div style="font-size: 11px; color: #8B97AB">Heard 41% · callsign unclear</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 2px solid #26354D">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600">DLH9LK</span><span>14:01:33</span></div>
+<div style="line-height: 1.45; color: #C7D0DE">Station calling Schiphol Approach, say again?</div>
+</div>
+</div>
+</aside>
+</div>
+
+<footer style="border-top: 1px solid #1F2A3D; background: #0D1422; padding: 12px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+<button type="button" aria-label="Push to talk (hold Space)" style="width: 52px; height: 52px; border-radius: 26px; border: 2px solid #5CC8FF; background: #0E2337; color: #5CC8FF; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></button>
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #5CC8FF">LISTENING</span>
+<span style="font-size: 11px; color: #8B97AB">hold Space to talk</span>
+</div>
+<div style="font-size: 16px; line-height: 1.35">Speedbird four three two, turn right heading two two zero<span style="color: #5CC8FF">▍</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<span style="padding: 5px 9px; border-radius: 6px; background: #0E2337; color: #9ADCFF; border: 1px solid #1E4466">BAW432 ✓</span>
+<span style="padding: 5px 9px; border-radius: 6px; background: #182235; color: #C7D0DE; border: 1px solid #26354D">R HDG 220</span>
+<span style="padding: 5px 9px; border-radius: 6px; background: transparent; color: #8B97AB; border: 1px dashed #2A3850">+ altitude?</span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 11px; color: #8B97AB">
+<span>Confidence</span>
+<div style="width: 90px; height: 6px; border-radius: 3px; background: #1A2538"><div style="width: 92%; height: 6px; border-radius: 3px; background: #5CC8FF"></div></div>
+<span style="font-family: 'JetBrains Mono', monospace; color: #C7D0DE">92%</span>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"showIntent":{"editor":"boolean","default":true},"showTrails":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var base = { bg: '#111A2B', border: '#1F2A3D', color: '#E6EBF2' };
+    var arrivals = [
+      { n: 1, cs: 'KLM66P', type: 'A332/H', fix: 'ILS', alt: '2000', eta: '+2', bg: '#0F2420', border: '#25503F', color: '#7AD7A8' },
+      { n: 2, cs: 'KLM1234', type: 'B738/M', fix: 'ARTIP', alt: '3000', eta: '+6', bg: '#0E2337', border: '#1E4466', color: '#9ADCFF' },
+      Object.assign({ n: 3, cs: 'EZY45MP', type: 'A320/M', fix: 'SUGOL', alt: '4000', eta: '+8' }, base),
+      Object.assign({ n: 4, cs: 'KLM87C', type: 'E195/M', fix: 'RIVER', alt: '4000', eta: '+11' }, base),
+      { n: 5, cs: 'BAW432', type: 'A321/M', fix: 'ARTIP', alt: '7000', eta: '+13', bg: '#241B0D', border: '#5C4419', color: '#F5D59A' },
+      { n: 6, cs: 'DLH9LK', type: 'A20N/M', fix: 'ARTIP', alt: '7000', eta: '+14', bg: '#241B0D', border: '#5C4419', color: '#F5D59A' },
+      Object.assign({ n: 7, cs: 'TFL1FX', type: 'B38M/M', fix: 'RIVER', alt: '7000', eta: '+17' }, base)
+    ];
+    return {
+      arrivals: arrivals,
+      showIntent: this.props.showIntent ?? true,
+      showTrails: this.props.showTrails ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

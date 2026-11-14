@@ -1,0 +1,500 @@
+{
+ "icao": "EHAM",
+ "name": "Amsterdam Schiphol",
+ "lat": 52.30806,
+ "lon": 4.76417,
+ "elevationFt": -11,
+ "transitionAltitudeFt": 3000,
+ "transitionLevels": [
+  {
+   "minQnh": 0,
+   "fl": 50
+  },
+  {
+   "minQnh": 977,
+   "fl": 45
+  },
+  {
+   "minQnh": 1013,
+   "fl": 40
+  }
+ ],
+ "qnh": 1013,
+ "wind": {
+  "dir": 200,
+  "speed": 12
+ },
+ "atis": "B",
+ "frequencies": {
+  "approach": {
+   "name": "Schiphol Approach",
+   "mhz": "119.055"
+  },
+  "tower": {
+   "name": "Schiphol Tower",
+   "mhz": "118.280"
+  },
+  "radar": {
+   "name": "Amsterdam Radar",
+   "mhz": "125.750"
+  }
+ },
+ "airspace": {
+  "floorFt": 0,
+  "ceilingFt": 10000,
+  "poly": [
+   [
+    52.80556,
+    5.33333
+   ],
+   [
+    52.42917,
+    5.68111
+   ],
+   [
+    52.37806,
+    5.66806
+   ],
+   [
+    52.30306,
+    5.60917
+   ],
+   [
+    52.03111,
+    5.39806
+   ],
+   [
+    51.88639,
+    5.09639
+   ],
+   [
+    51.88639,
+    5.09639
+   ],
+   [
+    51.88639,
+    4.82778
+   ],
+   [
+    51.93611,
+    4.35417
+   ],
+   [
+    51.98889,
+    4.11111
+   ],
+   [
+    52.285,
+    3.98611
+   ],
+   [
+    52.285,
+    3.98611
+   ],
+   [
+    52.29139,
+    3.69639
+   ],
+   [
+    52.9,
+    4.11778
+   ],
+   [
+    52.75694,
+    4.4675
+   ],
+   [
+    52.725,
+    4.56111
+   ],
+   [
+    52.80556,
+    5.33333
+   ]
+  ]
+ },
+ "config": {
+  "landing": "18R",
+  "departure": "24"
+ },
+ "missedApproachAltFt": 2000,
+ "runways": [
+  {
+   "id": "04",
+   "lat": 52.30037,
+   "lon": 4.78348,
+   "heading": 41.2,
+   "lengthFt": 6627,
+   "widthFt": 148,
+   "elevationFt": -13
+  },
+  {
+   "id": "22",
+   "lat": 52.31402,
+   "lon": 4.80302,
+   "heading": 221.2,
+   "lengthFt": 6627,
+   "widthFt": 148,
+   "elevationFt": -14
+  },
+  {
+   "id": "06",
+   "lat": 52.28913,
+   "lon": 4.73729,
+   "heading": 57.9,
+   "lengthFt": 11283,
+   "widthFt": 148,
+   "elevationFt": -11
+  },
+  {
+   "id": "24",
+   "lat": 52.30458,
+   "lon": 4.77752,
+   "heading": 237.9,
+   "lengthFt": 11283,
+   "widthFt": 148,
+   "elevationFt": -12
+  },
+  {
+   "id": "09",
+   "lat": 52.31667,
+   "lon": 4.74766,
+   "heading": 86.7,
+   "lengthFt": 11329,
+   "widthFt": 148,
+   "elevationFt": -12
+  },
+  {
+   "id": "27",
+   "lat": 52.31838,
+   "lon": 4.79689,
+   "heading": 266.8,
+   "lengthFt": 11329,
+   "widthFt": 148,
+   "elevationFt": -12
+  },
+  {
+   "id": "18C",
+   "lat": 52.3314,
+   "lon": 4.74003,
+   "heading": 183.2,
+   "lengthFt": 10826,
+   "widthFt": 148,
+   "elevationFt": -12
+  },
+  {
+   "id": "36C",
+   "lat": 52.30583,
+   "lon": 4.73768,
+   "heading": 3.2,
+   "lengthFt": 10826,
+   "widthFt": 148,
+   "elevationFt": -12
+  },
+  {
+   "id": "18L",
+   "lat": 52.31615,
+   "lon": 4.77969,
+   "heading": 183.2,
+   "lengthFt": 11155,
+   "widthFt": 148,
+   "elevationFt": -12
+  },
+  {
+   "id": "36R",
+   "lat": 52.29082,
+   "lon": 4.77735,
+   "heading": 3.2,
+   "lengthFt": 11155,
+   "widthFt": 148,
+   "elevationFt": -11
+  },
+  {
+   "id": "18R",
+   "lat": 52.36026,
+   "lon": 4.71173,
+   "heading": 183.2,
+   "lengthFt": 12467,
+   "widthFt": 198,
+   "elevationFt": -13,
+   "ils": {
+    "glideslopeDeg": 3,
+    "rangeNm": 25,
+    "tchFt": 50
+   }
+  },
+  {
+   "id": "36L",
+   "lat": 52.32858,
+   "lon": 4.70884,
+   "heading": 3.2,
+   "lengthFt": 12467,
+   "widthFt": 198,
+   "elevationFt": -12
+  }
+ ],
+ "fixes": {
+  "ARTIP": [
+   52.51121,
+   5.56908
+  ],
+  "RIVER": [
+   51.91276,
+   4.13259
+  ],
+  "SUGOL": [
+   52.52551,
+   3.96735
+  ],
+  "NIRSI": [
+   52.58388,
+   4.51337
+  ],
+  "NARIX": [
+   52.65274,
+   4.97613
+  ],
+  "EH601": [
+   52.68806,
+   4.84917
+  ],
+  "EH602": [
+   52.68833,
+   4.68
+  ],
+  "EH603": [
+   52.68806,
+   4.51333
+  ],
+  "EH605": [
+   52.06639,
+   4.11611
+  ],
+  "EH606": [
+   52.42244,
+   4.38791
+  ],
+  "EH607": [
+   52.58389,
+   4.64694
+  ],
+  "EH608": [
+   52.53944,
+   4.72806
+  ],
+  "EH621": [
+   52.4627,
+   4.7211
+  ],
+  "SPL": [
+   52.33214,
+   4.74988
+  ],
+  "PAM": [
+   52.33475,
+   5.09216
+  ],
+  "SPY": [
+   52.54028,
+   4.85378
+  ],
+  "OSKUR": [
+   52.49046,
+   6.02402
+  ],
+  "NOVEN": [
+   52.71021,
+   5.89845
+  ],
+  "HSD": [
+   51.72333,
+   3.85833
+  ],
+  "STD": [
+   51.74167,
+   4.24333
+  ],
+  "LUTEX": [
+   52.68143,
+   3.46855
+  ],
+  "ROBVI": [
+   52.57165,
+   3.77645
+  ],
+  "PEPEL": [
+   52.58512,
+   3.41418
+  ],
+  "LEKKO": [
+   51.92417,
+   4.76733
+  ],
+  "LOPIK": [
+   51.93083,
+   5.12916
+  ],
+  "ARNEM": [
+   52.09645,
+   6.0766
+  ],
+  "VALKO": [
+   52.07134,
+   3.83983
+  ]
+ },
+ "stars": [
+  {
+   "id": "ARTIP",
+   "iaf": "ARTIP",
+   "via": [
+    "OSKUR",
+    "NOVEN"
+   ]
+  },
+  {
+   "id": "RIVER",
+   "iaf": "RIVER",
+   "via": [
+    "HSD",
+    "STD"
+   ]
+  },
+  {
+   "id": "SUGOL",
+   "iaf": "SUGOL",
+   "via": [
+    "LUTEX",
+    "ROBVI",
+    "PEPEL"
+   ]
+  }
+ ],
+ "holds": {
+  "ARTIP": {
+   "inbound": 253
+  },
+  "RIVER": {
+   "inbound": 46
+  },
+  "SUGOL": {
+   "inbound": 112
+  }
+ },
+ "departures": {
+  "initialClimbFt": 6000,
+  "exits": [
+   "LEKKO",
+   "LOPIK",
+   "ARNEM",
+   "VALKO"
+  ]
+ },
+ "airlines": [
+  {
+   "icao": "KLM",
+   "telephony": "KLM",
+   "weight": 34,
+   "types": [
+    "B738",
+    "B738",
+    "E190",
+    "E195",
+    "A332",
+    "B772",
+    "B77W",
+    "B789"
+   ]
+  },
+  {
+   "icao": "TRA",
+   "telephony": "Transavia",
+   "weight": 12,
+   "types": [
+    "B738"
+   ]
+  },
+  {
+   "icao": "EZY",
+   "telephony": "Easy",
+   "weight": 12,
+   "types": [
+    "A320",
+    "A20N"
+   ]
+  },
+  {
+   "icao": "TFL",
+   "telephony": "Orange",
+   "weight": 7,
+   "types": [
+    "B738",
+    "B38M",
+    "B789"
+   ]
+  },
+  {
+   "icao": "BAW",
+   "telephony": "Speedbird",
+   "weight": 6,
+   "types": [
+    "A320",
+    "A321"
+   ]
+  },
+  {
+   "icao": "DLH",
+   "telephony": "Lufthansa",
+   "weight": 6,
+   "types": [
+    "A320",
+    "A20N",
+    "A321"
+   ]
+  },
+  {
+   "icao": "RYR",
+   "telephony": "Ryanair",
+   "weight": 5,
+   "types": [
+    "B738",
+    "B38M"
+   ]
+  },
+  {
+   "icao": "AFR",
+   "telephony": "Air France",
+   "weight": 5,
+   "types": [
+    "A320",
+    "E190"
+   ]
+  },
+  {
+   "icao": "DAL",
+   "telephony": "Delta",
+   "weight": 5,
+   "types": [
+    "A332",
+    "A333"
+   ]
+  },
+  {
+   "icao": "UAE",
+   "telephony": "Emirates",
+   "weight": 3,
+   "types": [
+    "A388",
+    "B77W"
+   ]
+  },
+  {
+   "icao": "JFA",
+   "telephony": "Mosquito",
+   "weight": 3,
+   "types": [
+    "PC12"
+   ]
+  }
+ ]
+}

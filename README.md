@@ -8,7 +8,7 @@ A free, open-source approach-control simulator that runs in your browser. You ar
 
 ## How to play
 
-1. Start with the **Tutorial**: five short lessons on headings, levels, speed, the ILS and handoffs.
+1. Start with the **Tutorial**: five short lessons on headings, levels, speed, the ILS and handoffs. **Learn** (in the menu and the top bar) is a reference for the phonetic alphabet, how to say numbers, every command, and flight levels vs altitudes.
 2. Select an aircraft by clicking it on the scope or its strip on the left.
 3. Give an instruction:
    - **Voice:** hold **Space** (or the mic button) and speak. The first time, the speech model downloads (about 40–200 MB, depending on your machine) and is cached after that.

@@ -8,7 +8,7 @@ import { RULE_TEXT } from '../phraseology/phrases';
 import type { VoiceState } from '../speech/voice';
 
 /** Modal behaviour: focus moves into the dialog, Tab stays inside, Escape closes, focus returns afterwards. */
-function useDialog(onClose?: () => void) {
+export function useDialog(onClose?: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -58,10 +58,12 @@ export function Menu({
   progress,
   onStart,
   onSettings,
+  onLearn,
 }: {
   progress: Progress;
   onStart: (s: Scenario) => void;
   onSettings: () => void;
+  onLearn: () => void;
 }) {
   const ref = useDialog();
   const group = (title: string, list: Scenario[]) => (
@@ -105,9 +107,14 @@ export function Menu({
           SCENARIOS.filter((s) => !s.lesson && s.mode === 'pro'),
         )}
         <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
-          <button type="button" class="btn" onClick={onSettings}>
-            Settings
-          </button>
+          <span style="display:flex;gap:8px">
+            <button type="button" class="btn" onClick={onLearn}>
+              Learn the radio
+            </button>
+            <button type="button" class="btn" onClick={onSettings}>
+              Settings
+            </button>
+          </span>
           <span class="dim" style="font-size:11.5px">
             Free and open source (MIT) · not for real-world training
           </span>

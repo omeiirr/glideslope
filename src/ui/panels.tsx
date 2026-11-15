@@ -28,10 +28,11 @@ interface TopBarProps {
   settings: Settings;
   onDisplay: (d: Settings['display']) => void;
   onSettings: () => void;
+  onLearn: () => void;
   onEnd: () => void;
 }
 
-export function TopBar({ session, settings, onDisplay, onSettings, onEnd }: TopBarProps) {
+export function TopBar({ session, settings, onDisplay, onSettings, onLearn, onEnd }: TopBarProps) {
   const f = EHAM.frequencies.approach;
   const left = session.remainingSec;
   const speeds = [1, 2, 4, 8];
@@ -110,6 +111,9 @@ export function TopBar({ session, settings, onDisplay, onSettings, onEnd }: TopB
           onClick={() => session.setSpeed(speeds[(speeds.indexOf(session.speed) + 1) % speeds.length]!)}
         >
           {session.speed}×
+        </button>
+        <button type="button" class="btn" onClick={onLearn} title="Phraseology and procedures reference">
+          Learn
         </button>
         <button type="button" class="btn" aria-label="Settings" onClick={onSettings}>
           <Icon d="M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />

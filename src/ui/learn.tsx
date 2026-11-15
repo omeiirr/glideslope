@@ -1,0 +1,628 @@
+import { useState } from 'preact/hooks';
+import { EHAM, transitionLevel, wakeMinimum, type Command, type Wake } from '../core';
+import { STUDENT } from '../game/scenarios';
+import { spell, spokenCallsign } from '../phraseology/callsign';
+import { controllerPhrase, readback, RULE_TEXT, spokenAltitude, type Phrase } from '../phraseology/phrases';
+import { useDialog } from './overlays';
+
+/** Speak a phrase in a pilot voice (no-op when voices are off). */
+export type Say = (p: Phrase) => void;
+
+const env = { airport: EHAM, qnh: EHAM.qnh };
+/** Example aircraft for command phrases: level at FL070, heading east, 250 kt, no QNH given yet. */
+const AC = { callsign: STUDENT, alt: 7000, hdg: 90, ias: 250, qnhGiven: false };
+const APP = EHAM.frequencies.approach;
+const TWR = EHAM.frequencies.tower;
+const RADAR = EHAM.frequencies.radar;
+const TA = EHAM.transitionAltitudeFt;
+const TL = transitionLevel(EHAM, EHAM.qnh);
+
+function Listen({ p, say }: { p: Phrase; say: Say }) {
+  return (
+    <button
+      type="button"
+      class="listen"
+      aria-label={`Listen: ${p.text}`}
+      title="Listen"
+      onClick={() => say(p)}
+    >
+      ▶
+    </button>
+  );
+}
+
+/** A written example and how it sounds, with a listen button. */
+function Ex({ p, say, label }: { p: Phrase; say: Say; label?: string }) {
+  return (
+    <div class="ex">
+      {label && <span class="ex-label">{label}</span>}
+      <span class="mono">{p.text}</span>
+      {p.speech !== p.text && <span class="ex-say">“{p.speech}”</span>}
+      <Listen p={p} say={say} />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ 1. numbers and letters
+
+/** ICAO Annex 10 Vol II §5.2.1.4: capitals mark the stressed syllable. */
+const DIGITS: [string, string][] = [
+  ['0', 'ZE-RO'],
+  ['1', 'WUN'],
+  ['2', 'TOO'],
+  ['3', 'TREE'],
+  ['4', 'FOW-er'],
+  ['5', 'FIFE'],
+  ['6', 'SIX'],
+  ['7', 'SEV-en'],
+  ['8', 'AIT'],
+  ['9', 'NIN-er'],
+  ['.', 'DAY-SEE-MAL (decimal)'],
+  ['100', 'HUN-dred'],
+  ['1000', 'TOU-SAND'],
+];
+const LETTERS: [string, string, string][] = [
+  ['A', 'Alfa', 'AL-fah'],
+  ['B', 'Bravo', 'BRAH-voh'],
+  ['C', 'Charlie', 'CHAR-lee'],
+  ['D', 'Delta', 'DELL-tah'],
+  ['E', 'Echo', 'ECK-oh'],
+  ['F', 'Foxtrot', 'FOKS-trot'],
+  ['G', 'Golf', 'GOLF'],
+  ['H', 'Hotel', 'hoh-TELL'],
+  ['I', 'India', 'IN-dee-ah'],
+  ['J', 'Juliett', 'JEW-lee-ETT'],
+  ['K', 'Kilo', 'KEY-loh'],
+  ['L', 'Lima', 'LEE-mah'],
+  ['M', 'Mike', 'MIKE'],
+  ['N', 'November', 'no-VEM-ber'],
+  ['O', 'Oscar', 'OSS-cah'],
+  ['P', 'Papa', 'pah-PAH'],
+  ['Q', 'Quebec', 'keh-BECK'],
+  ['R', 'Romeo', 'ROW-me-oh'],
+  ['S', 'Sierra', 'see-AIR-rah'],
+  ['T', 'Tango', 'TANG-go'],
+  ['U', 'Uniform', 'YOU-nee-form'],
+  ['V', 'Victor', 'VIK-tah'],
+  ['W', 'Whiskey', 'WISS-key'],
+  ['X', 'X-ray', 'ECKS-ray'],
+  ['Y', 'Yankee', 'YANG-key'],
+  ['Z', 'Zulu', 'ZOO-loo'],
+];
+
+function Basics({ say }: { say: Say }) {
+  return (
+    <>
+      <p>
+        Radio is noisy and many pilots don't speak English as a first language, so aviation uses a fixed way
+        of saying numbers and letters. Say each digit separately, and use the ICAO pronunciation, especially
+        for <b>three</b> (“tree”), <b>five</b> (“fife”) and <b>nine</b> (“niner”), which are easy to confuse.
+      </p>
+      <h3>Numbers</h3>
+      <div class="ref-grid">
+        {DIGITS.map(([d, how]) => (
+          <div class="ref-cell">
+            <b class="mono">{d}</b>
+            <span>{how}</span>
+          </div>
+        ))}
+      </div>
+      <h3>Phonetic alphabet</h3>
+      <div class="ref-grid">
+        {LETTERS.map(([l, word, how]) => (
+          <button
+            type="button"
+            class="ref-cell"
+            onClick={() => say({ text: word, speech: word })}
+            aria-label={`${l}: ${word}, said ${how}. Listen.`}
+          >
+            <b class="mono">{l}</b>
+            <span>{word}</span>
+            <small>{how}</small>
+          </button>
+        ))}
+      </div>
+      <p class="dim">Capitals mark the stressed syllable. Click a letter to hear it.</p>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ 2. saying values
+
+const p = (text: string, speech: string): Phrase => ({ text, speech });
+
+function Values({ say }: { say: Say }) {
+  const rwy = EHAM.config.landing;
+  const rows: [string, Phrase, string][] = [
+    ['Heading', p('heading 090', `heading ${spell('090')}`), 'Always three digits, each said separately.'],
+    ['Speed', p('180 knots', `${spell('180')} knots`), 'Digits separately, then “knots”.'],
+    [
+      'Altitude',
+      p('altitude 2500', `altitude ${spokenAltitude(2500)}`),
+      'Thousands and hundreds: “two thousand five hundred”.',
+    ],
+    [
+      'Altitude',
+      p('altitude 11000', `altitude ${spokenAltitude(11000)}`),
+      'Each digit of the thousands: “one one thousand”.',
+    ],
+    ['Flight level', p('flight level 70', `flight level ${spell('70')}`), 'Digits separately.'],
+    [
+      'Flight level',
+      p('flight level 100', 'flight level one hundred'),
+      'Whole hundreds may be said as “one hundred”.',
+    ],
+    [
+      'QNH',
+      p(`QNH ${EHAM.qnh}`, `Q N H ${spell(String(EHAM.qnh))}`),
+      'Pressure in hectopascals, digits separately.',
+    ],
+    ['QNH', p('QNH 998', `Q N H ${spell('998')}`), 'Below 1000 it has three digits.'],
+    [
+      'Runway',
+      p(`runway ${rwy}`, `runway ${spell(rwy.slice(0, 2))} right`),
+      'Two digits, then left, right or center.',
+    ],
+    ['Frequency', p(TWR.mhz, spell(TWR.mhz)), 'Digits separately, “decimal” for the point.'],
+  ];
+  const callsigns = ['KLM1426', 'BAW432', 'EZY45MP', 'DLH9LK', 'TRA6015'];
+  return (
+    <>
+      <p>
+        Each kind of value has its own pattern. When you say a value the standard way, the pilot (and the
+        speech recogniser) is much more likely to get it right first time.
+      </p>
+      <table class="ref">
+        <tbody>
+          {rows.map(([kind, ph, note]) => (
+            <tr>
+              <th scope="row">{kind}</th>
+              <td>
+                <Ex p={ph} say={say} />
+              </td>
+              <td class="dim">{note}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h3>Callsigns</h3>
+      <p>
+        An airline callsign is the airline's <i>telephony designator</i> followed by the flight number, digits
+        and letters said separately. You may also spell the three-letter code (“Kilo Lima Mike …”); the game
+        accepts both.
+      </p>
+      {callsigns.map((cs) => (
+        <Ex p={p(cs, spokenCallsign(cs, EHAM.airlines))} say={say} />
+      ))}
+      <table class="ref compact">
+        <caption>Telephony designators in this game</caption>
+        <tbody>
+          {EHAM.airlines.map((a) => (
+            <tr>
+              <th scope="row" class="mono">
+                {a.icao}
+              </th>
+              <td>“{a.telephony}”</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ 3. commands
+
+interface CommandDoc {
+  title: string;
+  cmds: Command[];
+  note: string;
+  /** Hand-written instead of generated (e.g. "negative"). */
+  custom?: { you: Phrase; pilot: Phrase | null };
+}
+
+const CS_SPOKEN = spokenCallsign(STUDENT, EHAM.airlines);
+const COMMANDS: CommandDoc[] = [
+  {
+    title: 'Answer a check-in',
+    cmds: [{ type: 'identify' }],
+    note: 'When a pilot first calls you, confirm you see them on radar. Add an instruction in the same call if you like.',
+    custom: {
+      you: p(`${STUDENT}, ${APP.name}, identified`, `${CS_SPOKEN}, ${APP.name}, identified`),
+      pilot: p(`Roger, ${STUDENT}`, `Roger, ${CS_SPOKEN}`),
+    },
+  },
+  {
+    title: 'Turn',
+    cmds: [{ type: 'heading', heading: 210, turn: 'right' }],
+    note: 'Give the direction of turn and a three-digit heading. Without a direction, the pilot takes the shorter way.',
+  },
+  {
+    title: 'Keep the current heading',
+    cmds: [{ type: 'presentHeading' }],
+    note: 'Stops a turn, or leaves a route or hold.',
+  },
+  {
+    title: 'Descend to a flight level',
+    cmds: [{ type: 'altitude', altitude: 5000, fl: true }],
+    note: `Above the transition level (FL${String(TL).padStart(3, '0')} today) use flight levels.`,
+  },
+  {
+    title: 'Descend to an altitude',
+    cmds: [{ type: 'altitude', altitude: 3000, fl: false, qnh: EHAM.qnh }],
+    note: `At or below ${TA} ft use “altitude”, and give the QNH with the first such clearance.`,
+  },
+  {
+    title: 'Reduce speed',
+    cmds: [{ type: 'speed', speed: 220 }],
+    note: '“Reduce” or “increase” must match the change.',
+  },
+  {
+    title: 'Speed on final',
+    cmds: [{ type: 'speed', speed: 180, untilDme: 4 }],
+    note: 'Keeps arrivals moving on final; after 4 miles the pilot slows to the landing speed.',
+  },
+  {
+    title: 'Cancel a speed restriction',
+    cmds: [{ type: 'resumeSpeed' }],
+    note: 'The pilot flies their own speeds again.',
+  },
+  {
+    title: 'Go direct to a fix',
+    cmds: [{ type: 'direct', fix: 'ARTIP' }],
+    note: 'Say the fix name as it is written on the scope.',
+  },
+  {
+    title: 'Hold',
+    cmds: [{ type: 'hold', fix: 'ARTIP' }],
+    note: 'The pilot flies the published racetrack pattern over the fix until you give a new instruction.',
+  },
+  {
+    title: 'Clear the ILS approach',
+    cmds: [
+      { type: 'heading', heading: 210, turn: 'left' },
+      { type: 'ils', runway: EHAM.config.landing },
+    ],
+    note: 'Usually combined with a heading that intercepts the final at 30° or less. Always include the runway.',
+  },
+  {
+    title: 'Hand off to Tower',
+    cmds: [{ type: 'handoff', to: 'tower' }],
+    note: 'Once the aircraft is established on the localizer. Include the frequency.',
+  },
+  {
+    title: 'Hand off a departure',
+    cmds: [{ type: 'handoff', to: 'radar' }],
+    note: `Departures climb out to the edge of your airspace; pass them to ${RADAR.name}.`,
+  },
+  {
+    title: 'Go around',
+    cmds: [{ type: 'goAround' }],
+    note: 'Breaks off the approach; the pilot climbs straight ahead to 2000 ft.',
+  },
+  {
+    title: 'Correct a wrong readback',
+    cmds: [],
+    note: 'In Professional mode a pilot sometimes reads back a wrong value. Say “negative” and repeat the correct instruction.',
+    custom: {
+      you: p(
+        `${STUDENT}, negative, descend altitude 3000`,
+        `${CS_SPOKEN}, negative, descend altitude ${spokenAltitude(3000)}`,
+      ),
+      pilot: p(`Descend altitude 3000, ${STUDENT}`, `Descend altitude ${spokenAltitude(3000)}, ${CS_SPOKEN}`),
+    },
+  },
+  {
+    title: 'Ask for a repeat',
+    cmds: [],
+    note: 'If you missed what a pilot said, they repeat their last transmission.',
+    custom: { you: p(`${STUDENT}, say again`, `${CS_SPOKEN}, say again`), pilot: null },
+  },
+];
+
+const MISTAKES = [
+  'qnh-missing',
+  'fl-below-tl',
+  'faa-and-maintain',
+  'to-before-number',
+  'heading-3-digits',
+  'heading-direction',
+  'ils-runway-missing',
+];
+
+function Commands({ say }: { say: Say }) {
+  return (
+    <>
+      <p>
+        Every transmission starts with the <b>callsign</b>, then one or more instructions. The pilot reads the
+        instructions back and ends with their callsign. Listen to the readback: it is your only check that
+        they heard you right. Below, each example is followed by the pilot's readback.
+      </p>
+      {COMMANDS.map((c) => {
+        const you = c.custom?.you ?? controllerPhrase(STUDENT, c.cmds, env, AC);
+        const pilot = c.custom ? c.custom.pilot : readback(STUDENT, c.cmds, env, AC);
+        return (
+          <section class="cmd-doc">
+            <h3>{c.title}</h3>
+            <Ex label="You" p={you} say={say} />
+            {pilot && <Ex label="Pilot" p={pilot} say={say} />}
+            <p class="dim">{c.note}</p>
+          </section>
+        );
+      })}
+      <h3>Combining instructions</h3>
+      <Ex
+        label="You"
+        p={controllerPhrase(
+          STUDENT,
+          [
+            { type: 'heading', heading: 210, turn: 'left' },
+            { type: 'altitude', altitude: 2000, fl: false, qnh: EHAM.qnh },
+            { type: 'speed', speed: 180 },
+          ],
+          env,
+          AC,
+        )}
+        say={say}
+      />
+      <p class="dim">
+        Up to three or four instructions in one call is normal. More than that, and readbacks start to go
+        wrong.
+      </p>
+      <h3>Common mistakes the game points out</h3>
+      <ul>
+        {MISTAKES.map((r) => (
+          <li>{RULE_TEXT[r]}</li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ 4. levels and altimetry
+
+function Levels({ say }: { say: Say }) {
+  const tl = (fl: number) => `FL${String(fl).padStart(3, '0')}`;
+  const table = [...EHAM.transitionLevels].reverse();
+  return (
+    <>
+      <p>
+        An altimeter measures air pressure, and pressure changes with the weather. So everyone must agree on
+        which pressure their altimeter is set to, otherwise two aircraft both “at 3000 feet” could be hundreds
+        of feet apart.
+      </p>
+      <dl class="defs">
+        <dt>QNH</dt>
+        <dd>
+          The local pressure setting (in hectopascals) that makes the altimeter read height above sea level.
+          Today at {EHAM.name} it is {EHAM.qnh}. Near the ground everyone uses QNH, so heights match the
+          terrain and the charts.
+        </dd>
+        <dt>Altitude</dt>
+        <dd>
+          Height above sea level, in feet, with the altimeter set to QNH. Said as “altitude three thousand”.
+        </dd>
+        <dt>Flight level</dt>
+        <dd>
+          Higher up, every aircraft sets the same standard pressure, 1013.2 hPa, so they all measure against
+          the same reference whatever the local weather. The reading in hundreds of feet is the flight level:
+          FL070 is “7000 feet” on standard pressure.
+        </dd>
+        <dt>Transition altitude</dt>
+        <dd>
+          The altitude at or below which you use altitudes. At {EHAM.name} it is fixed at <b>{TA} ft</b>.
+          Climbing through it, pilots switch to standard pressure.
+        </dd>
+        <dt>Transition level</dt>
+        <dd>
+          The lowest flight level you may use. It depends on the QNH so that there is always a safe gap above
+          the transition altitude. Today it is <b>{tl(TL)}</b>. Descending through it, pilots switch to QNH.
+        </dd>
+        <dt>Transition layer</dt>
+        <dd>The gap between the two. Don't clear aircraft to level off inside it.</dd>
+      </dl>
+      <table class="ref compact">
+        <caption>Transition level by QNH (simplified table used in this game)</caption>
+        <thead>
+          <tr>
+            <th scope="col">QNH</th>
+            <th scope="col">Transition level</th>
+          </tr>
+        </thead>
+        <tbody>
+          {table.map((row, i) => {
+            const upper = i === 0 ? null : table[i - 1]!.minQnh - 1;
+            return (
+              <tr>
+                <td>
+                  {upper === null
+                    ? `${row.minQnh} or higher`
+                    : row.minQnh === 0
+                      ? `below ${upper + 1}`
+                      : `${row.minQnh}–${upper}`}
+                </td>
+                <td class="mono">{tl(row.fl)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <h3>Which word to use</h3>
+      <ul>
+        <li>
+          Cleared level at or below {TA} ft: say <b>altitude</b>, and give the QNH the first time.
+        </li>
+        <li>
+          Cleared level at or above {tl(TL)}: say <b>flight level</b>.
+        </li>
+        <li>Use “climb” or “descend” to match the direction, never just a number.</li>
+      </ul>
+      <Ex
+        label="Arrival at FL070"
+        p={controllerPhrase(
+          STUDENT,
+          [{ type: 'altitude', altitude: 3000, fl: false, qnh: EHAM.qnh }],
+          env,
+          AC,
+        )}
+        say={say}
+      />
+      <Ex
+        label="Departure"
+        p={controllerPhrase('TRA6015', [{ type: 'altitude', altitude: 10000, fl: true }], env, {
+          ...AC,
+          callsign: 'TRA6015',
+          alt: 2500,
+        })}
+        say={say}
+      />
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ 5. approach concepts
+
+const WAKES: Wake[] = ['J', 'H', 'M', 'L'];
+const WAKE_NAME: Record<Wake, string> = { J: 'Super (A380)', H: 'Heavy', M: 'Medium', L: 'Light' };
+
+function Approach() {
+  return (
+    <>
+      <p>
+        As approach controller you take arrivals from the edge of the airspace, line them up one behind the
+        other, and hand each one to Tower on the final approach.
+      </p>
+      <dl class="defs">
+        <dt>Radar vectors</dt>
+        <dd>
+          Headings, levels and speeds you give to steer aircraft, instead of letting them fly a published
+          route.
+        </dd>
+        <dt>Initial approach fix (IAF)</dt>
+        <dd>
+          Where arrivals enter your airspace: {EHAM.stars.map((s) => s.iaf).join(', ')}. Each has a published
+          hold for when you need to delay traffic.
+        </dd>
+        <dt>ILS</dt>
+        <dd>
+          The instrument landing system guides aircraft to the runway with two radio beams: the{' '}
+          <b>localizer</b> (left and right, along the extended centreline) and the <b>glideslope</b> (up and
+          down, a 3° descent, about 300 ft per mile). On the scope, the dashed line north of runway{' '}
+          {EHAM.config.landing} is the localizer, with ticks every 5 miles.
+        </dd>
+        <dt>Intercepting the localizer</dt>
+        <dd>
+          Turn the aircraft onto a heading that crosses the localizer at <b>30° or less</b>, about 8–12 miles
+          out, at around 2000–3000 ft so it meets the glideslope from below. Clear it for the ILS approach at
+          the same time; it then turns onto the localizer and descends by itself. “Established” means it is
+          tracking the localizer.
+        </dd>
+        <dt>Speed control</dt>
+        <dd>
+          A typical sequence: 250 kt at the IAF, 220 kt on the downwind, 180 kt when turning onto final, then
+          “maintain 180 knots until 4 miles final”. Faster aircraft behind slower ones close the gap; slow the
+          leader later or the follower earlier.
+        </dd>
+        <dt>Separation</dt>
+        <dd>
+          Keep aircraft at least <b>3 NM</b> apart horizontally or <b>1000 ft</b> vertically. Either one is
+          enough.
+        </dd>
+        <dt>Wake turbulence</dt>
+        <dd>
+          Big aircraft leave strong vortices behind them. On final, a lighter aircraft behind a heavier one
+          needs extra distance:
+        </dd>
+      </dl>
+      <table class="ref compact">
+        <caption>Minimum spacing on final, in NM (ICAO Doc 4444)</caption>
+        <thead>
+          <tr>
+            <th scope="col">Leader ↓ / follower →</th>
+            {WAKES.map((w) => (
+              <th scope="col">{WAKE_NAME[w]}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {WAKES.map((lead) => (
+            <tr>
+              <th scope="row">{WAKE_NAME[lead]}</th>
+              {WAKES.map((f) => (
+                <td class="mono">{wakeMinimum(lead, f)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="dim">The wake category is shown after the type on each strip, e.g. B738/M or A332/H.</p>
+      <dl class="defs">
+        <dt>Readback and hearback</dt>
+        <dd>
+          Pilots read back headings, levels, speeds, clearances and frequencies. Your job is to listen and
+          correct any mistake straight away. A wrong value that goes unnoticed is one of the classic causes of
+          incidents.
+        </dd>
+        <dt>Handoff</dt>
+        <dd>
+          Once an arrival is established, send it to {TWR.name} on {TWR.mhz}. After that it no longer hears
+          you. Departures go to {RADAR.name} on {RADAR.mhz} as they leave your airspace.
+        </dd>
+        <dt>Go-around</dt>
+        <dd>
+          If the approach isn't stable (too high, too fast, not established), the aircraft climbs away on
+          runway heading to 2000 ft and comes back on your frequency for another try.
+        </dd>
+      </dl>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ dialog
+
+const SECTIONS = [
+  { id: 'basics', title: 'Numbers and letters', Body: Basics },
+  { id: 'values', title: 'Saying values and callsigns', Body: Values },
+  { id: 'commands', title: 'Commands', Body: Commands },
+  { id: 'levels', title: 'Levels and altimetry', Body: Levels },
+  { id: 'approach', title: 'Approach concepts', Body: Approach },
+] as const;
+
+export function Learn({ onClose, say }: { onClose: () => void; say: Say }) {
+  const ref = useDialog(onClose);
+  const [tab, setTab] = useState<(typeof SECTIONS)[number]['id']>('basics');
+  const sec = SECTIONS.find((s) => s.id === tab)!;
+  return (
+    <div class="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} class="dialog learn" role="dialog" aria-modal="true" aria-labelledby="learn-title">
+        <div class="learn-head">
+          <h1 id="learn-title">Learn</h1>
+          <button type="button" class="btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div class="learn-body">
+          <nav aria-label="Learn sections" class="learn-nav">
+            {SECTIONS.map((s) => (
+              <button
+                type="button"
+                aria-current={s.id === tab ? 'page' : undefined}
+                onClick={() => setTab(s.id)}
+              >
+                {s.title}
+              </button>
+            ))}
+          </nav>
+          <article class="learn-content" tabIndex={0} aria-labelledby="learn-section">
+            <h2 id="learn-section">{sec.title}</h2>
+            <sec.Body say={say} />
+            <p class="dim learn-src">
+              Based on ICAO Annex 10 Vol II, ICAO Doc 4444 and UK CAP 413. Simplified for the game: not for
+              real-world use.
+            </p>
+          </article>
+        </div>
+      </div>
+    </div>
+  );
+}

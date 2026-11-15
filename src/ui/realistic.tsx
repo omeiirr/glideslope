@@ -15,6 +15,7 @@ interface DcbProps {
   onRecenter: () => void;
   onModern: () => void;
   onSettings: () => void;
+  onLearn: () => void;
   onEnd: () => void;
 }
 
@@ -28,6 +29,7 @@ export function RealisticDcb({
   onRecenter,
   onModern,
   onSettings,
+  onLearn,
   onEnd,
 }: DcbProps) {
   const speeds = [1, 2, 4, 8];
@@ -75,6 +77,7 @@ export function RealisticDcb({
       )}
       {B('DISP\nMODERN', onModern)}
       {B('PREF', onSettings, false, 'Settings')}
+      {B('LEARN', onLearn, false, 'Learn: phraseology reference')}
       {B('END', onEnd)}
     </nav>
   );

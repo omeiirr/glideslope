@@ -1,3 +1,4 @@
+import type { ComponentChild } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
 import { Session, type LogEntry } from '../game/session';
@@ -6,6 +7,7 @@ import { DEFAULT_DCB } from '../render/realistic/scope';
 import { Tts } from '../speech/tts';
 import { VoiceInput } from '../speech/voiceInput';
 import { useSession } from './hooks';
+import { Learn } from './learn';
 import { Debrief, HelpCard, Menu, SettingsDialog, TutorialCard, type Progress } from './overlays';
 import { PttBar, RadioPanel, Strips, TopBar } from './panels';
 import { RealisticChrome, RealisticDcb } from './realistic';
@@ -22,6 +24,7 @@ export function App() {
   const [progress, setProgress] = useState<Progress>(() => load('progress', { lessons: [], best: {} }));
   const [session, setSession] = useState<Session | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLearn, setShowLearn] = useState(false);
   const [draft, setDraft] = useState('');
   const [range, setRange] = useState(40);
   const [recenter, setRecenter] = useState(0);
@@ -127,6 +130,25 @@ export function App() {
     });
   }, [session]);
 
+  // Learn pauses the game while open and restores the previous pause state on close.
+  const wasPaused = useRef(false);
+  const openLearn = () => {
+    tts.unlock();
+    wasPaused.current = !!session?.paused;
+    session?.setPaused(true);
+    setShowLearn(true);
+  };
+  const closeLearn = () => {
+    setShowLearn(false);
+    session?.setPaused(wasPaused.current);
+  };
+  const learn = showLearn && (
+    <Learn
+      onClose={closeLearn}
+      say={(ph) => void tts.speak({ from: 'LEARN', text: ph.text, speech: ph.speech })}
+    />
+  );
+
   const insert = (text: string) => {
     setDraft(text);
     inputRef.current?.focus();
@@ -135,7 +157,12 @@ export function App() {
   if (!session) {
     return (
       <div class="app">
-        <Menu progress={progress} onStart={start} onSettings={() => setShowSettings(true)} />
+        <Menu
+          progress={progress}
+          onStart={start}
+          onSettings={() => setShowSettings(true)}
+          onLearn={openLearn}
+        />
         {showSettings && (
           <SettingsDialog
             settings={settings}
@@ -144,6 +171,7 @@ export function App() {
             onClose={() => setShowSettings(false)}
           />
         )}
+        {learn}
       </div>
     );
   }
@@ -171,6 +199,8 @@ export function App() {
       insert={insert}
       showSettings={showSettings}
       setShowSettings={setShowSettings}
+      onLearn={openLearn}
+      learn={learn}
       onMenu={() => {
         session.finish();
         setSession(null);
@@ -206,6 +236,8 @@ interface GameProps {
   insert: (text: string) => void;
   showSettings: boolean;
   setShowSettings: (b: boolean) => void;
+  onLearn: () => void;
+  learn: ComponentChild;
   onMenu: () => void;
   onAgain: () => void;
   onNext: () => void;
@@ -245,6 +277,7 @@ function Game(p: GameProps) {
           onRecenter={p.onRecenter}
           onModern={() => p.patch({ display: 'modern' })}
           onSettings={() => p.setShowSettings(true)}
+          onLearn={p.onLearn}
           onEnd={() => session.finish()}
         />
       ) : (
@@ -253,6 +286,7 @@ function Game(p: GameProps) {
           settings={settings}
           onDisplay={(d) => p.patch({ display: d })}
           onSettings={() => p.setShowSettings(true)}
+          onLearn={p.onLearn}
           onEnd={() => session.finish()}
         />
       )}
@@ -319,6 +353,7 @@ function Game(p: GameProps) {
           onClose={() => p.setShowSettings(false)}
         />
       )}
+      {p.learn}
     </div>
   );
 }

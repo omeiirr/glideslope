@@ -124,6 +124,17 @@ export function canonicalTransmission(callsign: string, cmds: readonly Command[]
   return [callsign, ...cmds.map((c) => element(c, ctx, ac).text)].join(', ');
 }
 
+/** Controller transmission with its spoken form (Learn screen examples). */
+export function controllerPhrase(
+  callsign: string,
+  cmds: readonly Command[],
+  env: PhraseEnv,
+  ac?: AcContext,
+): Phrase {
+  const cs = both(callsign, spokenCallsign(callsign, env.airport.airlines));
+  return join([cs, ...cmds.map((c) => element(c, env, ac))]);
+}
+
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**

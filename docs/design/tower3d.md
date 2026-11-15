@@ -50,11 +50,13 @@ Layout (the `TowerWest` board):
 **Clean semi-realistic** (approved from the style test, `tower3d-sketch/style-test/`). The first low-poly renders on the earlier boards are superseded.
 
 - **Airport surfaces are graphics**, built from OpenStreetMap (ODbL): runway areas, taxiways at their real width with yellow centrelines, aprons, runway holding positions and airside grass with a repeating detail texture. Runway markings (threshold, designator, touchdown zone, aiming point, centreline, edges) are drawn from the sim's own runway data, so they stay sharp at any distance and match where aircraft land. About 320 kB (96 kB compressed).
-- **Around the airport: real aerial imagery** (PDOK Luchtfoto 2024, CC BY 4.0). Three tiers: a coarse base, the airport at about 4 m per pixel, and corridors along 18R and 24 at about 1 m per pixel; 4.7 MB, tiles of 2048 px or less. A photo alone looked smeared: from a 54 m cab most of the ground is seen at 1–3°, where one screen pixel covers 10 m or more.
+- **Around the airport: modelled from OSM, no photos.** Land use (fields each in their own shade, towns, industry, woods, greenhouses), water and motorways for about 10 km; beyond that water and motorways only, on a flat polder colour that fades into haze. Aprons are concrete with 5 m slabs; runways and taxiways asphalt with a faint grain. `public/tower/land.json`, about 5.5 MB (1.6 MB compressed), built by `scripts/build-tower-land.py`.
+- **Buildings:** OSM outlines inside the aerodrome extruded to their tagged height (`height`, else `building:levels` × 3.5 m, else a default per kind; about 40 % are tagged). Terminals and offices get window bands, hangars and tanks plain walls. They cast sun shadows (shadow map over 6 × 6 km around the airport reference point). Buildings within 80 m of a cab are skipped, so a tower never walls off its own view.
+- *Superseded:* aerial imagery (PDOK Luchtfoto) around the drawn surfaces. A photo next to clean vector lines read as two different worlds, and alone it smeared at the cab's grazing angles.
 - **Sky:** gradient dome, soft billboard clouds, exponential haze, film-style tone mapping.
 - **Aircraft are procedural and smooth-shaded:** lathe fuselage with a window line and airline colour blocks (no logos), swept wings, engines, gear when down, real length and span per type. No model files, so no licences.
 - **Shadows:** a soft planform decal under each aircraft near the ground, not a shadow map (cheap, and it covers every aircraft).
-- **Not 3D yet:** buildings and trees are flat photos. Dusk and night lighting comes in step T5.
+- **Not modelled yet:** trees, lights and light masts, buildings outside the fence. Dusk and night lighting comes in step T5.
 
 ## 4. Commands and phraseology (ICAO Doc 4444 §12.3.4, CAP 413 ch. 4)
 

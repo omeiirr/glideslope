@@ -13,11 +13,12 @@
 - **M7 Realistic display** — STARS-like scope with 4 s sweep, DCB, text overlays.
 - **M8 Polish (partial)** — pilot voices normalised to equal loudness; axe-core reports no violations on menu, settings, both game displays and debrief; scope text colours raised to ≥4.5:1; dialogs trap focus, close on Escape and return focus; PTT key no longer fires inside dialogs; keyboard-only play verified (Tab/Enter to select a strip, Enter for the command line); README with screenshots; Learn reference screen (phonetics, values, commands, altimetry, approach concepts, with listen buttons).
 - **M9/T1 Tower view of existing traffic**: "Tower view (preview)" scenario in its own menu group. three.js view from Tower West or the central tower (keys 1/2), PDOK aerial ground (5.2 MB), sky, haze, procedural aircraft per type with colour-block liveries, gear, decal shadows, HTML labels (click to select), drag or ←/→ to look, hold B for binoculars that follow the selected aircraft. three.js is a separate chunk (~134 kB gzip) loaded only when the tower view opens; three.js is not in the main chunk. Verified in headless Chromium (SwiftShader), dev server and production preview, including a touchdown and rollout seen through the binoculars: no console errors, axe clean, draw time under 1 ms with 3 aircraft. Georeferencing tested (thresholds map onto the photo).
-- **Tower ground as graphics**: runways with Annex 14 markings, taxiways with centrelines, aprons, holding positions and airside grass drawn from OpenStreetMap; the photo now only fills the land around the airport, with milder colours.
+- **Tower ground as graphics**: runways with Annex 14 markings, taxiways with centrelines, aprons, holding positions and airside grass drawn from OpenStreetMap.
+- **Tower look: modelled, no photos** (2026-11-16): surroundings from OSM land use, water and motorways; airport buildings extruded with sun shadows; concrete slabs and asphalt grain. Photos and their build script removed. Approved by the user from screenshots of both cabs.
 
 ## Next
-0. **Tower T1 on real hardware:** open Tower view (preview) in Chrome and check smoothness. In dev builds `__towerMs` (draw time) and `__towerStats` are on `window`. Then T2: rollout, exits, take-off roll, runway occupancy.
-0b. **Tower look:** the user finds the photo next to the clean vector surfaces jarring (2026-11-16). Style options under discussion before T2.
+0. **T2:** rollout and runway exits, take-off roll, runway occupancy, runway 24 threshold data. (Smoothness on real hardware not yet reported: in dev builds `__towerMs` and `__towerStats` are on `window`.)
+0b. Tower look extras, any time: field edges near Tower West, buildings outside the fence, taxiway edge lights and apron masts.
 1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
 

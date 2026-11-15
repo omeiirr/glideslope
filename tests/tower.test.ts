@@ -1,5 +1,4 @@
 import { expect, test } from 'vitest';
-import manifest from '../public/tower/manifest.json';
 import { EHAM, TICK, runwayById, type Aircraft } from '../src/core';
 import { scenarioById } from '../src/game/scenarios';
 import { Session } from '../src/game/session';
@@ -10,37 +9,8 @@ import {
   airframe,
   eyePosition,
   lookDirection,
-  tilePixel,
-  tileRect,
   toWorld,
-  type ImageryManifest,
 } from '../src/render/tower3d/math';
-
-const m = manifest as ImageryManifest;
-
-test.each(['18R', '24'])('runway %s threshold lies on the imagery where the sim puts it', (id) => {
-  const rw = runwayById(EHAM, id);
-  const tiers = m.tiers.filter((t) => t.metresPerPixel <= 4);
-  expect(tiers.length).toBeGreaterThan(0);
-  for (const tier of tiers) {
-    const tile = tier.tiles.find(
-      (t) => rw.lat > t.south && rw.lat < t.north && rw.lon > t.west && rw.lon < t.east,
-    );
-    if (!tile) continue;
-    const px = tilePixel(tile, rw.lat, rw.lon);
-    // the tile's world rectangle maps that pixel back onto the sim's threshold, to within a pixel
-    const r = tileRect(tile, EHAM);
-    const wx = r.cx - r.width / 2 + (px.x / tile.w) * r.width;
-    const wz = r.cz - r.depth / 2 + (px.y / tile.h) * r.depth;
-    const want = toWorld(rw.pos);
-    expect(Math.abs(wx - want.x)).toBeLessThan(tier.metresPerPixel);
-    expect(Math.abs(wz - want.z)).toBeLessThan(tier.metresPerPixel);
-  }
-});
-
-test('imagery tiles are at most 2048 px', () => {
-  for (const t of m.tiers.flatMap((t) => t.tiles)) expect(Math.max(t.w, t.h)).toBeLessThanOrEqual(2048);
-});
 
 test('aimAt inverts lookDirection', () => {
   const eye = eyePosition(EHAM.towers[0]!);
@@ -120,6 +90,7 @@ test('tower preview arrivals are cleared for the ILS and land', () => {
 
 // ------------------------------------------------------------------ airport surfaces (OSM + drawn markings)
 import ground from '../public/tower/ground.json';
+import land from '../public/tower/land.json';
 import {
   llToGround,
   reciprocal,
@@ -127,6 +98,7 @@ import {
   runwayFrame,
   runwayMarkings,
   type GroundData,
+  type LandData,
   type P2,
 } from '../src/render/tower3d/ground';
 
@@ -202,4 +174,20 @@ test('ground data: airside grass, taxiways and holding positions are present', (
   expect(g.grass.length).toBeGreaterThan(50);
   expect(g.holds.length).toBeGreaterThan(10);
   expect(g.attribution).toMatch(/OpenStreetMap/);
+});
+
+test('land data: surroundings and airport buildings are present and plausible', () => {
+  const l = land as unknown as LandData;
+  for (const cls of ['farm', 'residential', 'industrial', 'forest', 'water'])
+    expect(l.land[cls]?.length ?? 0).toBeGreaterThan(10);
+  expect(l.roads.length).toBeGreaterThan(50);
+  expect(l.buildings.length).toBeGreaterThan(100);
+  for (const b of l.buildings) {
+    expect(b.h).toBeGreaterThan(0);
+    expect(b.h).toBeLessThan(150);
+    expect(b.r.length).toBeGreaterThanOrEqual(4);
+    // inside the airport fence, which reaches past the far end of the Polderbaan
+    const p = llToGround(EHAM, b.r[0]!);
+    expect(Math.hypot(p.x, p.z)).toBeLessThan(10000);
+  }
 });

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
 import type { Session } from '../game/session';
-import { aimAt, aircraftPose, eyePosition, type ImageryManifest } from '../render/tower3d/math';
-import type { GroundData } from '../render/tower3d/ground';
+import { aimAt, aircraftPose, eyePosition } from '../render/tower3d/math';
+import type { GroundData, LandData } from '../render/tower3d/ground';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 
 const CAB_FOV = 26;
@@ -108,22 +108,20 @@ export function TowerView({ session }: { session: Session }) {
       raf = requestAnimationFrame(frame);
       try {
         const base = new URL('./tower/', document.baseURI).href;
-        const [manifest, ground] = (await Promise.all(
-          ['manifest.json', 'ground.json'].map(async (f) => (await fetch(base + f)).json()),
-        )) as [ImageryManifest, GroundData];
+        setStatus({ kind: 'loading', done: 0, total: 2 });
+        const [ground, land] = (await Promise.all(
+          ['ground.json', 'land.json'].map(async (f) => (await fetch(base + f)).json()),
+        )) as [GroundData, LandData];
+        if (disposed) return;
+        renderer.loadLand(land);
         renderer.loadSurfaces(ground);
-        setAttribution(`${manifest.attribution}. ${ground.attribution}.`);
-        await renderer.loadGround(
-          manifest,
-          base,
-          (done, total) => !disposed && setStatus({ kind: 'loading', done, total }),
-        );
-        if (!disposed) setStatus({ kind: 'ready' });
+        setAttribution(`${ground.attribution}.`);
+        setStatus({ kind: 'ready' });
       } catch {
         if (!disposed)
           setStatus({
             kind: 'error',
-            message: 'The ground imagery could not be loaded. Aircraft are still shown.',
+            message: 'The airport layout could not be loaded. Aircraft are still shown.',
           });
       }
     })();
@@ -274,7 +272,7 @@ export function TowerView({ session }: { session: Session }) {
       )}
       {status.kind === 'loading' && status.total > 0 && (
         <div class="toast" role="status">
-          Loading ground imagery… {status.done}/{status.total}
+          Loading the airport… {status.done}/{status.total}
         </div>
       )}
       {status.kind === 'error' && (

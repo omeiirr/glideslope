@@ -105,7 +105,8 @@ function phonemize(text: string): Promise<number[]> {
 }
 
 async function synth(text: string, speaker: number, speed: number): Promise<Float32Array> {
-  const ids = await phonemize(text);
+  // espeak says "kwi-BECK"; ICAO Annex 10 is "keh-BECK".
+  const ids = await phonemize(text.replace(/\bQuebec\b/gi, 'Kebeck'));
   const feeds: Record<string, ort.Tensor> = {
     input: new ort.Tensor('int64', BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),
     input_lengths: new ort.Tensor('int64', BigInt64Array.from([BigInt(ids.length)])),

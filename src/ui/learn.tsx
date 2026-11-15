@@ -113,7 +113,7 @@ function Basics({ say }: { say: Say }) {
           <button
             type="button"
             class="ref-cell"
-            onClick={() => say({ text: word, speech: word })}
+            onClick={() => say({ text: word, speech: `${l}, as in ${word}.` })}
             aria-label={`${l}: ${word}, said ${how}. Listen.`}
           >
             <b class="mono">{l}</b>

@@ -15,6 +15,8 @@ import { ScopeView } from './ScopeView';
 
 export const APP_NAME = 'Vectors';
 const RANGES = [40, 60, 20];
+/** Learn screen voice: VCTK p225 (English, female), the clearest in a Whisper listening test (DECISIONS.md). */
+const LEARN_VOICE = 6;
 
 const isTextField = (el: EventTarget | null) =>
   el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
@@ -145,7 +147,7 @@ export function App() {
   const learn = showLearn && (
     <Learn
       onClose={closeLearn}
-      say={(ph) => void tts.speak({ from: 'LEARN', text: ph.text, speech: ph.speech })}
+      say={(ph) => void tts.speak({ from: 'LEARN', voice: LEARN_VOICE, text: ph.text, speech: ph.speech })}
     />
   );
 

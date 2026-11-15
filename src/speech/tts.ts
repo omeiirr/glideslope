@@ -73,7 +73,7 @@ export class Tts {
     const key = `${t.from}|${t.speech}`;
     let p = this.prepared.get(key);
     if (!p) {
-      const [speaker, speed] = PILOT_VOICES[hash(t.from) % PILOT_VOICES.length]!;
+      const [speaker, speed] = PILOT_VOICES[(t.voice ?? hash(t.from)) % PILOT_VOICES.length]!;
       const id = this.nextId++;
       p = new Promise<Clip>((resolve, reject) => this.waiting.set(id, { resolve, reject }));
       this.worker!.postMessage({ type: 'synth', id, text: t.speech, speaker, speed } satisfies TtsRequest);
@@ -124,7 +124,7 @@ export class Tts {
     if (typeof speechSynthesis === 'undefined') return silentSpeak(t);
     const u = new SpeechSynthesisUtterance(t.speech);
     const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('en'));
-    if (voices.length) u.voice = voices[hash(t.from) % voices.length]!;
+    if (voices.length) u.voice = voices[(t.voice ?? hash(t.from)) % voices.length]!;
     u.lang = 'en-GB';
     u.rate = 1.15;
     u.pitch = 0.85 + (hash(t.from) % 5) * 0.08;

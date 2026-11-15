@@ -5,6 +5,8 @@ export interface Transmission {
   text: string;
   /** Spelled-out form for TTS. */
   speech: string;
+  /** Index into PILOT_VOICES; defaults to one picked from the callsign. */
+  voice?: number;
   /** Called when the pilot starts talking (e.g. to start flying the instruction). */
   onStart?: () => void;
   /** Called when the transmission ends. `blocked` = the player talked over it. */

@@ -26,7 +26,6 @@
 - Scope draw time with 40 aircraft (headless Chromium, software rendering): ~0.5 ms average, 0.7 ms p95, in both display modes.
 
 ## Known issues
-- CI and Pages deploy untested until the repo is pushed. After pushing: Settings → Pages → Source = "GitHub Actions".
 - espeak-ng (inside the phonemizer WASM) is GPL-3.0: licence compatibility needs a decision before public release (see THIRD_PARTY.md).
 - Departures from 24 don't interact with arrivals on 18R in the sim (no runway occupancy model).
 - Holds are direct-entry only.

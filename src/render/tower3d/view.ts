@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Airport } from '../../core';
 import { buildAircraft, disposeAircraftAssets, type AircraftMesh } from './aircraftMesh';
 import {
@@ -12,9 +13,19 @@ import {
   runwaySurface,
   type Designator,
   type GroundData,
+  type LandData,
   type Polygon,
 } from './ground';
-import { SUN, lookDirection, shadowPoint, tileRect, type ImageryManifest, type P3, type Pose } from './math';
+import {
+  SUN,
+  lookDirection,
+  toWorld,
+  shadowPoint,
+  tileRect,
+  type ImageryManifest,
+  type P3,
+  type Pose,
+} from './math';
 
 export interface TowerAircraft {
   id: number;
@@ -47,10 +58,23 @@ const SKY_HORIZON = '#cfe1f0';
 const HAZE = '#c6d9ea';
 /** Shadows fade out as the aircraft climbs; above this they are not drawn. */
 const SHADOW_MAX_AGL = 160;
-/** Surface colours, picked to sit with the photo under the same light. */
-const RUNWAY = '#6a6d70';
-const TAXIWAY = '#77797b';
-const APRON = '#a3a49f';
+/** Surface colours: a modelled airport, no photo (see docs/design/tower3d.md). */
+const RUNWAY = '#5a5d60';
+const TAXIWAY = '#66696b';
+const APRON = '#ffffff'; // the concrete texture carries the colour
+/** Land use colours; a list means each polygon picks one (fields in a patchwork, seeded). */
+const LAND: [string, string | string[]][] = [
+  ['farm', ['#86a05c', '#7d9a52', '#91a862', '#748f4c', '#9aab66', '#a59c6e', '#b3a57a', '#8c9f5a']],
+  ['park', ['#8aa862', '#82a05a', '#90aa66']],
+  ['forest', ['#56723f', '#4f6a3a', '#5b7843']],
+  ['residential', '#b4ab9d'],
+  ['industrial', '#adadaa'],
+  ['greenhouse', '#cdd6d9'],
+  ['water', '#5d7f97'],
+];
+const ROAD = '#6e7173';
+/** Building kinds drawn without window bands. */
+const PLAIN = new Set(['hangar', 'storage_tank', 'industrial', 'warehouse', 'roof', 'service', 'shed']);
 const WHITE_PAINT = '#f4f4f0';
 const YELLOW = '#e8c23a';
 
@@ -81,8 +105,23 @@ export class TowerRenderer {
 
     const s = lookDirection(SUN.azimuth, -SUN.elevation);
     const sun = new THREE.DirectionalLight('#fff4e2', 6.5);
-    sun.position.set(s.x, s.y, s.z);
-    this.scene.add(sun, new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4));
+    // buildings cast shadows onto the ground layers within 3 km of the airport reference point
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    sun.position.set(s.x * 6000, s.y * 6000, s.z * 6000);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(4096, 4096);
+    Object.assign(sun.shadow.camera, {
+      left: -3000,
+      right: 3000,
+      top: 3000,
+      bottom: -3000,
+      near: 10,
+      far: 14000,
+    });
+    sun.shadow.camera.updateProjectionMatrix();
+    sun.shadow.bias = -0.00005;
+    this.scene.add(sun, sun.target, new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4));
     this.addSky();
     this.shadowTex = shadowTexture();
   }
@@ -123,7 +162,7 @@ export class TowerRenderer {
    */
   loadSurfaces(g: GroundData) {
     const ap = this.ap;
-    const layer = (tris: number[], color: string, order: number) => {
+    const layer = (tris: number[], color: string, order: number, map?: THREE.Texture) => {
       faceUp(tris);
       const pos = new Float32Array((tris.length / 2) * 3);
       for (let i = 0, j = 0; i < tris.length; i += 2, j += 3) {
@@ -133,28 +172,20 @@ export class TowerRenderer {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
-      this.addFlat(geo, color, order);
-    };
-    const polygons = (list: Polygon[], color: string, order: number, map?: THREE.Texture) => {
-      const shapes = list.map((poly) => {
-        const ring = (r: Polygon[number]) =>
-          r.map((p) => llToGround(ap, p)).map((q) => new THREE.Vector2(q.x, -q.z));
-        const shape = new THREE.Shape(ring(poly[0]!));
-        shape.holes = poly.slice(1).map((h) => new THREE.Path(ring(h)));
-        return shape;
-      });
-      // uv = metres east / north, so a repeating texture keeps its real size
-      const geo = new THREE.ShapeGeometry(shapes);
-      geo.rotateX(-Math.PI / 2);
+      geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(tris), 2));
       this.addFlat(geo, color, order, map);
     };
+    const polygons = this.polygons.bind(this);
 
     const grass = grassTexture();
     this.disposables.push(grass);
     polygons(g.grass, '#ffffff', -46, grass);
 
-    polygons(g.aprons, APRON, -45);
-    polygons(g.taxiwayAreas, TAXIWAY, -44);
+    const concrete = concreteTexture();
+    const asphalt = asphaltTexture();
+    this.disposables.push(concrete, asphalt);
+    polygons(g.aprons, APRON, -45, concrete);
+    polygons(g.taxiwayAreas, TAXIWAY, -44, asphalt);
     const taxi: number[] = [];
     const taxiLine: number[] = [];
     for (const t of g.taxiways) {
@@ -162,7 +193,7 @@ export class TowerRenderer {
       ribbon(pts, t.w, taxi);
       ribbon(pts, 0.5, taxiLine);
     }
-    layer(taxi, TAXIWAY, -43);
+    layer(taxi, TAXIWAY, -43, asphalt);
     layer(taxiLine, YELLOW, -42);
     const holds: number[] = [];
     for (const h of g.holds)
@@ -172,7 +203,7 @@ export class TowerRenderer {
       );
     layer(holds, YELLOW, -42);
 
-    polygons(g.runways, RUNWAY, -41);
+    polygons(g.runways, RUNWAY, -41, asphalt);
     const surface: number[] = [];
     const marks: number[] = [];
     const designators: Designator[] = [];
@@ -185,14 +216,109 @@ export class TowerRenderer {
       runwaySurface(f, surface);
       runwayEdges(f, marks);
     }
-    layer(surface, RUNWAY, -40);
+    layer(surface, RUNWAY, -40, asphalt);
     layer(marks, WHITE_PAINT, -39);
     for (const d of designators) this.addDesignator(d);
   }
 
-  private addFlat(geo: THREE.BufferGeometry, color: string, order: number, map?: THREE.Texture) {
+  /** Filled polygons on the ground, uv in metres east / north so repeating textures keep their real size. */
+  private polygons(list: Polygon[], color: string | string[], order: number, map?: THREE.Texture) {
+    const ap = this.ap;
+    const ring = (r: Polygon[number]) =>
+      r.map((p) => llToGround(ap, p)).map((q) => new THREE.Vector2(q.x, -q.z));
+    const shapes = list.map((poly) => {
+      const shape = new THREE.Shape(ring(poly[0]!));
+      shape.holes = poly.slice(1).map((h) => new THREE.Path(ring(h)));
+      return shape;
+    });
+    const geo = new THREE.ShapeGeometry(shapes);
+    geo.rotateX(-Math.PI / 2);
+    if (typeof color === 'string') return this.addFlat(geo, color, order, map);
+    // one group per shape: colour each polygon from the list
+    const rnd = seeded(order + 100);
+    const cols = new Float32Array(geo.attributes.position!.count * 3);
+    const idx = geo.index!;
+    const c = new THREE.Color();
+    for (const g of geo.groups) {
+      c.set(color[Math.floor(rnd() * color.length)]!);
+      for (let i = g.start; i < g.start + g.count; i++) cols.set([c.r, c.g, c.b], idx.getX(i) * 3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    this.addFlat(geo, '#ffffff', order, map, true);
+  }
+
+  /** The land around the airport (land use, water, motorways) and the airport buildings, all from OSM. */
+  loadLand(l: LandData) {
+    LAND.forEach(([cls, color], i) => l.land[cls] && this.polygons(l.land[cls], color, -72 + i));
+    const roads: number[] = [];
+    for (const r of l.roads)
+      ribbon(
+        r.pts.map((p) => llToGround(this.ap, p)),
+        r.w,
+        roads,
+      );
+    faceUp(roads);
+    const pos = new Float32Array((roads.length / 2) * 3);
+    for (let i = 0, j = 0; i < roads.length; i += 2, j += 3)
+      [pos[j], pos[j + 2]] = [roads[i]!, roads[i + 1]!];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
+    this.addFlat(geo, ROAD, -64);
+    this.addBuildings(l.buildings);
+  }
+
+  /** Buildings as extruded footprints: roofs, glazed walls and plain walls, each one merged mesh. */
+  private addBuildings(list: LandData['buildings']) {
+    const roofs: THREE.BufferGeometry[] = [];
+    const glazed: THREE.BufferGeometry[] = [];
+    const plain: THREE.BufferGeometry[] = [];
+    const cabs = this.ap.towers.map((t) => toWorld(t.pos));
+    for (const b of list) {
+      const pts = b.r.map((p) => llToGround(this.ap, p));
+      const c = pts.reduce((m, q) => ({ x: m.x + q.x / pts.length, z: m.z + q.z / pts.length }), {
+        x: 0,
+        z: 0,
+      });
+      // the cab's own tower would wall off the view
+      if (cabs.some((k) => Math.hypot(k.x - c.x, k.z - c.z) < 80)) continue;
+      const shape = new THREE.Shape(pts.map((q) => new THREE.Vector2(q.x, -q.z)));
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: b.h, bevelEnabled: false });
+      geo.rotateX(-Math.PI / 2);
+      // ExtrudeGeometry: group 0 = caps, group 1 = side walls
+      const [caps, sides] = geo.groups as [THREE.GeometryGroup, THREE.GeometryGroup];
+      roofs.push(slice(geo, caps.start, caps.count));
+      (PLAIN.has(b.k) ? plain : glazed).push(slice(geo, sides.start, sides.count));
+      geo.dispose();
+    }
+    const windows = windowTexture();
+    this.disposables.push(windows);
+    const add = (geos: THREE.BufferGeometry[], color: string, map?: THREE.Texture) => {
+      if (!geos.length) return;
+      const geo = mergeGeometries(geos)!;
+      geos.forEach((g) => g.dispose());
+      const mat = new THREE.MeshLambertMaterial({ color, map: map ?? null });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+      this.disposables.push(geo, mat);
+    };
+    add(roofs, '#d4d3cf');
+    add(glazed, '#ffffff', windows);
+    add(plain, '#e6e4de');
+  }
+
+  private addFlat(
+    geo: THREE.BufferGeometry,
+    color: string,
+    order: number,
+    map?: THREE.Texture,
+    vertexColors = false,
+  ) {
     const mat = new THREE.MeshLambertMaterial({
       color,
+      vertexColors,
       map: map ?? null,
       depthTest: false,
       depthWrite: false,
@@ -201,6 +327,7 @@ export class TowerRenderer {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = order;
     mesh.frustumCulled = false;
+    mesh.receiveShadow = true;
     this.scene.add(mesh);
     this.disposables.push(geo, mat);
   }
@@ -263,7 +390,7 @@ export class TowerRenderer {
 
     // land beyond the imagery, so the horizon is never a hole
     const landGeo = new THREE.CircleGeometry(R, 48);
-    const landMat = new THREE.MeshLambertMaterial({ color: '#6f7f63', depthTest: false, depthWrite: false });
+    const landMat = new THREE.MeshLambertMaterial({ color: '#7d965a', depthTest: false, depthWrite: false });
     const land = new THREE.Mesh(landGeo, landMat);
     land.rotation.x = -Math.PI / 2;
     land.renderOrder = -90;
@@ -520,5 +647,95 @@ function designatorTexture(text: string): THREE.CanvasTexture {
   g.fillText(text, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.anisotropy = 4;
+  return t;
+}
+
+/** A copy of vertices start..start+count of a non-indexed geometry (position, normal, uv). */
+function slice(geo: THREE.BufferGeometry, start: number, count: number): THREE.BufferGeometry {
+  const out = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'uv']) {
+    const a = geo.getAttribute(name) as THREE.BufferAttribute;
+    out.setAttribute(
+      name,
+      new THREE.BufferAttribute(
+        (a.array as Float32Array).slice(start * a.itemSize, (start + count) * a.itemSize),
+        a.itemSize,
+      ),
+    );
+  }
+  return out;
+}
+
+function seeded(seed: number) {
+  return () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+}
+
+/** Apron concrete: 5 m slabs with dark joints and a slight tone per slab; 128 px = 10 m. */
+function concreteTexture(): THREE.CanvasTexture {
+  const N = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d')!;
+  const rnd = seeded(5);
+  for (let i = 0; i < 2; i++)
+    for (let j = 0; j < 2; j++) {
+      const v = 184 + Math.round(rnd() * 12);
+      g.fillStyle = `rgb(${v},${v - 1},${v - 5})`;
+      g.fillRect(i * 64, j * 64, 64, 64);
+    }
+  for (let k = 0; k < 600; k++) {
+    g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    g.fillRect(rnd() * N, rnd() * N, 2, 2);
+  }
+  g.fillStyle = 'rgba(70,70,68,0.55)';
+  for (const p of [0, 64]) {
+    g.fillRect(p, 0, 1, N);
+    g.fillRect(0, p, N, 1);
+  }
+  return tiling(c, 10);
+}
+
+/** Asphalt: a faint grain so large dark areas aren't dead flat; 128 px = 16 m. */
+function asphaltTexture(): THREE.CanvasTexture {
+  const N = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, N, N);
+  const rnd = seeded(9);
+  for (let k = 0; k < 1500; k++) {
+    g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    g.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 2, 1 + rnd() * 2);
+  }
+  return tiling(c, 16);
+}
+
+/** Wall with a glass band per 3.5 m storey and a mullion every 4 m (uv: metres along the wall, metres up). */
+function windowTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 28;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#e4e2dc';
+  g.fillRect(0, 0, 32, 28);
+  g.fillStyle = '#7f95a6';
+  g.fillRect(0, 8, 32, 14);
+  g.fillStyle = '#d0d0cc';
+  g.fillRect(0, 8, 1, 14);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 4, 1 / 3.5);
+  t.anisotropy = 4;
+  return t;
+}
+
+function tiling(c: HTMLCanvasElement, metres: number): THREE.CanvasTexture {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / metres, 1 / metres);
+  t.anisotropy = 8;
   return t;
 }

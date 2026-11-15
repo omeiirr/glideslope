@@ -21,6 +21,15 @@ export interface GroundData {
   grass: Polygon[];
 }
 
+/** Modelled surroundings (public/tower/land.json). */
+export interface LandData {
+  /** Land use by class: farm, residential, industrial, forest, park, greenhouse, water. */
+  land: Record<string, Polygon[]>;
+  roads: { w: number; pts: LatLon[] }[];
+  /** Height in metres, kind (OSM building value), outer ring. */
+  buildings: { h: number; k: string; r: LatLon[] }[];
+}
+
 export interface P2 {
   x: number;
   z: number;

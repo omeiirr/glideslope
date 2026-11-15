@@ -1,4 +1,4 @@
-import { runwayFrame, type Aircraft } from '../aircraft/aircraft';
+import { isOnGround, runwayFrame, type Aircraft } from '../aircraft/aircraft';
 import type { Wake } from '../aircraft/perf';
 import type { Runway } from '../airport/types';
 import { approach, dist, headingVec } from '../geo';
@@ -30,8 +30,7 @@ const WAKE: Partial<Record<Wake, Partial<Record<Wake, number>>>> = {
 };
 export const wakeMinimum = (leader: Wake, follower: Wake): number => WAKE[leader]?.[follower] ?? SEP_NM;
 
-const airborne = (ac: Aircraft) =>
-  ac.nav.mode !== 'rollout' && ac.nav.mode !== 'takeoff' && ac.comms !== 'none';
+const airborne = (ac: Aircraft) => !isOnGround(ac) && ac.comms !== 'none';
 
 function altAt(ac: Aircraft, t: number): number {
   if (ac.gsEstablished) return ac.alt + (ac.vs * t) / 60;

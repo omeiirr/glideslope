@@ -1,4 +1,4 @@
-import type { Airport, Runway } from '../airport/types';
+import type { Airport, Runway, RunwayExit } from '../airport/types';
 import {
   DEG,
   FT_PER_NM,
@@ -22,10 +22,21 @@ export type NavMode =
   /** Tracking the localizer of the armed runway. */
   | { mode: 'loc' }
   | { mode: 'takeoff' }
-  | { mode: 'rollout' };
+  /** After touchdown: slowing down on the runway towards `exit` (null: no exit data, stop on the runway). */
+  | { mode: 'rollout'; exit: RunwayExit | null }
+  /** Following a taxiway path: off the runway (`vacate`) or from the holding point onto it (`lineup`). */
+  | { mode: 'taxi'; path: Vec[]; i: number; then: 'vacate' | 'lineup' }
+  /** Departure waiting at the runway holding point. */
+  | { mode: 'holding' }
+  /** Turning onto the centreline, then stopped and waiting for take-off (`ready`). */
+  | { mode: 'lineup'; ready: boolean; timer: number };
 
-/** Coarse flight phase; a future tower/3D view keys animation off this. */
-export type Phase = 'takeoff' | 'flight' | 'approach' | 'landing' | 'rollout' | 'goaround';
+/** Coarse flight phase; the tower view keys animation off this. */
+export type Phase =
+  'holding' | 'lineup' | 'takeoff' | 'flight' | 'approach' | 'landing' | 'rollout' | 'vacating' | 'goaround';
+
+const GROUND_MODES = new Set<NavMode['mode']>(['takeoff', 'rollout', 'taxi', 'holding', 'lineup']);
+export const isOnGround = (ac: Pick<Aircraft, 'nav'>) => GROUND_MODES.has(ac.nav.mode);
 export type Comms = 'none' | 'app' | 'tower' | 'radar';
 
 export interface Aircraft {
@@ -90,6 +101,52 @@ export type StepEvent =
   | { type: 'gone' }
   | { type: 'checkIn' };
 
+/** Ground handling (simplified, see DECISIONS.md): braking, taxi and exit speeds. */
+const BRAKE_KT_S = 3;
+const TAKEOFF_ACCEL_KT_S = 4;
+const TAXI_KT = 15;
+/** Speed along an exit until clear of the runway (rapid exits are long and shallow). */
+const VACATE_KT = 25;
+/** About a 22 m turn radius at 15 kt. */
+const TAXI_TURN_DEG_S = 20;
+/** Speed for turning off: rapid exits (turn of 45 degrees or less) are designed for about 50 kt; 35 kt is typical. */
+const exitSpeed = (e: RunwayExit, rwy: Runway) => (Math.abs(exitTurn(e, rwy)) <= 45 ? 35 : TAXI_KT);
+const KTS_TO_M = 1852 / 3600;
+
+/** Turn from the runway heading onto the exit, degrees. */
+function exitTurn(e: RunwayExit, rwy: Runway): number {
+  return angleDiff(rwy.heading, bearing(e.path[0]!, e.path[e.path.length - 1]!));
+}
+
+/** First exit the aircraft can make from `alongM` metres past the threshold at `ias`, braking normally. */
+export function pickExit(rwy: Runway, alongM: number, ias: number): RunwayExit | null {
+  const list = rwy.exits ?? [];
+  for (const e of list) {
+    const ve = exitSpeed(e, rwy);
+    const need = ((ias * ias - ve * ve) / (2 * BRAKE_KT_S)) * KTS_TO_M;
+    if (e.distM >= alongM + need + 30) return e;
+  }
+  return list[list.length - 1] ?? null;
+}
+
+/** Departure at the holding point: taxi onto the runway and line up. */
+export function lineUp(ac: Aircraft, rwy: Runway) {
+  // taxi to about 25 m short of the centreline; the line-up turn does the rest
+  const path = (rwy.entry ? [...rwy.entry.path].reverse().slice(1) : []).filter(
+    (p) => Math.abs(runwayFrame(p, rwy).xte) * 1852 > 25,
+  );
+  ac.nav = path.length
+    ? { mode: 'taxi', path, i: 0, then: 'lineup' }
+    : { mode: 'lineup', ready: false, timer: 0 };
+  ac.phase = 'lineup';
+}
+
+/** Lined-up departure: start the take-off roll. */
+export function clearTakeoff(ac: Aircraft) {
+  ac.nav = { mode: 'takeoff' };
+  ac.phase = 'takeoff';
+}
+
 const tasOf = (ias: number, alt: number) => ias * (1 + (Math.max(alt, 0) / 1000) * 0.02);
 
 /** Standard rate, limited by a 25° bank at higher speeds. deg/s */
@@ -114,11 +171,18 @@ function headingForTrack(track: number, tas: number, wind: Env['wind']): number 
   return norm360(track - Math.asin(clamp(cross / Math.max(tas, 60), -1, 1)) / DEG);
 }
 
-function steer(ac: Aircraft, desired: number, dt: number, tas: number, force?: 'left' | 'right') {
+function steer(
+  ac: Aircraft,
+  desired: number,
+  dt: number,
+  tas: number,
+  force?: 'left' | 'right',
+  rate = turnRate(tas),
+) {
   let d = angleDiff(ac.hdg, desired);
   if (force === 'right' && d < 0) d += 360;
   if (force === 'left' && d > 0) d -= 360;
-  const max = turnRate(tas) * dt;
+  const max = rate * dt;
   ac.hdg = norm360(ac.hdg + clamp(d, -max, max));
 }
 
@@ -148,7 +212,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
   const ev: StepEvent[] = [];
   const ap = env.airport;
   const tas = tasOf(ac.ias, ac.alt);
-  const onGround = ac.nav.mode === 'takeoff' || ac.nav.mode === 'rollout';
+  const onGround = isOnGround(ac);
   const rwy = env.landing;
   const frame = runwayFrame(ac.pos, rwy);
 
@@ -207,8 +271,51 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
       break;
     }
     case 'takeoff':
-    case 'rollout':
+    case 'holding':
       break;
+    case 'rollout': {
+      // on the centreline until the exit, then follow the taxiway off the runway
+      const e = ac.nav.exit;
+      if (e && -frame.along * 1852 >= e.distM - 5) {
+        ac.nav = { mode: 'taxi', path: e.path.slice(1), i: 0, then: 'vacate' };
+        ac.phase = 'vacating';
+      }
+      break;
+    }
+    case 'taxi': {
+      const n = ac.nav;
+      const target = n.path[n.i]!;
+      const m = dist(ac.pos, target) * 1852;
+      const brg = bearing(ac.pos, target);
+      // reached, or already passed (behind and close): a waypoint on a tight curve can sit inside the turn circle
+      if (
+        m < Math.max(12, ac.ias * KTS_TO_M * dt * 2) ||
+        (m < 60 && Math.abs(angleDiff(ac.hdg, brg)) > 100)
+      ) {
+        if (++n.i >= n.path.length) {
+          if (n.then === 'vacate') ev.push({ type: 'landed' });
+          else ac.nav = { mode: 'lineup', ready: false, timer: 0 };
+        }
+      } else steer(ac, brg, dt, 0, undefined, TAXI_TURN_DEG_S);
+      break;
+    }
+    case 'lineup': {
+      const n = ac.nav;
+      const dep = env.departure;
+      if (!n.ready) {
+        // steer for a point 40 m ahead on the centreline; stop once aligned
+        const f = runwayFrame(ac.pos, dep);
+        const c = dep.heading * DEG;
+        const s = -f.along + 40 / 1852;
+        const aim = { x: dep.pos.x + Math.sin(c) * s, y: dep.pos.y + Math.cos(c) * s };
+        steer(ac, bearing(ac.pos, aim), dt, 0, undefined, TAXI_TURN_DEG_S);
+        if (Math.abs(angleDiff(ac.hdg, dep.heading)) < 3 && Math.abs(f.xte) * 1852 < 5) {
+          n.ready = true;
+          ac.hdg = dep.heading;
+        }
+      } else n.timer += dt;
+      break;
+    }
   }
 
   // --- localizer capture ---
@@ -234,7 +341,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
     }
     if (ac.gsEstablished) {
       const prev = ac.alt;
-      ac.alt = Math.min(ac.alt, gsAlt);
+      ac.alt = Math.max(rwy.elevationFt, Math.min(ac.alt, gsAlt));
       ac.vs = ((ac.alt - prev) / dt) * 60;
       ac.tgtAlt = Math.min(ac.tgtAlt, ac.alt);
     }
@@ -253,11 +360,16 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
     if (frame.along < 1 && ac.phase === 'approach') ac.phase = 'landing';
     if (ac.nav.mode === 'loc' && frame.along <= 0) {
       if (ac.gsEstablished) {
-        ac.nav = { mode: 'rollout' };
-        ac.phase = 'rollout';
-        ac.alt = rwy.elevationFt;
-        ac.vs = 0;
-        ac.hdg = rwy.heading;
+        // past the threshold the glide path meets the runway about 290 m in: touchdown there
+        if (gsAlt <= rwy.elevationFt) {
+          ac.nav = { mode: 'rollout', exit: pickExit(rwy, -frame.along * 1852, ac.ias) };
+          ac.phase = 'rollout';
+          ac.ilsArmed = null;
+          ac.locEstablished = ac.gsEstablished = false;
+          ac.alt = rwy.elevationFt;
+          ac.vs = 0;
+          ac.hdg = rwy.heading;
+        }
       } else {
         startGoAround(ac, env);
         ev.push({ type: 'goAround', reason: 'unstable' });
@@ -269,7 +381,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
       ac.nav = { mode: 'direct', fix: ac.route, then: [] };
       ac.phase = 'flight';
     }
-  } else if (!ac.gsEstablished && ac.nav.mode !== 'rollout') {
+  } else if (!ac.gsEstablished && !onGround) {
     const target = chase ? Math.max(glideslopeAlt(frame.along, rwy), rwy.elevationFt) : ac.tgtAlt;
     const d = target - ac.alt;
     const rate = d > 0 ? ac.perf.climbFpm : chase ? 3500 : ac.perf.descentFpm;
@@ -289,11 +401,22 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
 
   // --- speed ---
   let want: number;
-  if (ac.nav.mode === 'rollout') want = 0;
+  if (ac.nav.mode === 'rollout') want = ac.nav.exit ? exitSpeed(ac.nav.exit, rwy) : 0;
+  else if (ac.nav.mode === 'taxi') want = ac.nav.then === 'vacate' ? VACATE_KT : TAXI_KT;
+  else if (ac.nav.mode === 'lineup') want = ac.nav.ready ? 0 : 6;
+  else if (ac.nav.mode === 'holding') want = 0;
   else if (ac.nav.mode === 'takeoff') want = ac.perf.vr + 20;
   else if (ac.nav.mode === 'loc' && frame.along < (ac.speedUntilDme ?? 5)) want = ac.perf.vapp;
   else want = clamp(ac.tgtIas ?? normalSpeed(ac, frame.along), ac.perf.vapp, ac.perf.maxIas);
-  const accel = onGround ? 4 : want > ac.ias ? 1.5 : ac.vs < -1000 ? 0.7 : 1.2;
+  const accel = onGround
+    ? want > ac.ias
+      ? TAKEOFF_ACCEL_KT_S
+      : BRAKE_KT_S
+    : want > ac.ias
+      ? 1.5
+      : ac.vs < -1000
+        ? 0.7
+        : 1.2;
   ac.ias = approach(ac.ias, want, accel * dt);
 
   // --- move ---
@@ -318,7 +441,8 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
     ac.comms = 'app';
     ev.push({ type: 'checkIn' });
   }
-  if (ac.nav.mode === 'rollout' && ac.ias < 40) ev.push({ type: 'landed' });
+  // no exit data: the aircraft is taken off the runway once slow
+  if (ac.nav.mode === 'rollout' && !ac.nav.exit && ac.ias < 40) ev.push({ type: 'landed' });
   const inside = pointInPoly(ac.pos, ap.airspace.poly);
   if (inside) ac.entered = true;
   else if (ac.entered && !onGround && dist(ac.pos, { x: 0, y: 0 }) > 12) {

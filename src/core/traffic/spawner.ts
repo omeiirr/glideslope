@@ -118,6 +118,31 @@ export class Spawner {
     };
     if (spec.kind === 'departure') {
       const rwy = ap.runways.find((r) => r.id === ap.config.departure)!;
+      const route = spec.route ?? this.rng.pick(ap.departures.exits);
+      const hp = rwy.entry?.path;
+      if (hp && hp.length > 1) {
+        // at the holding point facing the runway; later arrivals queue behind (shortcut: straight back, not along the taxiway)
+        const hold = hp[hp.length - 1]!;
+        const face = bearing(hold, hp[hp.length - 2]!);
+        const queue = active.filter((a) => a.nav.mode === 'holding').length;
+        const back = headingVec(face + 180, (queue * 70) / 1852);
+        return {
+          ...base,
+          kind: 'departure',
+          pos: { x: hold.x + back.x, y: hold.y + back.y },
+          alt: rwy.elevationFt,
+          hdg: face,
+          track: face,
+          ias: 0,
+          gs: 0,
+          tgtAlt: ap.departures.initialClimbFt,
+          tgtHdg: rwy.heading,
+          nav: { mode: 'holding' },
+          phase: 'holding',
+          route,
+          checkInAt: spec.onFrequency ? null : time,
+        };
+      }
       return {
         ...base,
         kind: 'departure',
@@ -131,7 +156,7 @@ export class Spawner {
         tgtHdg: rwy.heading,
         nav: { mode: 'takeoff' },
         phase: 'takeoff',
-        route: spec.route ?? this.rng.pick(ap.departures.exits),
+        route,
         checkInAt: spec.onFrequency ? null : time,
       };
     }

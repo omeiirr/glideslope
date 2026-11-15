@@ -3,7 +3,7 @@
  * No WebGL or DOM (runs in tests). Output is world metres on the ground plane: [x0, z0, x1, z1, ...]
  * in triangle order. Polygons (aprons, runway areas) are triangulated by the renderer.
  */
-import { headingVec, project, type Airport, type Runway } from '../../core';
+import { headingVec, project, reciprocalRunway, type Airport, type Runway } from '../../core';
 import { M_PER_NM, toWorld } from './math';
 
 export type LatLon = [number, number];
@@ -198,13 +198,7 @@ export function runwayEdges(f: RunwayFrame, out: number[] = []): number[] {
 }
 
 /** The reciprocal runway in the airport data (18R ↔ 36L), if present. */
-export function reciprocal(rw: Runway, ap: Pick<Airport, 'runways'>): Runway | undefined {
-  const m = /^(\d+)([LRC]?)$/.exec(rw.id);
-  if (!m) return undefined;
-  const n = ((+m[1]! + 17) % 36) + 1;
-  const l = m[2] === 'L' ? 'R' : m[2] === 'R' ? 'L' : m[2]!;
-  return ap.runways.find((r) => r.id === `${String(n).padStart(2, '0')}${l}`);
-}
+export const reciprocal = (rw: Runway, ap: Pick<Airport, 'runways'>) => reciprocalRunway(ap, rw);
 
 /**
  * Runway holding position marking, pattern A (two solid, two dashed lines), simplified to two solid and two

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EHAM, dist, runwayFrame, type Aircraft } from '../core';
+import { EHAM, dist, isOnGround, runwayFrame, type Aircraft } from '../core';
 import type { LogEntry, Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT, chip } from '../phraseology/phrases';
@@ -139,7 +139,7 @@ export function Strips({ session }: { session: Session }) {
   const [order, setOrder] = useState<number[]>([]);
   const dragId = useRef<number | null>(null);
   const all = session.sim.aircraft;
-  const arrivals = all.filter((a) => a.kind === 'arrival' && a.nav.mode !== 'rollout');
+  const arrivals = all.filter((a) => a.kind === 'arrival' && !isOnGround(a));
   const departures = all.filter((a) => a.kind === 'departure');
   const rank = (a: Readonly<Aircraft>) => {
     const i = order.indexOf(a.id);

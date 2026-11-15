@@ -305,7 +305,7 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
 /** "080↓030 210": level, trend, cleared level, indicated airspeed. */
 function dataLine(ac: Readonly<Aircraft>, mine: boolean): string {
   const spd = String(Math.round(ac.ias / 10) * 10);
-  if (ac.nav.mode === 'rollout') return 'LANDED';
+  if (ac.nav.mode === 'rollout' || ac.phase === 'vacating') return 'LANDED';
   if (ac.nav.mode === 'loc') return `${ac.gsEstablished ? 'ILS' : 'LOC'} ${fl3(ac.alt)} ${spd}`;
   if (!mine && ac.comms === 'none') return `${fl3(ac.alt)} ${spd}`;
   const d = ac.tgtAlt - ac.alt;

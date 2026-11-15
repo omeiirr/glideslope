@@ -1,9 +1,17 @@
-import { stepAircraft, type Aircraft, type Env } from './aircraft/aircraft';
-import { runwayById } from './airport/load';
+import {
+  clearTakeoff,
+  isOnGround,
+  lineUp,
+  runwayFrame,
+  stepAircraft,
+  type Aircraft,
+  type Env,
+} from './aircraft/aircraft';
+import { reciprocalRunway, runwayById } from './airport/load';
 import type { Airport } from './airport/types';
 import { applyCommand, validateCommand } from './commands/apply';
 import type { Command, CommandResult } from './commands/commands';
-import { unproject } from './geo';
+import { dist, unproject } from './geo';
 import { Rng } from './rng';
 import { detectConflicts, type Conflict } from './rules/separation';
 import { Spawner, type SpawnSpec, type TrafficConfig } from './traffic/spawner';
@@ -17,7 +25,13 @@ export interface SimOptions {
   strictIls?: boolean;
   wind?: { dir: number; speed: number };
   qnh?: number;
+  /** Line up and launch departures automatically when the runway is free (default on; tower mode turns it off in T3). */
+  autoTower?: boolean;
 }
+
+/** A departure waits at least this long at the holding point (seconds), and this long lined up. */
+const HOLD_MIN_S = 20;
+const LINEUP_WAIT_S = 8;
 
 export type SimEvent =
   | { type: 'spawned'; ac: Aircraft }
@@ -38,6 +52,7 @@ export class Sim {
   private active = new Set<string>();
   private tickCount = 0;
   private _conflicts: Conflict[] = [];
+  private autoTower: boolean;
 
   constructor(
     readonly airport: Airport,
@@ -54,6 +69,53 @@ export class Sim {
       time: 0,
     };
     this.spawner = new Spawner(airport, this.rng, opts.traffic);
+    this.autoTower = opts.autoTower ?? true;
+  }
+
+  /**
+   * Aircraft occupying a runway (either direction of it): from line-up or touchdown until vacated, and departures
+   * until airborne past the far end.
+   */
+  runwayOccupants(id: string): readonly Readonly<Aircraft>[] {
+    const rwy = runwayById(this.airport, id);
+    const opp = reciprocalRunway(this.airport, rwy);
+    const lengthNm = opp ? dist(rwy.pos, opp.pos) : rwy.lengthFt / 6076;
+    const ids = new Set([id, opp?.id]);
+    return this.list.filter((ac) => {
+      const m = ac.nav.mode;
+      const mine =
+        (ac.kind === 'arrival' && ids.has(this.env.landing.id)) ||
+        (ac.kind === 'departure' && ids.has(this.env.departure.id));
+      if (!mine) return false;
+      if (m === 'rollout' || m === 'lineup' || m === 'takeoff') return true;
+      if (m === 'taxi') return ac.nav.then === 'vacate' || ac.nav.i > 0;
+      // departure airborne but not yet past the far end
+      return (
+        ac.kind === 'departure' &&
+        !isOnGround(ac) &&
+        runwayFrame(ac.pos, rwy).along > -lengthNm &&
+        ac.alt < rwy.elevationFt + 1500
+      );
+    });
+  }
+
+  /** Stand-in tower until the player controls the runway (T3): one departure at a time, runway free, no arrival close in. */
+  private runTower() {
+    const dep = this.env.departure;
+    const busy = this.runwayOccupants(dep.id);
+    const landingSoon = this.list.some(
+      (a) => a.nav.mode === 'loc' && this.env.landing.id === dep.id && runwayFrame(a.pos, dep).along < 2,
+    );
+    const lined = this.list.find((a) => a.nav.mode === 'lineup');
+    if (lined && lined.nav.mode === 'lineup' && lined.nav.ready && lined.nav.timer >= LINEUP_WAIT_S) {
+      if (busy.every((a) => a === lined) && !landingSoon) clearTakeoff(lined);
+      return;
+    }
+    if (busy.length || landingSoon) return;
+    const next = this.list
+      .filter((a) => a.nav.mode === 'holding' && this.time - a.spawnTime >= HOLD_MIN_S)
+      .sort((a, b) => a.spawnTime - b.spawnTime)[0];
+    if (next) lineUp(next, dep);
   }
 
   /** Read-only views for renderers and UI. */
@@ -127,6 +189,7 @@ export class Sim {
       }
     }
     if (remove.size) this.list = this.list.filter((a) => !remove.has(a));
+    if (this.autoTower) this.runTower();
     if (this.tickCount % 2 === 0) {
       this._conflicts = detectConflicts(this.list, this.env.landing);
       const now = new Set<string>();

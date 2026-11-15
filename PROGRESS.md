@@ -1,6 +1,6 @@
 # Progress
 
-## Current milestone: M9 Tower mode, step T1 done (M8 remaining items need a human)
+## Current milestone: M9 Tower mode, step T2 done (M8 remaining items need a human)
 
 ## Done
 - **M0 Scaffold** — Vite + TS strict + Preact + Vitest + ESLint/Prettier, CI + Pages workflows, app shell.
@@ -16,8 +16,9 @@
 - **Tower ground as graphics**: runways with Annex 14 markings, taxiways with centrelines, aprons, holding positions and airside grass drawn from OpenStreetMap.
 - **Tower look: modelled, no photos** (2026-11-16): surroundings from OSM land use, water and motorways; airport buildings extruded with sun shadows; concrete slabs and asphalt grain. Photos and their build script removed. Approved by the user from screenshots of both cabs.
 
+- **M9/T2 Runway sim**: touchdown about 300 m past the threshold, rollout with normal braking to the first exit the aircraft can make (V1–V4 on 18R, from OSM), vacating to the holding position; departures wait at the S7E holding point, line up, roll and rotate at their Vr; runway occupancy (`Sim.runwayOccupants`); a stand-in tower launches departures one at a time while the runway is free (T3 hands this to the player). Runway 24 threshold moved 70 m onto the painted threshold.
 ## Next
-0. **T2:** rollout and runway exits, take-off roll, runway occupancy, runway 24 threshold data. (Smoothness on real hardware not yet reported: in dev builds `__towerMs` and `__towerStats` are on `window`.)
+0. **T3:** tower commands and phraseology (line up and wait, cleared for take-off, cleared to land, vacate / contact Ground, go around), with the stand-in tower switched off in tower scenarios. (Smoothness on real hardware not yet reported: in dev builds `__towerMs` and `__towerStats` are on `window`.)
 0b. Tower look extras, any time: field edges near Tower West, buildings outside the fence, taxiway edge lights and apron masts.
 1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
@@ -27,8 +28,8 @@
 
 ## Known issues
 - espeak-ng (inside the phonemizer WASM) is GPL-3.0: licence compatibility needs a decision before public release (see THIRD_PARTY.md).
-- Departures from 24 don't interact with arrivals on 18R in the sim (no runway occupancy model).
 - Holds are direct-entry only.
-- Tower preview: arrivals roll out on 18R and vanish at 40 kt without vacating, and departures spawn airborne, so 24 stays empty until T2 (exits and take-off roll).
+- Tower: aircraft disappear at the holding position after vacating (no taxi to the gates; ground control is a non-goal). Queued departures stand in a straight line behind the holding point, not along the taxiway.
+- Wake spacing between departures is not applied yet (T4).
 - Tower labels near the right edge of the window are clipped.
 - The Realistic display toggle has no effect in the tower view yet (T5).

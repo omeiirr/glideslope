@@ -1,4 +1,4 @@
-import { startGoAround, type Aircraft, type Env } from '../aircraft/aircraft';
+import { isOnGround, startGoAround, type Aircraft, type Env } from '../aircraft/aircraft';
 import { bearing } from '../geo';
 import type { Command, CommandResult } from './commands';
 
@@ -15,7 +15,8 @@ function leaveApproach(ac: Aircraft) {
 /** Check a command without applying it (pilots use this to decide between readback and "unable"). */
 export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandResult {
   const ap = env.airport;
-  if (ac.nav.mode === 'rollout') return unable('unable, on the ground');
+  // the take-off roll keeps accepting instructions for after departure, as before
+  if (isOnGround(ac) && ac.nav.mode !== 'takeoff') return unable('unable, on the ground');
   switch (cmd.type) {
     case 'heading':
       return cmd.heading >= 1 && cmd.heading <= 360 ? OK : unable('unable, invalid heading');

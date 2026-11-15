@@ -1,5 +1,14 @@
 import type { Vec } from '../geo';
 
+/** A taxiway leaving the runway: path from the centreline to the holding position (projected). */
+export interface RunwayExit {
+  name: string;
+  /** Metres from the landing threshold where it leaves the centreline. */
+  distM: number;
+  side: 'L' | 'R';
+  path: Vec[];
+}
+
 export interface Runway {
   id: string;
   lat: number;
@@ -12,6 +21,10 @@ export interface Runway {
   widthFt: number;
   elevationFt: number;
   ils?: { glideslopeDeg: number; rangeNm: number; tchFt: number };
+  /** Exits a landing aircraft can take, nearest the threshold first. */
+  exits?: RunwayExit[];
+  /** Where departures enter: the last point of `path` is their holding point. */
+  entry?: RunwayExit;
 }
 
 export interface Frequency {

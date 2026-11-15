@@ -1,6 +1,6 @@
 # Tower mode (3D) — design
 
-Status: **T1 built** (3D view of existing traffic, "Tower view (preview)" scenario); T2–T6 not started. Scope **B** (tower controller, no ground control). Scope C (ground and taxi) may come later; nothing here should block it.
+Status: **T1 and T2 built** (3D view of existing traffic; runway sim: rollout and exits, holding point, line-up and take-off roll, runway occupancy). T3–T6 not started. Scope **B** (tower controller, no ground control). Scope C (ground and taxi) may come later; nothing here should block it.
 
 Boards: `TowerWest.dc.html`, `TowerCentreDusk.dc.html`, `TowerBinoculars.dc.html`, `TowerRealistic.dc.html` (on the project's design canvas, copied here). `Tower3D.dc.html` on the canvas is the earlier hand-drawn concept that set the low-poly direction.
 The out-the-window pictures come from `tower3d-sketch/` (a throwaway three.js scene, see its README). They are renders, not drawings: the game renderer would draw the same thing.

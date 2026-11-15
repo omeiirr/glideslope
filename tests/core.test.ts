@@ -2,8 +2,11 @@ import { describe, expect, test } from 'vitest';
 import {
   EHAM,
   Sim,
+  TICK,
   angleDiff,
   dist,
+  pickExit,
+  runwayById,
   runwayFrame,
   transitionLevel,
   wakeMinimum,
@@ -281,10 +284,11 @@ describe('traffic', () => {
     expect(ll.lat).toBeLessThan(54);
   });
 
-  test('a departure takes off from 24, climbs to FL060 and leaves via its exit', () => {
+  test('a departure lines up on 24, takes off, climbs to FL060 and leaves via its exit', () => {
     const sim = quietSim();
     const ac = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });
-    const ev = sim.run(90);
+    // holding point, line-up and roll take about 1.5 minutes before it is airborne
+    const ev = sim.run(150);
     expect(types(ev)).toContain('checkIn');
     expect(ac.alt).toBeGreaterThan(1000);
     expect(sim.command('TRA6015', [{ type: 'handoff', to: 'tower' }])[0]!.ok).toBe(false);
@@ -300,5 +304,99 @@ describe('traffic', () => {
     arrival(sim, { route: 'ARTIP' });
     const left = sim.run(2400).find((e) => e.type === 'leftAirspace');
     expect(left).toMatchObject({ handedOff: false });
+  });
+});
+
+describe('runway (tower T2)', () => {
+  const rwy = runwayById(EHAM, '18R');
+  const dep = runwayById(EHAM, '24');
+  const alongM = (pos: { x: number; y: number }, r = rwy) => -runwayFrame(pos, r).along * 1852;
+
+  test('exit data: V1–V4 on the left of 18R in order, paths end at the holding position', () => {
+    expect(rwy.exits!.map((e) => e.name)).toEqual(['V1', 'V2', 'V3', 'V4']);
+    for (const e of rwy.exits!) {
+      expect(e.side).toBe('L');
+      expect(Math.abs(runwayFrame(e.path[0]!, rwy).xte) * 1852).toBeLessThan(10);
+      expect(Math.abs(runwayFrame(e.path.at(-1)!, rwy).xte) * 1852).toBeCloseTo(95, 0);
+    }
+    expect(dep.entry?.name).toBe('S7E');
+  });
+
+  test('pickExit: the first exit the aircraft can make while braking normally', () => {
+    expect(pickExit(rwy, 340, 140)!.name).toBe('V2');
+    expect(pickExit(rwy, 340, 100)!.name).toBe('V1');
+    expect(pickExit(rwy, 3000, 140)!.name).toBe('V4'); // nothing left in reach: the last one
+  });
+
+  test('landing: touchdown about 300 m in, rollout, vacate via the chosen exit, runway free again', () => {
+    const sim = quietSim();
+    const ac = arrival(sim, { pos: onFinal(5), hdg: rwy.heading, alt: 1600, ias: 160 });
+    sim.command('KLM123', [{ type: 'ils', runway: '18R' }]);
+    let td = 0;
+    let landed = false;
+    for (let t = 0; t < 400 && !landed; t += TICK) {
+      const ev = sim.step();
+      if (!td && ac.nav.mode === 'rollout') {
+        td = t;
+        expect(alongM(ac.pos)).toBeGreaterThan(200);
+        expect(alongM(ac.pos)).toBeLessThan(450);
+        expect(ac.nav.exit?.name).toBe('V2');
+      }
+      landed = ev.some((e) => e.type === 'landed');
+      if (td && !landed) {
+        // on the runway until it has vacated
+        expect(sim.runwayOccupants('18R')).toContain(ac);
+        expect(sim.runwayOccupants('36L')).toContain(ac);
+      }
+    }
+    expect(landed).toBe(true);
+    expect(ac.phase).toBe('vacating');
+    // the aircraft left by V2, on its left, beyond the holding position
+    expect(alongM(ac.pos)).toBeGreaterThan(2236);
+    expect(runwayFrame(ac.pos, rwy).xte * 1852).toBeLessThan(-80);
+    expect(sim.aircraft).toHaveLength(0);
+    expect(sim.runwayOccupants('18R')).toHaveLength(0);
+  });
+
+  test('departures wait at the holding point, line up one at a time, and the runway is busy until past the end', () => {
+    const sim = quietSim();
+    const a = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });
+    const b = sim.spawn({ kind: 'departure', callsign: 'KLM1717', type: 'A332', route: 'LOPIK' });
+    expect(a.nav.mode).toBe('holding');
+    expect(b.nav.mode).toBe('holding');
+    // the second queues behind the first
+    expect(dist(a.pos, b.pos) * 1852).toBeCloseTo(70, 0);
+    expect(sim.runwayOccupants('24')).toHaveLength(0);
+    let aRolled = -1;
+    let bLinedUp = -1;
+    for (let t = 0; t < 400; t += TICK) {
+      sim.step();
+      if (aRolled < 0 && a.nav.mode === 'takeoff') {
+        aRolled = t;
+        // lined up on the centreline, facing down the runway
+        expect(Math.abs(runwayFrame(a.pos, dep).xte) * 1852).toBeLessThan(6);
+        expect(Math.abs(a.hdg - dep.heading)).toBeLessThan(0.5);
+      }
+      if (bLinedUp < 0 && b.nav.mode === 'lineup') {
+        bLinedUp = t;
+        // only once A is airborne past the far end of the runway
+        expect(sim.runwayOccupants('24')).toEqual([b]);
+        expect(a.alt).toBeGreaterThan(dep.elevationFt + 100);
+      }
+      if (b.alt > 1000) break;
+    }
+    expect(aRolled).toBeGreaterThan(20);
+    expect(aRolled).toBeLessThan(100);
+    expect(bLinedUp).toBeGreaterThan(aRolled);
+    expect(b.alt).toBeGreaterThan(1000);
+  });
+
+  test('without the stand-in tower a departure stays at the holding point', () => {
+    const sim = quietSim({ autoTower: false });
+    const a = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });
+    sim.run(300);
+    expect(a.nav.mode).toBe('holding');
+    expect(a.ias).toBe(0);
+    expect(sim.validate('TRA6015', { type: 'heading', heading: 270 }).ok).toBe(false);
   });
 });

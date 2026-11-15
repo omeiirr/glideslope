@@ -49,7 +49,8 @@ Layout (the `TowerWest` board):
 
 **Clean semi-realistic** (approved from the style test, `tower3d-sketch/style-test/`). The first low-poly renders on the earlier boards are superseded.
 
-- **Ground:** real aerial imagery (PDOK Luchtfoto 2024, CC BY 4.0), so the real runways, markings, taxiways and exits are there. Three tiers: a coarse base, the airport at about 4 m per pixel, and corridors along 18R and 24 at about 1 m per pixel. Total download about 8 MB, tiles of 2048 px or less.
+- **Airport surfaces are graphics**, built from OpenStreetMap (ODbL): runway areas, taxiways at their real width with yellow centrelines, aprons, runway holding positions and airside grass with a repeating detail texture. Runway markings (threshold, designator, touchdown zone, aiming point, centreline, edges) are drawn from the sim's own runway data, so they stay sharp at any distance and match where aircraft land. About 320 kB (96 kB compressed).
+- **Around the airport: real aerial imagery** (PDOK Luchtfoto 2024, CC BY 4.0). Three tiers: a coarse base, the airport at about 4 m per pixel, and corridors along 18R and 24 at about 1 m per pixel; 4.7 MB, tiles of 2048 px or less. A photo alone looked smeared: from a 54 m cab most of the ground is seen at 1–3°, where one screen pixel covers 10 m or more.
 - **Sky:** gradient dome, soft billboard clouds, exponential haze, film-style tone mapping.
 - **Aircraft are procedural and smooth-shaded:** lathe fuselage with a window line and airline colour blocks (no logos), swept wings, engines, gear when down, real length and span per type. No model files, so no licences.
 - **Shadows:** a soft planform decal under each aircraft near the ground, not a shadow map (cheap, and it covers every aircraft).

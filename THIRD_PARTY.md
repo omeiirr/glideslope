@@ -12,6 +12,7 @@
 | piper-wasm (espeak-ng + piper-phonemize build) | Phonemizer for Piper TTS (self-hosted WASM + data) | MIT build scripts; espeak-ng is GPL-3.0, see note | https://github.com/diffusion-studio/piper-wasm |
 | Piper voice `en_GB-vctk-medium` | Pilot voices (downloaded at runtime from Hugging Face) | Model MIT (Piper); trained on VCTK, CC BY 4.0 | https://huggingface.co/rhasspy/piper-voices · https://datashare.ed.ac.uk/handle/10283/3443 |
 | Whisper base.en / tiny.en (ONNX, Xenova) | Speech recognition (downloaded at runtime) | Apache-2.0 (weights MIT, OpenAI) | https://huggingface.co/Xenova/whisper-base.en · https://huggingface.co/Xenova/whisper-tiny.en |
+| OpenStreetMap | Airport layout of the tower view (runway areas, taxiways, aprons, holding positions, grass) in `public/tower/ground.json`, built by `scripts/build-tower-ground.py`. Credited on screen: "Airport layout © OpenStreetMap contributors". The file is a derived database and is itself available under the ODbL | ODbL 1.0 | https://www.openstreetmap.org/copyright |
 | three.js 0.170.0 | 3D tower view (loaded only in tower mode) | MIT | https://github.com/mrdoob/three.js |
 | PDOK Luchtfoto 2024 (25 cm RGB, layer `2024_ortho25`) | Ground imagery of the tower view, resampled to WebP in `public/tower/` by `scripts/build-tower-imagery.py`. Credited on screen: "Aerial imagery: Beeldmateriaal Nederland / PDOK, CC BY 4.0" | CC BY 4.0 | https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0 · https://data.overheid.nl (dataset "Luchtfoto Beeldmateriaal 2024 25cm RGB open data") |
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
 import type { Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition, type ImageryManifest } from '../render/tower3d/math';
+import type { GroundData } from '../render/tower3d/ground';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 
 const CAB_FOV = 26;
@@ -107,8 +108,11 @@ export function TowerView({ session }: { session: Session }) {
       raf = requestAnimationFrame(frame);
       try {
         const base = new URL('./tower/', document.baseURI).href;
-        const manifest = (await (await fetch(`${base}manifest.json`)).json()) as ImageryManifest;
-        setAttribution(manifest.attribution);
+        const [manifest, ground] = (await Promise.all(
+          ['manifest.json', 'ground.json'].map(async (f) => (await fetch(base + f)).json()),
+        )) as [ImageryManifest, GroundData];
+        renderer.loadSurfaces(ground);
+        setAttribution(`${manifest.attribution}. ${ground.attribution}.`);
         await renderer.loadGround(
           manifest,
           base,

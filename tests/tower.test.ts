@@ -117,3 +117,89 @@ test('tower preview arrivals are cleared for the ILS and land', () => {
   expect(s.stats.landed).toBeGreaterThan(0);
   expect(s.stats.goArounds).toBe(0);
 });
+
+// ------------------------------------------------------------------ airport surfaces (OSM + drawn markings)
+import ground from '../public/tower/ground.json';
+import {
+  llToGround,
+  reciprocal,
+  ribbon,
+  runwayFrame,
+  runwayMarkings,
+  type GroundData,
+  type P2,
+} from '../src/render/tower3d/ground';
+
+const g = ground as unknown as GroundData;
+
+function inPolygon(p: P2, ring: P2[]) {
+  let c = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i]!;
+    const b = ring[j]!;
+    if (a.z > p.z !== b.z > p.z && p.x < ((b.x - a.x) * (p.z - a.z)) / (b.z - a.z) + a.x) c = !c;
+  }
+  return c;
+}
+
+const corners = (tris: number[]) => {
+  const pts: P2[] = [];
+  for (let i = 0; i < tris.length; i += 2) pts.push({ x: tris[i]!, z: tris[i + 1]! });
+  return pts;
+};
+
+test.each(['18R', '36L', '24', '06'])(
+  'runway %s markings lie on the runway, threshold stripes from 6 m past the threshold',
+  (id) => {
+    const rw = runwayById(EHAM, id);
+    const f = runwayFrame(rw, EHAM);
+    const { tris, designator } = runwayMarkings(rw, f);
+    expect(tris.length % 6).toBe(0);
+    for (const p of corners(tris)) {
+      const dx = p.x - f.thr.x;
+      const dz = p.z - f.thr.z;
+      const s = dx * f.along.x + dz * f.along.z;
+      const t = dx * f.right.x + dz * f.right.z;
+      expect(s).toBeGreaterThanOrEqual(6 - 1e-6);
+      expect(s).toBeLessThanOrEqual(f.lengthM / 2);
+      expect(Math.abs(t)).toBeLessThanOrEqual(f.widthM / 2);
+    }
+    // the far threshold is the reciprocal runway's threshold
+    const far = toWorld(reciprocal(rw, EHAM)!.pos);
+    const end = { x: f.thr.x + f.along.x * f.lengthM, z: f.thr.z + f.along.z * f.lengthM };
+    expect(Math.hypot(end.x - far.x, end.z - far.z)).toBeLessThan(60);
+    expect(designator.number).toBe(id.slice(0, 2));
+  },
+);
+
+test('OSM 18R runway area and the sim agree: the 18R threshold lies inside an OSM runway polygon', () => {
+  const thr = toWorld(runwayById(EHAM, '18R').pos);
+  const rings = g.runways.map((poly) => poly[0]!.map((p) => llToGround(EHAM, p)));
+  expect(rings.some((r) => inPolygon({ x: thr.x, z: thr.z }, r))).toBe(true);
+});
+
+test('ribbon: one quad per segment plus a round join per bend', () => {
+  const pts = [
+    { x: 0, z: 0 },
+    { x: 100, z: 0 },
+    { x: 100, z: 100 },
+  ];
+  const t = ribbon(pts, 20);
+  expect(t.length / 6).toBe(2 * 2 + 10);
+  // the outside of the bend is covered: a point 9 m out from the corner diagonally
+  const tris = corners(t);
+  const covered = (p: P2) => {
+    for (let i = 0; i < tris.length; i += 3)
+      if (inPolygon(p, [tris[i]!, tris[i + 1]!, tris[i + 2]!])) return true;
+    return false;
+  };
+  expect(covered({ x: 106, z: -6 })).toBe(true);
+  expect(covered({ x: 50, z: 30 })).toBe(false);
+});
+
+test('ground data: airside grass, taxiways and holding positions are present', () => {
+  expect(g.taxiways.length).toBeGreaterThan(100);
+  expect(g.grass.length).toBeGreaterThan(50);
+  expect(g.holds.length).toBeGreaterThan(10);
+  expect(g.attribution).toMatch(/OpenStreetMap/);
+});

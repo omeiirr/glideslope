@@ -64,7 +64,7 @@ def tier(name, x0, x1, y0, y1, mpp, quality):
                     s, e = ll(x0 + (px0 + sx + cw) * mpp, y1 - (py0 + sy + chh) * mpp)
                     img.paste(get(s, w_, n, e, cw, chh), (sx, sy))
             # the look approved in the style test: richer colour, a little more contrast
-            img = ImageEnhance.Contrast(ImageEnhance.Color(img).enhance(1.45)).enhance(1.08)
+            img = ImageEnhance.Contrast(ImageEnhance.Color(img).enhance(1.15)).enhance(1.08)
             f = f"{name}_{i}_{j}.webp"
             img.save(os.path.join(OUT, f), "WEBP", quality=quality, method=6)
             north, west = ll(x0 + px0 * mpp, y1 - py0 * mpp)

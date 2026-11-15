@@ -17,8 +17,8 @@
 
 ## Next
 0. **Tower T1 on real hardware:** open Tower view (preview) in Chrome and check smoothness. In dev builds `__towerMs` (draw time) and `__towerStats` are on `window`. Then T2: rollout, exits, take-off roll, runway occupancy.
-1. Manual test with a real microphone in Chrome (WebGPU, whisper-base: check the 1.5 s readback target) and Firefox (WASM fallback).
-2. Listen to the Piper voices and radio FX by ear.
+0b. **Tower look:** the user finds the photo next to the clean vector surfaces jarring (2026-11-16). Style options under discussion before T2.
+1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
 
 ## Measured

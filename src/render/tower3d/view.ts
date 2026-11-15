@@ -16,16 +16,7 @@ import {
   type LandData,
   type Polygon,
 } from './ground';
-import {
-  SUN,
-  lookDirection,
-  toWorld,
-  shadowPoint,
-  tileRect,
-  type ImageryManifest,
-  type P3,
-  type Pose,
-} from './math';
+import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 
 export interface TowerAircraft {
   id: number;
@@ -80,7 +71,7 @@ const YELLOW = '#e8c23a';
 
 /**
  * The out-of-the-window view. Reads poses only; knows nothing about the sim.
- * Look: aerial photo ground, gradient sky with soft clouds, haze, smooth procedural aircraft.
+ * Look: a modelled airport and surroundings from OSM, gradient sky with soft clouds, haze, smooth procedural aircraft.
  */
 export class TowerRenderer {
   private renderer: THREE.WebGLRenderer;
@@ -126,39 +117,9 @@ export class TowerRenderer {
     this.shadowTex = shadowTexture();
   }
 
-  /** Load the ground imagery. The view is usable (plain ground) while this runs. */
-  async loadGround(
-    manifest: ImageryManifest,
-    baseUrl: string,
-    onProgress?: (done: number, total: number) => void,
-  ) {
-    const loader = new THREE.TextureLoader();
-    const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
-    const tiles = manifest.tiers.flatMap((tier, order) => tier.tiles.map((t) => ({ t, order })));
-    let done = 0;
-    await Promise.all(
-      tiles.map(async ({ t, order }) => {
-        const tex = await loader.loadAsync(baseUrl + t.file);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = aniso;
-        const r = tileRect(t, this.ap);
-        const geo = new THREE.PlaneGeometry(r.width, r.depth);
-        const mat = new THREE.MeshLambertMaterial({ map: tex, depthTest: false, depthWrite: false });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(r.cx, 0, r.cz);
-        // tiers are stacked by draw order, not by height, so they can't z-fight
-        mesh.renderOrder = -50 + order;
-        this.scene.add(mesh);
-        this.disposables.push(tex, geo, mat);
-        onProgress?.(++done, tiles.length);
-      }),
-    );
-  }
-
   /**
-   * Draw the airport surfaces as graphics on top of the photo: aprons, taxiways, runways and their markings.
-   * Layers are stacked by render order (photo tiers -50.., these -45..-38, shadows -10), never by depth.
+   * Draw the airport surfaces as graphics on top of the land: aprons, taxiways, runways and their markings.
+   * Layers are stacked by render order (land -72..-64, these -46..-38, shadows -10), never by depth.
    */
   loadSurfaces(g: GroundData) {
     const ap = this.ap;
@@ -388,7 +349,7 @@ export class TowerRenderer {
     sky.renderOrder = -100;
     this.scene.add(sky);
 
-    // land beyond the imagery, so the horizon is never a hole
+    // land beyond the OSM land use, so the horizon is never a hole
     const landGeo = new THREE.CircleGeometry(R, 48);
     const landMat = new THREE.MeshLambertMaterial({ color: '#7d965a', depthTest: false, depthWrite: false });
     const land = new THREE.Mesh(landGeo, landMat);
@@ -426,7 +387,7 @@ export class TowerRenderer {
   setSize(width: number, height: number, dpr: number) {
     this.w = width;
     this.h = height;
-    // capped: the photo ground gains nothing from more pixels, and laptops pay for them
+    // capped: laptops pay for every extra pixel
     this.renderer.setPixelRatio(Math.min(dpr, 1.5));
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;

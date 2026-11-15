@@ -10,8 +10,25 @@ Contents (coordinates [lat, lon], 6 decimals, about 0.1 m):
   buildings  inside the aerodrome: {h (m), k (kind), r (outer ring)}; height from height, else
              building:levels x 3.5 m, else a default per kind
 
-Usage: python3 scripts/build-tower-land.py bld.json near1.json [near2.json ...] far.json
-       (cached Overpass responses; see the queries in docs/design/tower3d.md)
+Usage: python3 scripts/build-tower-land.py bld.json near-south.json near-north.json far.json
+The inputs are Overpass responses (POST to https://overpass-api.de/api/interpreter, one at a time;
+the server is often busy, so retry with backoff). Buildings are only taken from the first file.
+
+  bld   [out:json][timeout:180];
+        rel["aeroway"="aerodrome"]["icao"="EHAM"];map_to_area->.a;
+        (way["building"](area.a);relation["building"](area.a);way["man_made"="storage_tank"](area.a););
+        out geom;
+  near  [out:json][timeout:300];
+        (way["landuse"~"^(farmland|residential|industrial|commercial|retail|forest|meadow|grass|
+          greenhouse_horticulture|recreation_ground|allotments|construction|railway)$"](BB);
+         relation["landuse"~"^(farmland|residential|industrial|commercial|retail|forest|meadow|grass|
+          greenhouse_horticulture)$"](BB);
+         way["natural"~"^(water|wood)$"](BB);relation["natural"~"^(water|wood)$"](BB);
+         way["leisure"~"^(park|golf_course)$"](BB););out geom;
+        with BB = 52.22,4.61,52.31,4.91 (south) and 52.31,4.61,52.40,4.91 (north), about 10 km around EHAM
+  far   [out:json][timeout:300];
+        (way["natural"="water"](52.18,4.54,52.44,4.98);relation["natural"="water"](52.18,4.54,52.44,4.98);
+         way["highway"~"^(motorway|trunk)$"](52.18,4.54,52.44,4.98););out geom;
 """
 import json, math, sys
 
@@ -117,7 +134,8 @@ for f in files:
         if (e["type"], e["id"]) in seen: continue  # quadrant overlaps come back twice
         seen.add((e["type"], e["id"]))
         t = e.get("tags", {})
-        if "building" in t or t.get("man_made") == "storage_tank":
+        # buildings only from the first file (inside the fence); land-use ways can carry a building tag too
+        if f == files[0] and ("building" in t or t.get("man_made") == "storage_tank"):
             rings = relation_polygons(e) if e["type"] == "relation" else [[pts(e.get("geometry", []))]]
             h = height(t)
             kind = "storage_tank" if t.get("man_made") == "storage_tank" else t["building"]

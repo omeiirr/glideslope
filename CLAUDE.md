@@ -33,7 +33,7 @@ Inspiration: openScope (radar sim, unmaintained for about 4 years) plus the voic
 
 - **TypeScript (strict)**, **Vite**, **Vitest** for tests, ESLint + Prettier.
 - **Scope rendering:** Canvas 2D (one canvas, redrawn per frame).
-- **Tower view:** three.js (WebGL), loaded with a dynamic `import()` only when tower mode starts, so the radar game's bundle and start-up are unaffected. Ground imagery is downloaded on entering tower mode (budget: about 8 MB).
+- **Tower view:** three.js (WebGL), loaded with a dynamic `import()` only when tower mode starts, so the radar game's bundle and start-up are unaffected. The airport and land data (OpenStreetMap, about 2 MB compressed) is downloaded on entering tower mode (budget: about 8 MB).
 - **Side panels and overlays:** Preact (small, fast). Keep UI state out of the sim core.
 - **Speech recognition (ASR):** Whisper via `@huggingface/transformers` (transformers.js) in a **Web Worker**.
   - Default: `whisper-base.en` on WebGPU.
@@ -94,7 +94,7 @@ The player is Schiphol Tower: landing, line-up and take-off clearances, vacating
 
 - The core must not assume radar-only views. Aircraft state includes position, altitude, heading, speed, vertical speed and phase; runway geometry is in true coordinates (lat/lon plus heading, length and width).
 - `render/tower3d/` reads core state only, like the scope renderers. Maths that doesn't need WebGL (projection, camera, aircraft pose) lives in a DOM-free module with tests.
-- Look: clean semi-realistic. The airport surfaces are drawn as graphics from OpenStreetMap data (ODbL): runways with their markings, taxiways, aprons, airside grass. Real aerial imagery (PDOK Luchtfoto, CC BY 4.0) fills the land around them. Gradient sky and haze, smooth procedural aircraft. No third-party 3D models.
+- Look: clean semi-realistic. The airport surfaces are drawn as graphics from OpenStreetMap data (ODbL): runways with their markings, taxiways, aprons, airside grass. The land around them is modelled from OSM too (land use, water, motorways), and the airport buildings are extruded from their OSM outlines; no photos, so everything is drawn in one style. Gradient sky and haze, smooth procedural aircraft. No third-party 3D models.
 - Everything that can be done in the 3D window must also be possible from the strips and the keyboard.
 
 ## 7. Commands, phraseology and feedback

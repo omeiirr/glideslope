@@ -7,7 +7,6 @@ import {
   FT_PER_NM,
   clamp,
   headingVec,
-  project,
   type Aircraft,
   type Airport,
   type Tower,
@@ -42,35 +41,6 @@ export function aimAt(eye: P3, target: P3): { bearing: number; depression: numbe
   const bearing = (Math.atan2(dx, -dz) / DEG + 360) % 360;
   const depression = Math.atan2(eye.y - target.y, Math.hypot(dx, dz)) / DEG;
   return { bearing, depression };
-}
-
-// ------------------------------------------------------------------ ground imagery
-
-export interface ImageryTile {
-  file: string;
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-  w: number;
-  h: number;
-}
-export interface ImageryManifest {
-  attribution: string;
-  /** Drawn in order: later tiers lie on top of earlier ones. */
-  tiers: { name: string; metresPerPixel: number; tiles: ImageryTile[] }[];
-}
-
-/** Where a tile lies in the world: centre and size in metres. Uses the core's projection, so photos match the sim. */
-export function tileRect(t: ImageryTile, ap: Pick<Airport, 'lat' | 'lon'>) {
-  const nw = toWorld(project(t.north, t.west, ap.lat, ap.lon));
-  const se = toWorld(project(t.south, t.east, ap.lat, ap.lon));
-  return { cx: (nw.x + se.x) / 2, cz: (nw.z + se.z) / 2, width: se.x - nw.x, depth: se.z - nw.z };
-}
-
-/** Pixel in a tile for a lat/lon (x right, y down), for checking the georeferencing. */
-export function tilePixel(t: ImageryTile, lat: number, lon: number): { x: number; y: number } {
-  return { x: ((lon - t.west) / (t.east - t.west)) * t.w, y: ((t.north - lat) / (t.north - t.south)) * t.h };
 }
 
 // ------------------------------------------------------------------ aircraft pose

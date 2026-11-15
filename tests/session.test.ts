@@ -72,3 +72,21 @@ test('Pro: talking over a pilot blocks both transmissions', async () => {
   expect(s.keyUp()).toBe(true);
   expect(s.log.some((e) => e.kind === 'system' && /talked over/.test(e.text))).toBe(true);
 });
+
+test('lesson waits for the last readback to finish before ending', async () => {
+  const s = tutorial('tut-heading');
+  s.lessonStep = 2; // last step: proceed direct SPL
+  s.transmit('KLM1234, proceed direct SPL', 'typed');
+  let sawReadback = false;
+  for (let i = 0; i < 200 && !s.finished; i++) {
+    await vi.advanceTimersByTimeAsync(100);
+    s.update(100);
+    if (s.radio.current) {
+      sawReadback = true;
+      expect(s.finished).toBe(false);
+    }
+  }
+  expect(sawReadback).toBe(true);
+  expect(s.finished).toBe(true);
+  expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Direct SPL, KLM1234')).toBe(true);
+});

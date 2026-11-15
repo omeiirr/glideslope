@@ -53,6 +53,7 @@ interface PendingError {
 }
 
 const START_UTC = 14 * 3600;
+const LESSON_END_PAUSE_MS = 1500;
 
 /** One game: the sim, the radio, the log and the score. The UI reads it and calls its methods. */
 export class Session {
@@ -72,6 +73,8 @@ export class Session {
   /** Bumps on every change the panels should re-render for. */
   version = 0;
   private acc = 0;
+  /** Real time (ms) since the frequency went quiet after the last lesson step. */
+  private quietSince: number | null = null;
   private nextEntry = 1;
   private rng: Rng;
   private pendingErrors: PendingError[] = [];
@@ -226,8 +229,14 @@ export class Session {
       this.lesson.steps[this.lessonStep]!.done(this)
     ) {
       this.lessonStep++;
-      if (this.lessonStep >= this.lesson.steps.length) this.finish();
       this.changed();
+    }
+    // Lesson complete: let the last readback play out, then a short pause, before the debrief.
+    if (this.lesson && this.lessonStep >= this.lesson.steps.length) {
+      const now = performance.now();
+      if (this.radio.current || this.radio.waiting) this.quietSince = null;
+      else if (this.quietSince === null) this.quietSince = now;
+      else if (now - this.quietSince >= LESSON_END_PAUSE_MS) this.finish();
     }
     const left = this.remainingSec;
     if (left !== null && left <= 0) this.finish();

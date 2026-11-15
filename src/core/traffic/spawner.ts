@@ -1,7 +1,7 @@
 import type { Aircraft } from '../aircraft/aircraft';
 import { perfFor } from '../aircraft/perf';
 import type { Airport } from '../airport/types';
-import { bearing, headingVec, norm360 } from '../geo';
+import { bearing, dist, headingVec, norm360 } from '../geo';
 import type { Rng } from '../rng';
 
 export interface TrafficConfig {
@@ -124,7 +124,11 @@ export class Spawner {
         // at the holding point facing the runway; later arrivals queue behind (shortcut: straight back, not along the taxiway)
         const hold = hp[hp.length - 1]!;
         const face = bearing(hold, hp[hp.length - 2]!);
-        const queue = active.filter((a) => a.nav.mode === 'holding').length;
+        // the slot behind the last one taken (queued aircraft don't move up yet)
+        const slots = active
+          .filter((a) => a.nav.mode === 'holding')
+          .map((a) => Math.round((dist(a.pos, hold) * 1852) / 70));
+        const queue = slots.length ? Math.max(...slots) + 1 : 0;
         const back = headingVec(face + 180, (queue * 70) / 1852);
         return {
           ...base,

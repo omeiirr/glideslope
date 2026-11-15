@@ -287,13 +287,15 @@ export class Session {
       case 'landed': {
         s.landed++;
         s.delaySum += Math.max(0, this.sim.time - e.ac.spawnTime - this.nominalTime(e.ac));
-        this.gone(e.ac);
         if (!e.handedOff && this.mode === 'pro') {
           s.missedHandoffs++;
           this.system(`${e.ac.callsign} landed without being handed to Tower.`, 'warn');
         } else this.system(`${e.ac.callsign} landed.`, 'good');
         break;
       }
+      case 'vacated':
+        this.gone(e.ac);
+        break;
       case 'goAround':
         s.goArounds++;
         this.pilotSays(

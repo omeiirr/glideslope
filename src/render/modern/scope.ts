@@ -1,4 +1,4 @@
-import { TICK, headingVec, type Aircraft, type Vec } from '../../core';
+import { TICK, headingVec, onRadar, type Aircraft, type Vec } from '../../core';
 import {
   conflictIds,
   finalPoint,
@@ -123,12 +123,12 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
 
   const { loss, predicted } = conflictIds(sim.conflicts);
   const pos = new Map<number, Vec>();
-  for (const ac of sim.aircraft) pos.set(ac.id, S(smoothPos(ac, scene.tickFraction, TICK)));
+  for (const ac of sim.aircraft.filter(onRadar)) pos.set(ac.id, S(smoothPos(ac, scene.tickFraction, TICK)));
 
   // intent lines
   if (scene.showIntent) {
     ctx.setLineDash([3, 4]);
-    for (const ac of sim.aircraft) {
+    for (const ac of sim.aircraft.filter(onRadar)) {
       if (ac.comms !== 'app') continue;
       const p = pos.get(ac.id)!;
       let to: Vec | null = null;
@@ -150,7 +150,7 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
   // trails
   if (scene.showTrails) {
     ctx.fillStyle = C.dim;
-    for (const ac of sim.aircraft) {
+    for (const ac of sim.aircraft.filter(onRadar)) {
       ac.trail.slice(0, 4).forEach((t, i) => {
         const s = S(t);
         ctx.globalAlpha = 0.55 - i * 0.13;
@@ -211,7 +211,7 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
   }
 
   // aircraft
-  for (const ac of sim.aircraft) {
+  for (const ac of sim.aircraft.filter(onRadar)) {
     const p = pos.get(ac.id)!;
     if (p.x < -80 || p.y < -80 || p.x > view.w + 80 || p.y > view.h + 80) continue;
     const selected = ac.id === scene.selectedId || ac.id === scene.heardId;

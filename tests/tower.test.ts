@@ -144,11 +144,15 @@ test.each(['18R', '36L', '24', '06'])(
   },
 );
 
-test('OSM 18R runway area and the sim agree: the 18R threshold lies inside an OSM runway polygon', () => {
-  const thr = toWorld(runwayById(EHAM, '18R').pos);
-  const rings = g.runways.map((poly) => poly[0]!.map((p) => llToGround(EHAM, p)));
-  expect(rings.some((r) => inPolygon({ x: thr.x, z: thr.z }, r))).toBe(true);
-});
+// 24 guards the 70 m threshold correction in build-eham.py (openScope's point lay beyond the pavement)
+test.each(['18R', '24'])(
+  'OSM runway area and the sim agree: the %s threshold lies inside an OSM runway polygon',
+  (id) => {
+    const thr = toWorld(runwayById(EHAM, id).pos);
+    const rings = g.runways.map((poly) => poly[0]!.map((p) => llToGround(EHAM, p)));
+    expect(rings.some((r) => inPolygon({ x: thr.x, z: thr.z }, r))).toBe(true);
+  },
+);
 
 test('ribbon: one quad per segment plus a round join per bend', () => {
   const pts = [

@@ -29,7 +29,7 @@
 ## Known issues
 - espeak-ng (inside the phonemizer WASM) is GPL-3.0: licence compatibility needs a decision before public release (see THIRD_PARTY.md).
 - Holds are direct-entry only.
-- Tower: aircraft disappear at the holding position after vacating (no taxi to the gates; ground control is a non-goal). Queued departures stand in a straight line behind the holding point, not along the taxiway.
+- Tower: aircraft disappear at the holding position after vacating (no taxi to the gates; ground control is a non-goal). Queued departures stand in a straight line behind the holding point, not along the taxiway, and don't move up when the one in front goes.
 - Wake spacing between departures is not applied yet (T4).
 - Tower labels near the right edge of the window are clipped.
 - The Realistic display toggle has no effect in the tower view yet (T5).

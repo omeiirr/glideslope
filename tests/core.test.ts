@@ -10,6 +10,7 @@ import {
   runwayFrame,
   transitionLevel,
   wakeMinimum,
+  type Aircraft,
   type SimEvent,
 } from '../src/core';
 import { arrival, onFinal, quietSim } from './helpers';
@@ -160,6 +161,9 @@ describe('ILS', () => {
     expect(landed).toMatchObject({ type: 'landed', handedOff: true });
     expect(vsOnSlope).toBeLessThan(-550); // ~3° at approach speed
     expect(vsOnSlope).toBeGreaterThan(-1000);
+    // still on the runway after touchdown, gone once it has vacated
+    expect(ac.nav.mode).toBe('rollout');
+    expect(types(sim.run(150))).toContain('vacated');
     expect(sim.aircraft).toHaveLength(0);
   });
 
@@ -328,7 +332,7 @@ describe('runway (tower T2)', () => {
     expect(pickExit(rwy, 3000, 140)!.name).toBe('V4'); // nothing left in reach: the last one
   });
 
-  test('landing: touchdown about 300 m in, rollout, vacate via the chosen exit, runway free again', () => {
+  test('landing: touchdown about 300 m in (scored then), rollout, vacate via the chosen exit, runway free again', () => {
     const sim = quietSim();
     const ac = arrival(sim, { pos: onFinal(5), hdg: rwy.heading, alt: 1600, ias: 160 });
     sim.command('KLM123', [{ type: 'ils', runway: '18R' }]);
@@ -342,7 +346,7 @@ describe('runway (tower T2)', () => {
         expect(alongM(ac.pos)).toBeLessThan(450);
         expect(ac.nav.exit?.name).toBe('V2');
       }
-      landed = ev.some((e) => e.type === 'landed');
+      landed = ev.some((e) => e.type === 'vacated');
       if (td && !landed) {
         // on the runway until it has vacated
         expect(sim.runwayOccupants('18R')).toContain(ac);
@@ -369,8 +373,16 @@ describe('runway (tower T2)', () => {
     expect(sim.runwayOccupants('24')).toHaveLength(0);
     let aRolled = -1;
     let bLinedUp = -1;
+    const third = sim.spawn({ kind: 'departure', callsign: 'EZY88', type: 'A320', route: 'VALKO' });
     for (let t = 0; t < 400; t += TICK) {
       sim.step();
+      // never two departures entering or on the runway at once
+      const moving = [a, b, third].filter(
+        (d) =>
+          ['taxi', 'lineup'].includes(d.nav.mode) ||
+          (d.nav.mode === 'takeoff' && d.alt < dep.elevationFt + 100),
+      );
+      expect(moving.length).toBeLessThanOrEqual(1);
       if (aRolled < 0 && a.nav.mode === 'takeoff') {
         aRolled = t;
         // lined up on the centreline, facing down the runway
@@ -389,6 +401,15 @@ describe('runway (tower T2)', () => {
     expect(aRolled).toBeLessThan(100);
     expect(bLinedUp).toBeGreaterThan(aRolled);
     expect(b.alt).toBeGreaterThan(1000);
+  });
+
+  test('a new departure queues behind the last one waiting, never on top of it', () => {
+    const sim = quietSim({ autoTower: false });
+    const a = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });
+    const b = sim.spawn({ kind: 'departure', callsign: 'KLM1717', type: 'A332', route: 'LOPIK' });
+    (a as Aircraft).nav = { mode: 'takeoff' }; // A has gone; B still waits 70 m back
+    const c = sim.spawn({ kind: 'departure', callsign: 'EZY88', type: 'A320', route: 'VALKO' });
+    expect(dist(b.pos, c.pos) * 1852).toBeCloseTo(70, 0);
   });
 
   test('without the stand-in tower a departure stays at the holding point', () => {

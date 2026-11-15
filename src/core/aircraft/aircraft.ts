@@ -37,6 +37,9 @@ export type Phase =
 
 const GROUND_MODES = new Set<NavMode['mode']>(['takeoff', 'rollout', 'taxi', 'holding', 'lineup']);
 export const isOnGround = (ac: Pick<Aircraft, 'nav'>) => GROUND_MODES.has(ac.nav.mode);
+/** Shown on the approach radar: airborne, rolling for take-off, or just landed. Ground traffic at the holding point or on an exit is not. */
+export const onRadar = (ac: Pick<Aircraft, 'nav'>) =>
+  !isOnGround(ac) || ac.nav.mode === 'takeoff' || ac.nav.mode === 'rollout';
 export type Comms = 'none' | 'app' | 'tower' | 'radar';
 
 export interface Aircraft {
@@ -96,6 +99,7 @@ export interface Env {
 export type StepEvent =
   | { type: 'established' }
   | { type: 'landed' }
+  | { type: 'vacated' }
   | { type: 'goAround'; reason: 'unstable' | 'commanded' }
   | { type: 'leftAirspace' }
   | { type: 'gone' }
@@ -207,7 +211,7 @@ function normalSpeed(ac: Aircraft, along: number): number {
   return ac.alt >= 6000 ? 250 : 220;
 }
 
-/** Advance one aircraft by dt seconds. Returns events; 'landed' / 'leftAirspace' / 'gone' mean "remove me". */
+/** Advance one aircraft by dt seconds. Returns events; 'vacated' / 'leftAirspace' / 'gone' mean "remove me". */
 export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
   const ev: StepEvent[] = [];
   const ap = env.airport;
@@ -293,7 +297,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
         (m < 60 && Math.abs(angleDiff(ac.hdg, brg)) > 100)
       ) {
         if (++n.i >= n.path.length) {
-          if (n.then === 'vacate') ev.push({ type: 'landed' });
+          if (n.then === 'vacate') ev.push({ type: 'vacated' });
           else ac.nav = { mode: 'lineup', ready: false, timer: 0 };
         }
       } else steer(ac, brg, dt, 0, undefined, TAXI_TURN_DEG_S);
@@ -366,6 +370,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
           ac.phase = 'rollout';
           ac.ilsArmed = null;
           ac.locEstablished = ac.gsEstablished = false;
+          ev.push({ type: 'landed' });
           ac.alt = rwy.elevationFt;
           ac.vs = 0;
           ac.hdg = rwy.heading;
@@ -442,7 +447,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
     ev.push({ type: 'checkIn' });
   }
   // no exit data: the aircraft is taken off the runway once slow
-  if (ac.nav.mode === 'rollout' && !ac.nav.exit && ac.ias < 40) ev.push({ type: 'landed' });
+  if (ac.nav.mode === 'rollout' && !ac.nav.exit && ac.ias < 40) ev.push({ type: 'vacated' });
   const inside = pointInPoly(ac.pos, ap.airspace.poly);
   if (inside) ac.entered = true;
   else if (ac.entered && !onGround && dist(ac.pos, { x: 0, y: 0 }) > 12) {

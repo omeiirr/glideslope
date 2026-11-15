@@ -8,7 +8,7 @@ export * from './commands/commands';
 export * from './airport/types';
 export { transitionLevel, runwayById, loadAirport, reciprocalRunway } from './airport/load';
 export type { Aircraft, NavMode, Phase } from './aircraft/aircraft';
-export { runwayFrame, glideslopeAlt, isOnGround, pickExit } from './aircraft/aircraft';
+export { runwayFrame, glideslopeAlt, isOnGround, onRadar, pickExit } from './aircraft/aircraft';
 export { perfFor, PERF, type Wake } from './aircraft/perf';
 export * from './rules/separation';
 export type { TrafficConfig, SpawnSpec } from './traffic/spawner';

@@ -37,7 +37,10 @@ export type SimEvent =
   | { type: 'spawned'; ac: Aircraft }
   | { type: 'checkIn'; ac: Aircraft }
   | { type: 'established'; ac: Aircraft }
+  /** Touchdown (scored here). The aircraft stays on the runway until `vacated`. */
   | { type: 'landed'; ac: Aircraft; handedOff: boolean }
+  /** Reached the holding position on its exit; removed. */
+  | { type: 'vacated'; ac: Aircraft }
   | { type: 'goAround'; ac: Aircraft; reason: 'unstable' | 'commanded' }
   | { type: 'leftAirspace'; ac: Aircraft; handedOff: boolean }
   | { type: 'conflict'; kind: 'loss' | 'wake'; a: Aircraft; b: Aircraft };
@@ -88,7 +91,7 @@ export class Sim {
         (ac.kind === 'departure' && ids.has(this.env.departure.id));
       if (!mine) return false;
       if (m === 'rollout' || m === 'lineup' || m === 'takeoff') return true;
-      if (m === 'taxi') return ac.nav.then === 'vacate' || ac.nav.i > 0;
+      if (m === 'taxi') return true; // vacating, or cleared to line up and already moving
       // departure airborne but not yet past the far end
       return (
         ac.kind === 'departure' &&
@@ -179,9 +182,10 @@ export class Sim {
       }
       for (const e of stepAircraft(ac, TICK, this.env)) {
         if (e.type === 'gone') remove.add(ac);
-        else if (e.type === 'landed') {
+        else if (e.type === 'landed') events.push({ type: 'landed', ac, handedOff: ac.comms === 'tower' });
+        else if (e.type === 'vacated') {
           remove.add(ac);
-          events.push({ type: 'landed', ac, handedOff: ac.comms === 'tower' });
+          events.push({ type: 'vacated', ac });
         } else if (e.type === 'leftAirspace') {
           remove.add(ac);
           events.push({ type: 'leftAirspace', ac, handedOff: ac.comms === 'radar' });

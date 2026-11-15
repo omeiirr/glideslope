@@ -1,4 +1,4 @@
-import { EHAM } from '../core';
+import { EHAM, onRadar } from '../core';
 import type { Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import type { RealisticOptions } from '../render/realistic/scope';
@@ -100,7 +100,9 @@ export function RealisticChrome({
   const sim = session.sim;
   const byId = (id: number) => sim.byId(id)?.callsign ?? '';
   const alerts = sim.conflicts.filter((c) => c.kind !== 'predicted');
-  const arrivals = sim.aircraft.filter((a) => a.kind === 'arrival' && a.comms !== 'none').slice(0, 12);
+  const arrivals = sim.aircraft
+    .filter((a) => a.kind === 'arrival' && a.comms !== 'none' && onRadar(a))
+    .slice(0, 12);
   const lines = session.log.slice(-4);
   const w = sim.env.wind;
   return (

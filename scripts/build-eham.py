@@ -2,7 +2,8 @@
 """One-off generator for data/airports/EHAM.json.
 
 Usage: python3 scripts/build-eham.py <openscope eham.json> <ourairports runways.csv> <osm taxiways.json>
-The third file is the Overpass response cached by scripts/build-tower-ground.py (taxiway centrelines with refs).
+The third file is the Overpass response that scripts/build-tower-ground.py saves to osm-ground-cache.json
+(taxiway centrelines with refs).
 Sources are recorded in DECISIONS.md. Hand-set values are marked below.
 """
 import csv, json, math, re, sys

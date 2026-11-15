@@ -14,6 +14,7 @@ Contents (all coordinates [lat, lon], rounded to 7 decimals):
   grass     landuse=grass/meadow polygons inside the aerodrome boundary, simplified to about 1 m
 
 Usage: python3 scripts/build-tower-ground.py [cached-overpass.json ...]   (several cached responses are merged)
+Without arguments it fetches from Overpass and saves the response to osm-ground-cache.json (gitignored).
 """
 import json, math, sys, time, urllib.parse, urllib.request
 
@@ -43,7 +44,14 @@ def fetch():
         wait *= 2
     sys.exit("Overpass is not answering; try again later or pass a cached response.")
 
-els = [e for f in sys.argv[1:] for e in json.load(open(f))["elements"]] if len(sys.argv) > 1 else fetch()["elements"]
+CACHE = "osm-ground-cache.json"  # also the third input of scripts/build-eham.py (runway exits)
+if len(sys.argv) > 1:
+    els = [e for f in sys.argv[1:] for e in json.load(open(f))["elements"]]
+else:
+    raw = fetch()
+    json.dump(raw, open(CACHE, "w"))
+    print("Overpass response saved to", CACHE)
+    els = raw["elements"]
 
 def pts(geom):
     return [[round(p["lat"], 7), round(p["lon"], 7)] for p in geom]

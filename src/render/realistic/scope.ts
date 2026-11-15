@@ -1,4 +1,4 @@
-import { type Vec } from '../../core';
+import { onRadar, type Vec } from '../../core';
 import {
   conflictIds,
   finalPoint,
@@ -56,7 +56,7 @@ export function drawRealistic(
   if (sweep !== lastSweep) {
     lastSweep = sweep;
     const alive = new Set<number>();
-    for (const ac of sim.aircraft) {
+    for (const ac of sim.aircraft.filter(onRadar)) {
       alive.add(ac.id);
       const prev = shown.get(ac.id);
       const history = prev ? [prev.pos, ...prev.history].slice(0, 5) : [];
@@ -147,7 +147,7 @@ export function drawRealistic(
     [-0.7, -0.7],
   ][o.leaderDir % 8]!;
 
-  for (const ac of sim.aircraft) {
+  for (const ac of sim.aircraft.filter(onRadar)) {
     const s = shown.get(ac.id);
     if (!s) continue;
     const p = S(s.pos);

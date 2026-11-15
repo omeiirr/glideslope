@@ -1,0 +1,80 @@
+{
+ "west-day": [
+  {
+   "cs": "KLM66P",
+   "info": "A332/H · 2 NM final 18R",
+   "kind": "cleared",
+   "x": 1812,
+   "y": 430,
+   "visible": true
+  },
+  {
+   "cs": "EZY81QK",
+   "info": "A320 · rolling out, vacate E5",
+   "kind": "normal",
+   "x": 1039,
+   "y": 553,
+   "visible": true
+  },
+  {
+   "cs": "TRA6015",
+   "info": "B738 · 7 NM, on Approach",
+   "kind": "pending",
+   "x": 1935,
+   "y": 391,
+   "visible": true
+  }
+ ],
+ "centre-dusk": [
+  {
+   "cs": "TRA5422",
+   "info": "B738 · lined up 24",
+   "kind": "selected",
+   "x": 143,
+   "y": 592,
+   "visible": true
+  },
+  {
+   "cs": "KLM1601",
+   "info": "E190 · take-off roll",
+   "kind": "normal",
+   "x": 1902,
+   "y": 603,
+   "visible": true
+  },
+  {
+   "cs": "EZY45MP",
+   "info": "A320 · holding point S1",
+   "kind": "pending",
+   "x": 346,
+   "y": 576,
+   "visible": true
+  }
+ ],
+ "west-bino": [
+  {
+   "cs": "KLM66P",
+   "info": "A332/H · 2 NM final 18R",
+   "kind": "cleared",
+   "x": 1120,
+   "y": 213,
+   "visible": true
+  },
+  {
+   "cs": "EZY81QK",
+   "info": "A320 · rolling out, vacate E5",
+   "kind": "normal",
+   "x": -8752,
+   "y": 1795,
+   "visible": false
+  },
+  {
+   "cs": "TRA6015",
+   "info": "B738 · 7 NM, on Approach",
+   "kind": "pending",
+   "x": 2487,
+   "y": -233,
+   "visible": false
+  }
+ ]
+}

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tower mode — low-poly 3D view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0F1A}
+a{color:#5CC8FF}a:hover{color:#9ADCFF}
+</style>
+</helmet>
+<div style="width: 100%; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #0A0F1A; color: #E6EBF2; font-family: Inter, system-ui, sans-serif; font-size: 13px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 10px 20px; border-bottom: 1px solid #1F2A3D; background: #0D1422">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5CC8FF" stroke-width="1.8" aria-hidden="true"><path d="M9 21h6M10 21l1-11h2l1 11M7 10h10l-1-4H8z"></path></svg>
+<span style="font-weight: 700; font-size: 15px">Schiphol Tower</span>
+<span style="font-family: 'JetBrains Mono', monospace; color: #8B97AB">EHAM · TWR 118.280</span>
+</div>
+<div style="display: flex; gap: 6px; padding: 3px; background: #111A2B; border: 1px solid #1F2A3D; border-radius: 8px">
+<button type="button" style="font: inherit; padding: 6px 12px; border-radius: 6px; border: 0; background: transparent; color: #8B97AB; cursor: pointer">Approach</button>
+<button type="button" style="font: inherit; font-weight: 600; padding: 6px 12px; border-radius: 6px; border: 0; background: #1E3350; color: #E6EBF2; cursor: pointer">Tower 3D</button>
+</div>
+<div style="flex: 1 1 auto"></div>
+<div style="display: flex; gap: 22px; font-family: 'JetBrains Mono', monospace">
+<div><span style="color: #8B97AB">UTC </span>14:02:31</div>
+<div><span style="color: #8B97AB">Wind </span>200/12</div>
+<div><span style="color: #8B97AB">QNH </span>1013</div>
+<div><span style="color: #8B97AB">Score </span><span style="color: #7AD7A8">1,120</span></div>
+</div>
+</header>
+
+<div style="flex: 1 1 auto; min-height: 0; display: flex">
+
+<aside style="width: 260px; flex: 0 0 260px; border-right: 1px solid #1F2A3D; background: #0D1422; display: flex; flex-direction: column; gap: 4px; overflow: auto; padding-bottom: 12px">
+<sc-for list="{{bays}}" as="bay" hint-placeholder-count="3">
+<div style="padding: 14px 16px 6px; display: flex; justify-content: space-between">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #8B97AB">{{bay.name}}</span>
+<span style="font-size: 11px; color: #8B97AB">{{bay.count}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 0 10px">
+<sc-for list="{{bay.strips}}" as="s" hint-placeholder-count="2">
+<div style="padding: 8px 10px; border-radius: 8px; background: {{s.bg}}; border: 1px solid {{s.border}}; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: {{s.color}}"><span>{{s.cs}}</span><span style="font-weight: 400; color: #8B97AB">{{s.state}}</span></div>
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8B97AB"><span>{{s.type}}</span><span>{{s.where}}</span></div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</aside>
+
+<main style="flex: 1 1 auto; min-width: 0; position: relative; background: #0A0F1A">
+<svg viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Low-poly 3D view from the Schiphol tower cab over runway 24 at late afternoon, with aircraft, terminal, polder fields and a windmill" style="position: absolute; inset: 0; width: 100%; height: 100%; font-family: 'JetBrains Mono', monospace">
+<rect x="0" y="0" width="1000" height="70" fill="#3C78C2"></rect>
+<rect x="0" y="70" width="1000" height="60" fill="#4F8BD0"></rect>
+<rect x="0" y="130" width="1000" height="50" fill="#6EA3DC"></rect>
+<rect x="0" y="180" width="1000" height="40" fill="#93BCE6"></rect>
+<rect x="0" y="220" width="1000" height="20" fill="#C3D8EC"></rect>
+<rect x="0" y="240" width="1000" height="12" fill="#F1DDB8"></rect>
+<g opacity="0.5">
+<polygon points="0,70 260,70 120,130" fill="#4683CB"></polygon>
+<polygon points="520,70 820,70 700,130" fill="#4483C9"></polygon>
+<polygon points="300,130 560,130 430,180" fill="#64A0DB"></polygon>
+<polygon points="760,180 1000,180 1000,220" fill="#A6C8EA"></polygon>
+</g>
+<polygon points="830,118 852,130 852,154 830,166 808,154 808,130" fill="#FCEFC9" opacity="0.55"></polygon>
+<polygon points="830,126 845,134 845,150 830,158 815,150 815,134" fill="#FFE7A8"></polygon>
+
+<g>
+<polygon points="250,92 290,70 340,78 372,96 330,108 270,108" fill="#FFFFFF"></polygon>
+<polygon points="290,70 340,78 312,94" fill="#F2F6FB"></polygon>
+<polygon points="250,92 270,108 330,108 372,96 340,112 262,114" fill="#D6E2EF"></polygon>
+<polygon points="560,52 600,40 642,48 662,62 610,70 570,66" fill="#FFFFFF"></polygon>
+<polygon points="570,66 610,70 662,62 640,74 584,76" fill="#DAE5F1"></polygon>
+<polygon points="40,160 78,146 118,152 136,166 92,174 50,172" fill="#F7FAFD"></polygon>
+<polygon points="50,172 92,174 136,166 118,180 62,182" fill="#D3DFEC"></polygon>
+</g>
+
+<g>
+<polygon points="540,252 540,226 562,226 562,252" fill="#8EA3BF"></polygon>
+<polygon points="562,252 562,226 570,230 570,252" fill="#6F86A6"></polygon>
+<polygon points="576,252 576,212 590,212 590,252" fill="#9AAEC8"></polygon>
+<polygon points="590,252 590,212 597,216 597,252" fill="#7189A8"></polygon>
+<polygon points="604,252 604,232 640,232 640,252" fill="#8AA0BC"></polygon>
+<polygon points="648,252 648,220 664,220 664,252" fill="#97ABC5"></polygon>
+<polygon points="664,252 664,220 670,224 670,252" fill="#6D84A3"></polygon>
+<polygon points="680,252 680,236 720,236 720,252" fill="#8DA2BE"></polygon>
+</g>
+<g stroke="#F4F6F9" stroke-width="1.6" stroke-linecap="round">
+<line x1="905" y1="252" x2="905" y2="206"></line><line x1="905" y1="206" x2="905" y2="186"></line><line x1="905" y1="206" x2="922" y2="214"></line><line x1="905" y1="206" x2="888" y2="214"></line>
+<line x1="950" y1="252" x2="950" y2="214"></line><line x1="950" y1="214" x2="958" y2="197"></line><line x1="950" y1="214" x2="968" y2="218"></line><line x1="950" y1="214" x2="934" y2="224"></line>
+</g>
+
+<polygon points="0,268 190,268 222,252 0,252" fill="#8DBE62"></polygon>
+<polygon points="190,268 418,268 440,252 222,252" fill="#A9CC6E"></polygon>
+<polygon points="418,268 640,268 650,252 440,252" fill="#7DB257"></polygon>
+<polygon points="640,268 1000,268 1000,252 650,252" fill="#D2C26A"></polygon>
+<polygon points="0,302 118,302 190,268 0,268" fill="#6FA650"></polygon>
+<polygon points="118,302 398,302 418,268 190,268" fill="#93C46A"></polygon>
+<polygon points="398,302 664,302 640,268 418,268" fill="#B5D47A"></polygon>
+<polygon points="664,302 1000,302 1000,268 640,268" fill="#82B85C"></polygon>
+<g stroke="#5A9BD0" fill="none">
+<line x1="0" y1="268" x2="1000" y2="268" stroke-width="1.5"></line>
+<line x1="0" y1="302" x2="1000" y2="302" stroke-width="2.5"></line>
+<line x1="190" y1="268" x2="118" y2="302" stroke-width="1.5"></line>
+<line x1="640" y1="268" x2="664" y2="302" stroke-width="1.5"></line>
+</g>
+
+<g>
+<polygon points="114,252 118,222 128,222 132,252" fill="#7A5A41"></polygon>
+<polygon points="123,252 128,222 132,252" fill="#5C412E"></polygon>
+<polygon points="114,222 123,212 132,222" fill="#4B3626"></polygon>
+<g stroke="#EFE7D9" stroke-width="2" stroke-linecap="round">
+<line x1="123" y1="218" x2="104" y2="198"></line><line x1="123" y1="218" x2="143" y2="238"></line><line x1="123" y1="218" x2="143" y2="198"></line><line x1="123" y1="218" x2="103" y2="238"></line>
+</g>
+</g>
+
+<polygon points="0,302 1000,302 1000,620 0,620" fill="#6FA650"></polygon>
+<polygon points="0,302 300,302 120,360" fill="#78B056"></polygon>
+<polygon points="420,302 760,302 600,350" fill="#67A04B"></polygon>
+<polygon points="760,302 1000,302 1000,345" fill="#7AB258"></polygon>
+<polygon points="0,470 260,455 0,540" fill="#64A049"></polygon>
+<polygon points="300,455 560,440 420,520" fill="#79B158"></polygon>
+
+<g>
+<polygon points="40,346 40,312 160,306 160,342" fill="#C7CDD6"></polygon>
+<polygon points="160,342 160,306 196,314 196,346" fill="#97A2B0"></polygon>
+<polygon points="40,312 70,296 130,292 160,306" fill="#E6EAF0"></polygon>
+<polygon points="160,306 130,292 170,300 196,314" fill="#B8C1CD"></polygon>
+<polygon points="62,346 62,322 138,318 138,343" fill="#5E6A7A"></polygon>
+<polygon points="0,350 40,346 196,346 150,356 0,358" fill="#4F8A3E" opacity="0.7"></polygon>
+</g>
+
+<g>
+<polygon points="232,330 238,306 244,330" fill="#5FA04E"></polygon><polygon points="238,306 244,330 250,330" fill="#3E7A3C"></polygon>
+<polygon points="252,332 259,302 266,332" fill="#66A853"></polygon><polygon points="259,302 266,332 273,332" fill="#3B763A"></polygon>
+<polygon points="276,330 282,310 288,330" fill="#5FA04E"></polygon><polygon points="282,310 288,330 294,330" fill="#3E7A3C"></polygon>
+<polygon points="296,333 303,305 310,333" fill="#62A450"></polygon><polygon points="303,305 310,333 317,333" fill="#3E7A3C"></polygon>
+<polygon points="850,326 857,298 864,326" fill="#62A450"></polygon><polygon points="857,298 864,326 871,326" fill="#3B763A"></polygon>
+<polygon points="874,328 880,306 886,328" fill="#5FA04E"></polygon><polygon points="880,306 886,328 892,328" fill="#3E7A3C"></polygon>
+<polygon points="896,326 904,294 912,326" fill="#66A853"></polygon><polygon points="904,294 912,326 920,326" fill="#3B763A"></polygon>
+<polygon points="924,328 930,308 936,328" fill="#5FA04E"></polygon><polygon points="930,308 936,328 942,328" fill="#3E7A3C"></polygon>
+<polygon points="950,326 958,296 966,326" fill="#62A450"></polygon><polygon points="958,296 966,326 974,326" fill="#3E7A3C"></polygon>
+</g>
+
+<polygon points="650,371 712,368 770,258 758,258" fill="#4A4F58"></polygon>
+<polygon points="680,370 712,368 770,258 764,258" fill="#3E434B"></polygon>
+<line x1="696" y1="369" x2="764" y2="259" stroke="#E8ECF1" stroke-width="1" stroke-dasharray="6 6"></line>
+
+<polygon points="0,396 1000,364 1000,394 0,456" fill="#5B6068"></polygon>
+<polygon points="0,402 1000,367 1000,390 0,450" fill="#3A3F48"></polygon>
+<polygon points="0,402 520,384 0,426" fill="#424750"></polygon>
+<line x1="0" y1="426" x2="1000" y2="378.5" stroke="#E8ECF1" stroke-width="2" stroke-dasharray="24 20"></line>
+<g stroke="#F2F4F7" stroke-width="3">
+<line x1="30" y1="407" x2="92" y2="404"></line><line x1="30" y1="413" x2="92" y2="409"></line><line x1="30" y1="419" x2="92" y2="414"></line>
+<line x1="30" y1="433" x2="92" y2="426"></line><line x1="30" y1="439" x2="92" y2="431"></line><line x1="30" y1="445" x2="92" y2="436"></line>
+</g>
+<text x="104" y="434" fill="#F2F4F7" font-size="20" font-weight="700" font-family="Inter, sans-serif" transform="rotate(-3 104 434)">24</text>
+<g fill="#FFF2C2">
+<circle cx="60" cy="400" r="1.8"></circle><circle cx="160" cy="397" r="1.8"></circle><circle cx="260" cy="393" r="1.7"></circle><circle cx="360" cy="390" r="1.6"></circle><circle cx="460" cy="386" r="1.5"></circle><circle cx="560" cy="383" r="1.4"></circle><circle cx="660" cy="380" r="1.3"></circle><circle cx="760" cy="376" r="1.2"></circle><circle cx="860" cy="373" r="1.1"></circle><circle cx="960" cy="369" r="1"></circle>
+<circle cx="60" cy="451" r="2"></circle><circle cx="160" cy="445" r="2"></circle><circle cx="260" cy="439" r="1.9"></circle><circle cx="360" cy="433" r="1.8"></circle><circle cx="460" cy="427" r="1.7"></circle><circle cx="560" cy="421" r="1.6"></circle><circle cx="660" cy="415" r="1.5"></circle><circle cx="760" cy="409" r="1.4"></circle><circle cx="860" cy="403" r="1.3"></circle><circle cx="960" cy="397" r="1.2"></circle>
+</g>
+<g>
+<circle cx="200" cy="466" r="2.4" fill="#FF5A4E"></circle><circle cx="208" cy="465" r="2.4" fill="#FF5A4E"></circle><circle cx="216" cy="465" r="2.4" fill="#FFFFFF"></circle><circle cx="224" cy="464" r="2.4" fill="#FFFFFF"></circle>
+</g>
+
+<polygon points="0,474 1000,410 1000,422 0,492" fill="#4A505A"></polygon>
+<line x1="0" y1="483" x2="1000" y2="416" stroke="#F2C230" stroke-width="1.6"></line>
+<polygon points="420,620 560,620 520,452 480,454" fill="#4A505A"></polygon>
+<polygon points="470,446 506,444 520,452 480,454" fill="#4A505A"></polygon>
+<path d="M490 620 C 492 540, 496 480, 497 446" fill="none" stroke="#F2C230" stroke-width="1.6"></path>
+<line x1="480" y1="460" x2="524" y2="458" stroke="#F2C230" stroke-width="2.5" stroke-dasharray="4 3"></line>
+<g fill="#5AA8FF">
+<circle cx="418" cy="560" r="1.8"></circle><circle cx="438" cy="520" r="1.6"></circle><circle cx="452" cy="488" r="1.5"></circle><circle cx="560" cy="560" r="1.8"></circle><circle cx="540" cy="520" r="1.6"></circle><circle cx="528" cy="488" r="1.5"></circle>
+</g>
+
+<polygon points="560,620 1000,620 1000,520 600,560" fill="#8E959F"></polygon>
+<polygon points="600,560 1000,520 1000,540 640,575" fill="#9CA3AC"></polygon>
+<g stroke="#F2C230" stroke-width="1.4" fill="none"><line x1="700" y1="620" x2="760" y2="560"></line><line x1="860" y1="620" x2="900" y2="548"></line></g>
+
+<g>
+<polygon points="690,488 1000,462 1000,478 700,506" fill="#E3E7EC"></polygon>
+<polygon points="700,506 1000,478 1000,548 700,574" fill="#7F95AE"></polygon>
+<polygon points="704,514 1000,488 1000,512 704,540" fill="#8FCDEF"></polygon>
+<polygon points="760,509 860,500 830,526 740,535" fill="#C9EBFB" opacity="0.6"></polygon>
+<g stroke="#5D7592" stroke-width="1"><line x1="760" y1="509" x2="760" y2="535"></line><line x1="820" y1="503" x2="820" y2="530"></line><line x1="880" y1="498" x2="880" y2="524"></line><line x1="940" y1="493" x2="940" y2="518"></line></g>
+<polygon points="690,488 700,506 700,574 686,560" fill="#5F7591"></polygon>
+<polygon points="790,552 850,545 852,556 792,563" fill="#B0B9C4"></polygon>
+<polygon points="792,563 852,556 852,566 794,572" fill="#8A95A3"></polygon>
+</g>
+
+<g transform="translate(905 588) scale(-0.95 0.95)">
+<polygon points="-60,14 60,10 74,22 -46,26" fill="#000000" opacity="0.22"></polygon>
+<polygon points="-5,-2 20,-2 -10,-22 -22,-22" fill="#AEB8C4"></polygon>
+<polygon points="-60,-6 40,-8 58,-4 62,0 -58,0" fill="#F4F6F9"></polygon>
+<polygon points="-58,0 62,0 54,5 -50,6" fill="#C5CED9"></polygon>
+<polygon points="56,-6 68,-1 56,5" fill="#E1E6EC"></polygon>
+<polygon points="54,-5 60,-3 56,-2 52,-3" fill="#2C3E57"></polygon>
+<line x1="-40" y1="-3.5" x2="46" y2="-4" stroke="#2C3E57" stroke-width="1.6" stroke-dasharray="2 2.5"></line>
+<polygon points="-48,-6 -58,-6 -70,-34 -60,-34" fill="#FF7A1A"></polygon>
+<polygon points="-56,-4 -46,-4 -66,4 -74,4" fill="#B9C3CE"></polygon>
+<polygon points="-12,2 18,2 -18,28 -34,28" fill="#D7DEE6"></polygon>
+<polygon points="-12,2 18,2 10,8" fill="#AEB8C4"></polygon>
+<polygon points="-4,8 14,8 16,14 -4,15" fill="#8D99A8"></polygon>
+<polygon points="14,8 18,11 14,15" fill="#3A4250"></polygon>
+</g>
+
+<g transform="translate(700 436) scale(0.8)">
+<polygon points="-60,14 60,10 74,22 -46,26" fill="#000000" opacity="0.22"></polygon>
+<polygon points="-5,-2 20,-2 -10,-22 -22,-22" fill="#AEB8C4"></polygon>
+<polygon points="-60,-6 40,-8 58,-4 62,0 -58,0" fill="#F4F6F9"></polygon>
+<polygon points="-58,0 62,0 54,5 -50,6" fill="#C5CED9"></polygon>
+<polygon points="56,-6 68,-1 56,5" fill="#E1E6EC"></polygon>
+<polygon points="54,-5 60,-3 56,-2 52,-3" fill="#2C3E57"></polygon>
+<line x1="-40" y1="-3.5" x2="46" y2="-4" stroke="#2C3E57" stroke-width="1.6" stroke-dasharray="2 2.5"></line>
+<line x1="-58" y1="-1" x2="56" y2="-1.5" stroke="#22B36A" stroke-width="1.4"></line>
+<polygon points="-48,-6 -58,-6 -70,-34 -60,-34" fill="#22B36A"></polygon>
+<polygon points="-56,-4 -46,-4 -66,4 -74,4" fill="#B9C3CE"></polygon>
+<polygon points="-12,2 18,2 -18,28 -34,28" fill="#D7DEE6"></polygon>
+<polygon points="-12,2 18,2 10,8" fill="#AEB8C4"></polygon>
+<polygon points="-4,8 14,8 16,14 -4,15" fill="#8D99A8"></polygon>
+<polygon points="14,8 18,11 14,15" fill="#3A4250"></polygon>
+</g>
+
+<g transform="translate(250 414) scale(1.15) rotate(-2)">
+<polygon points="-60,14 60,10 74,22 -46,26" fill="#000000" opacity="0.25"></polygon>
+<polygon points="-5,-2 20,-2 -10,-22 -22,-22" fill="#AEB8C4"></polygon>
+<polygon points="-60,-6 40,-8 58,-4 62,0 -58,0" fill="#F4F6F9"></polygon>
+<polygon points="-58,0 62,0 54,5 -50,6" fill="#1B6FD1"></polygon>
+<polygon points="56,-6 68,-1 56,5" fill="#E1E6EC"></polygon>
+<polygon points="54,-5 60,-3 56,-2 52,-3" fill="#2C3E57"></polygon>
+<line x1="-40" y1="-3.5" x2="46" y2="-4" stroke="#2C3E57" stroke-width="1.6" stroke-dasharray="2 2.5"></line>
+<polygon points="-48,-6 -58,-6 -70,-34 -60,-34" fill="#1B6FD1"></polygon>
+<polygon points="-52,-6 -58,-6 -66,-28" fill="#FFFFFF" opacity="0.2"></polygon>
+<polygon points="-56,-4 -46,-4 -66,4 -74,4" fill="#B9C3CE"></polygon>
+<polygon points="-12,2 18,2 -18,28 -34,28" fill="#D7DEE6"></polygon>
+<polygon points="-12,2 18,2 10,8" fill="#AEB8C4"></polygon>
+<polygon points="-4,8 14,8 16,14 -4,15" fill="#8D99A8"></polygon>
+<polygon points="14,8 18,11 14,15" fill="#3A4250"></polygon>
+<circle cx="66" cy="0" r="2" fill="#FFF3C4"></circle>
+</g>
+
+<g transform="translate(176 176) scale(0.5) rotate(9)">
+<polygon points="-5,-2 20,-2 -10,-22 -22,-22" fill="#AEB8C4"></polygon>
+<polygon points="-60,-6 40,-8 58,-4 62,0 -58,0" fill="#F4F6F9"></polygon>
+<polygon points="-58,0 62,0 54,5 -50,6" fill="#1B6FD1"></polygon>
+<polygon points="56,-6 68,-1 56,5" fill="#E1E6EC"></polygon>
+<line x1="-40" y1="-3.5" x2="46" y2="-4" stroke="#2C3E57" stroke-width="1.6" stroke-dasharray="2 2.5"></line>
+<polygon points="-48,-6 -58,-6 -70,-34 -60,-34" fill="#1B6FD1"></polygon>
+<polygon points="-56,-4 -46,-4 -66,4 -74,4" fill="#B9C3CE"></polygon>
+<polygon points="-12,2 18,2 -18,28 -34,28" fill="#D7DEE6"></polygon>
+<polygon points="-4,8 14,8 16,14 -4,15" fill="#8D99A8"></polygon>
+<polygon points="-4,15 2,15 2,22 -2,22" fill="#59616E"></polygon>
+<polygon points="30,4 34,4 34,12 30,12" fill="#59616E"></polygon>
+</g>
+<circle cx="207" cy="184" r="9" fill="#FFF3C4" opacity="0.35"></circle>
+<circle cx="207" cy="184" r="3.5" fill="#FFFBEA"></circle>
+
+<g>
+<line x1="256" y1="396" x2="256" y2="352" stroke="#5CC8FF" stroke-width="1.2"></line>
+<rect x="196" y="318" width="132" height="34" rx="6" fill="#0E2337" fill-opacity="0.9" stroke="#5CC8FF"></rect>
+<text x="205" y="333" fill="#E9F7FF" font-size="12" font-weight="700">KLM1601</text>
+<text x="205" y="346" fill="#9ADCFF" font-size="10">E190 · lined up 24</text>
+</g>
+<g>
+<line x1="700" y1="424" x2="700" y2="396" stroke="#C7D0DE" stroke-width="1.2"></line>
+<rect x="640" y="363" width="124" height="33" rx="6" fill="#0D1422" fill-opacity="0.88" stroke="#3A4C66"></rect>
+<text x="648" y="378" fill="#E6EBF2" font-size="12" font-weight="700">TRA5422</text>
+<text x="648" y="391" fill="#C7D0DE" font-size="10">B738 · taxi A3</text>
+</g>
+<g>
+<line x1="176" y1="164" x2="176" y2="134" stroke="#7AD7A8" stroke-width="1.2"></line>
+<rect x="106" y="100" width="150" height="34" rx="6" fill="#0F2420" fill-opacity="0.9" stroke="#3E8A68"></rect>
+<text x="114" y="115" fill="#7AD7A8" font-size="12" font-weight="700">KLM66P</text>
+<text x="114" y="128" fill="#A9E6C6" font-size="10">A332 · 3 NM final 18R</text>
+</g>
+<g>
+<line x1="880" y1="562" x2="880" y2="540" stroke="#C7D0DE" stroke-width="1.2"></line>
+<rect x="822" y="507" width="118" height="33" rx="6" fill="#0D1422" fill-opacity="0.88" stroke="#3A4C66"></rect>
+<text x="830" y="522" fill="#E6EBF2" font-size="12" font-weight="700">EZY81QK</text>
+<text x="830" y="535" fill="#C7D0DE" font-size="10">A320 · gate D7</text>
+</g>
+
+<polygon points="0,0 1000,0 1000,620 0,620" fill="none"></polygon>
+<polygon points="380,18 520,18 300,602 160,602" fill="#FFFFFF" opacity="0.035"></polygon>
+<g fill="#0A0F1A">
+<rect x="0" y="0" width="1000" height="16"></rect>
+<path d="M0 0 L18 0 L30 620 L0 620 Z"></path>
+<path d="M332 0 L342 0 L349 620 L339 620 Z"></path>
+<path d="M658 0 L668 0 L661 620 L651 620 Z"></path>
+<path d="M982 0 L1000 0 L1000 620 L970 620 Z"></path>
+<rect x="0" y="604" width="1000" height="16"></rect>
+</g>
+<line x1="0" y1="604" x2="1000" y2="604" stroke="#2A3850" stroke-width="1"></line>
+</svg>
+
+<div style="position: absolute; left: 50%; top: 30px; transform: translateX(-50%); display: flex; gap: 4px; padding: 3px; background: rgba(13,20,34,0.9); border: 1px solid #1F2A3D; border-radius: 8px">
+<button type="button" style="font: inherit; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 6px; border: 0; background: #1E3350; color: #E6EBF2; cursor: pointer">Tower cab</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 0; background: transparent; color: #C7D0DE; cursor: pointer">Binoculars (B)</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 0; background: transparent; color: #C7D0DE; cursor: pointer">Follow selected</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 0; background: transparent; color: #C7D0DE; cursor: pointer">Look ← →</button>
+</div>
+
+<div style="position: absolute; right: 16px; bottom: 16px; width: 240px; display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 10px; background: rgba(13,20,34,0.94); border: 1px solid #1F2A3D">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600; letter-spacing: 1.2px">GROUND RADAR</span><span>tap to expand</span></div>
+<svg viewBox="0 0 220 130" role="img" aria-label="Top-down ground radar inset" style="width: 100%; height: auto">
+<rect x="0" y="0" width="220" height="130" rx="4" fill="#0A0F1A"></rect>
+<line x1="20" y1="100" x2="200" y2="60" stroke="#6B7A93" stroke-width="5" stroke-linecap="round"></line>
+<line x1="70" y1="10" x2="70" y2="120" stroke="#6B7A93" stroke-width="5" stroke-linecap="round"></line>
+<path d="M40 120 L60 92 M130 120 L150 76" stroke="#B8962E" stroke-width="1.5" stroke-dasharray="3 3" fill="none"></path>
+<rect x="34" y="88" width="8" height="8" fill="#5CC8FF"></rect>
+<rect x="146" y="74" width="7" height="7" fill="#E6EBF2"></rect>
+<rect x="66" y="10" width="7" height="7" fill="#7AD7A8"></rect>
+<path d="M8 50 L216 50" stroke="#1F2A3D" stroke-dasharray="2 4"></path>
+<text x="12" y="44" fill="#4A5870" font-size="8" font-family="JetBrains Mono, monospace">FIELD VIEW ▲</text>
+</svg>
+</div>
+
+<div style="position: absolute; left: 16px; bottom: 16px; display: flex; gap: 6px">
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #1F2A3D; background: rgba(13,20,34,0.9); color: #C7D0DE; cursor: pointer">Day · Dusk · Night</button>
+<button type="button" style="font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #1F2A3D; background: rgba(13,20,34,0.9); color: #C7D0DE; cursor: pointer">Visibility 10 km</button>
+</div>
+</main>
+
+<aside style="width: 320px; flex: 0 0 320px; border-left: 1px solid #1F2A3D; background: #0D1422; display: flex; flex-direction: column; min-height: 0">
+<div style="padding: 14px 16px; border-bottom: 1px solid #1F2A3D; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #8B97AB">RADIO</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C7D0DE">118.280</span>
+</div>
+<div style="flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 2px solid #26354D">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600">KLM66P</span><span>14:01:58</span></div>
+<div style="line-height: 1.45; color: #C7D0DE">Schiphol Tower, KLM six six Papa, established ILS one eight right.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600; color: #5CC8FF">YOU</span><span>14:02:03</span></div>
+<div style="line-height: 1.45">KLM66P, runway 18R, wind 200 degrees 12 knots, cleared to land</div>
+<div style="font-size: 11px; color: #7AD7A8">✓ Readback correct</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600; color: #5CC8FF">YOU</span><span>14:02:20</span></div>
+<div style="line-height: 1.45">KLM1601, line up runway 24</div>
+<div style="font-size: 11px; color: #F5B04C">ICAO: "line up and wait runway 24"</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 12px; border-left: 2px solid #26354D">
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #8B97AB"><span style="font-weight: 600">KLM1601</span><span>14:02:23</span></div>
+<div style="line-height: 1.45; color: #C7D0DE">Lining up and waiting runway 24, KLM one six zero one.</div>
+</div>
+</div>
+</aside>
+</div>
+
+<footer style="border-top: 1px solid #1F2A3D; background: #0D1422; padding: 12px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+<button type="button" aria-label="Push to talk (hold Space)" style="width: 52px; height: 52px; border-radius: 26px; border: 2px solid #5CC8FF; background: #0E2337; color: #5CC8FF; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></button>
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px; min-width: 0">
+<span style="font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #5CC8FF">LISTENING</span>
+<div style="font-size: 16px; line-height: 1.35">KLM1601, wind 200 degrees 12 knots, runway 24, cleared for take-off<span style="color: #5CC8FF">▍</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<span style="padding: 5px 9px; border-radius: 6px; background: #0E2337; color: #9ADCFF; border: 1px solid #1E4466">KLM1601 ✓</span>
+<span style="padding: 5px 9px; border-radius: 6px; background: #182235; color: #C7D0DE; border: 1px solid #26354D">TKOF 24</span>
+<span style="padding: 5px 9px; border-radius: 6px; background: #241B0D; color: #F5B04C; border: 1px solid #5C4419">⚠ 66P on 18R short final</span>
+</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var plain = { bg: '#111A2B', border: '#1F2A3D', color: '#E6EBF2' };
+    return {
+      bays: [
+        { name: 'ARRIVALS', count: '18R', strips: [
+          { cs: 'KLM66P', state: 'cleared land', type: 'A332/H', where: '3 NM final', bg: '#0F2420', border: '#25503F', color: '#7AD7A8' },
+          Object.assign({ cs: 'KLM1234', state: 'on APP', type: 'B738/M', where: '14 NM' }, plain)
+        ] },
+        { name: 'RUNWAY 24', count: 'DEP', strips: [
+          { cs: 'KLM1601', state: 'lined up', type: 'E190/M', where: 'RWY 24', bg: '#0E2337', border: '#1E4466', color: '#9ADCFF' }
+        ] },
+        { name: 'TAXIING / HOLDING', count: '2', strips: [
+          Object.assign({ cs: 'TRA5422', state: 'taxi', type: 'B738/M', where: 'A3 → S1' }, plain),
+          Object.assign({ cs: 'EZY81QK', state: 'pushback', type: 'A320/M', where: 'gate D7' }, plain)
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

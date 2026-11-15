@@ -5,3 +5,4 @@ package-lock.json
 tests/phrases
 data
 *.md
+public/vendor

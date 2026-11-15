@@ -2,6 +2,7 @@ import ehamJson from '../../data/airports/EHAM.json';
 import { loadAirport, type AirportJson } from './airport/load';
 
 export * from './sim';
+export { Rng } from './rng';
 export * from './geo';
 export * from './commands/commands';
 export * from './airport/types';

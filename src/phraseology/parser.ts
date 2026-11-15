@@ -484,7 +484,11 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
     unknown: [],
   };
   let rest = ws.slice(m.consumed);
-  if (!m.callsign && !m.ambiguous && ctx.defaultCallsign) {
+  // Typed text may omit the callsign, but a callsign that is given and unknown must not fall back to the selection.
+  const namesAirline = ctx.airport.airlines.some((a) =>
+    [a.icao.toLowerCase(), a.telephony.toLowerCase().split(' ')[0]].includes(ws[0] ?? ''),
+  );
+  if (!m.callsign && !m.ambiguous && ctx.defaultCallsign && !namesAirline) {
     res.callsign = ctx.defaultCallsign;
     res.confidence = 1;
     rest = ws;

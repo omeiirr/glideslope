@@ -1,0 +1,3 @@
+{"input": "Speedbird 999 turn left heading 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"], "defaultCallsign": "KLM1234"}
+{"input": "KLM 777 descend flight level 60", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"], "defaultCallsign": "DLH9LK"}
+{"input": "reduce speed 220 knots", "expectedCallsign": "RYR7HB", "expectedCommands": [{"type": "speed", "speed": 220}], "expectedIssues": [], "defaultCallsign": "RYR7HB"}

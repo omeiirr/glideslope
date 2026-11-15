@@ -1,4 +1,4 @@
-import type { SpawnSpec, TrafficConfig } from '../core';
+import { EHAM, headingVec, runwayById, type SpawnSpec, type TrafficConfig } from '../core';
 
 /** Pure-data scenario description (JSON-compatible). */
 export interface Scenario {
@@ -16,6 +16,8 @@ export interface Scenario {
   spawns?: (SpawnSpec & { at: number })[];
   /** Tutorial lesson id (steps live in tutorials.ts). */
   lesson?: string;
+  /** Main view. Default: the radar scope. */
+  view?: 'tower';
 }
 
 /** The tutorial aircraft. */
@@ -35,6 +37,26 @@ const student = (x: number, y: number, hdg: number, alt: number, ias = 220): Spa
   ias,
   onFrequency: true,
 });
+
+const FINAL = runwayById(EHAM, EHAM.config.landing);
+const TOWER_TYPES = ['B738', 'A320', 'E190', 'A332', 'B738', 'A321', 'B77W', 'A20N', 'B789', 'E195'];
+const TOWER_AIRLINES = ['KLM', 'EZY', 'KLM', 'KLM', 'TRA', 'BAW', 'KLM', 'DLH', 'TFL', 'KLM'];
+/** A steady stream of arrivals already lined up on the final, one every 2.5 minutes. */
+const towerArrivals = (count: number): (SpawnSpec & { at: number })[] =>
+  Array.from({ length: count }, (_, i) => {
+    const out = headingVec(FINAL.heading + 180, i === 0 ? 5 : 13);
+    return {
+      at: i === 0 ? 0 : 20 + (i - 1) * 150,
+      kind: 'arrival' as const,
+      callsign: `${TOWER_AIRLINES[i % 10]}${1200 + ((i * 137) % 700)}`,
+      type: TOWER_TYPES[i % 10],
+      pos: { x: FINAL.pos.x + out.x, y: FINAL.pos.y + out.y },
+      hdg: FINAL.heading,
+      alt: i === 0 ? 1500 : 3000,
+      ias: i === 0 ? 170 : 190,
+      onFrequency: true,
+    };
+  });
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -105,6 +127,17 @@ export const SCENARIOS: Scenario[] = [
     seed: 0,
     durationMin: 0,
     traffic: { arrivalsPerHour: 12, departuresPerHour: 4, alnumCallsigns: 0 },
+  },
+  {
+    id: 'tower-preview',
+    view: 'tower',
+    name: 'Tower view (preview)',
+    blurb: 'Watch arrivals land on 18R from the tower cab, in 3D. A first look: no tower commands yet.',
+    mode: 'beginner',
+    seed: 7,
+    durationMin: 0,
+    traffic: { arrivalsPerHour: 0, departuresPerHour: 14 },
+    spawns: towerArrivals(40),
   },
   {
     id: 'pro-light',

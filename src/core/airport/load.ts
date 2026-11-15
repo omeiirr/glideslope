@@ -1,11 +1,12 @@
 import { project } from '../geo';
-import type { Airport, Runway } from './types';
+import type { Airport, Runway, Tower } from './types';
 
 type LatLon = [number, number];
 /** Shape of data/airports/*.json (positions as [lat, lon]). */
-export interface AirportJson extends Omit<Airport, 'airspace' | 'runways' | 'fixes'> {
+export interface AirportJson extends Omit<Airport, 'airspace' | 'runways' | 'fixes' | 'towers'> {
   airspace: { floorFt: number; ceilingFt: number; poly: number[][] };
   runways: Omit<Runway, 'pos'>[];
+  towers: Omit<Tower, 'pos'>[];
   fixes: Record<string, number[]>;
 }
 
@@ -15,6 +16,7 @@ export function loadAirport(json: AirportJson): Airport {
     ...json,
     airspace: { ...json.airspace, poly: json.airspace.poly.map(p) },
     runways: json.runways.map((r) => ({ ...r, pos: p([r.lat, r.lon]) })),
+    towers: json.towers.map((t) => ({ ...t, pos: p([t.lat, t.lon]) })),
     fixes: Object.fromEntries(Object.entries(json.fixes).map(([k, v]) => [k, p(v)])),
   };
 }

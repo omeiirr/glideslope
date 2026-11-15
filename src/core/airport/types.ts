@@ -26,6 +26,22 @@ export interface Airline {
   types: string[];
 }
 
+/** A control tower cab the player can look out of (tower mode). */
+export interface Tower {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  /** Projected position. */
+  pos: Vec;
+  /** Eye height above the aerodrome, feet. */
+  eyeHeightFt: number;
+  /** Runways watched from this cab. */
+  runways: string[];
+  /** Default view direction, degrees true. */
+  viewBearing: number;
+}
+
 export interface Airport {
   icao: string;
   name: string;
@@ -42,6 +58,7 @@ export interface Airport {
   config: { landing: string; departure: string };
   missedApproachAltFt: number;
   runways: Runway[];
+  towers: Tower[];
   fixes: Record<string, Vec>;
   stars: { id: string; iaf: string; via: string[] }[];
   holds: Record<string, { inbound: number }>;

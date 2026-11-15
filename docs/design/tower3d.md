@@ -1,6 +1,6 @@
 # Tower mode (3D) — design
 
-Status: **design, not built.** Scope **B** (tower controller, no ground control). Scope C (ground and taxi) may come later; nothing here should block it.
+Status: **T1 built** (3D view of existing traffic, "Tower view (preview)" scenario); T2–T6 not started. Scope **B** (tower controller, no ground control). Scope C (ground and taxi) may come later; nothing here should block it.
 
 Boards: `TowerWest.dc.html`, `TowerCentreDusk.dc.html`, `TowerBinoculars.dc.html`, `TowerRealistic.dc.html` (on the project's design canvas, copied here). `Tower3D.dc.html` on the canvas is the earlier hand-drawn concept that set the low-poly direction.
 The out-the-window pictures come from `tower3d-sketch/` (a throwaway three.js scene, see its README). They are renders, not drawings: the game renderer would draw the same thing.
@@ -21,7 +21,7 @@ The Polderbaan (18R) is too far from the central tower to see (6.8 km), so Schip
 
 | Cab | Position (OSM) | Height | Eye height (assumed) | Default view |
 |---|---|---|---|---|
-| Tower West | 52.3317 N, 4.7179 E | 60 m | 54 m | 340°, the 18R final and touchdown zone |
+| Tower West | 52.3317 N, 4.7179 E | 60 m | 54 m | 352°, the 18R final and touchdown zone |
 | Centre | 52.3075 N, 4.7624 E | 101 m | 92 m | 145°, along runway 24 |
 
 In reality these are two controllers on different positions. In the game, one player works both: a simplification to record in DECISIONS.md.
@@ -47,10 +47,13 @@ Layout (the `TowerWest` board):
 
 ## 3. Art direction
 
-- Low-poly, flat-shaded (`MeshLambertMaterial` with flat shading), one hemisphere light plus one sun, exponential fog for haze. No textures except the runway designators, no shadows in v1.
-- **Geometry from data:** runways from `EHAM.json` (threshold, true heading, length, width) with piano keys, aiming points, centreline, designators, edge lights, approach lights on 18R.
-- **Aircraft are procedural:** fuselage cylinder, nose and tail cones, extruded swept wings and tail, engines, gear when down, real length/span per type. The airline colour goes on the tail and belly stripe only (no logos). No model files, so no licences.
-- **Generic scenery:** a polder field grid with ditches, tree rows, farmsteads, wind turbines, a hazy Amsterdam skyline, generic terminal blocks and apron. **The terminal, taxiways and fields are not the real layout.** Scope C would need real taxiway data.
+**Clean semi-realistic** (approved from the style test, `tower3d-sketch/style-test/`). The first low-poly renders on the earlier boards are superseded.
+
+- **Ground:** real aerial imagery (PDOK Luchtfoto 2024, CC BY 4.0), so the real runways, markings, taxiways and exits are there. Three tiers: a coarse base, the airport at about 4 m per pixel, and corridors along 18R and 24 at about 1 m per pixel. Total download about 8 MB, tiles of 2048 px or less.
+- **Sky:** gradient dome, soft billboard clouds, exponential haze, film-style tone mapping.
+- **Aircraft are procedural and smooth-shaded:** lathe fuselage with a window line and airline colour blocks (no logos), swept wings, engines, gear when down, real length and span per type. No model files, so no licences.
+- **Shadows:** a soft planform decal under each aircraft near the ground, not a shadow map (cheap, and it covers every aircraft).
+- **Not 3D yet:** buildings and trees are flat photos. Dusk and night lighting comes in step T5.
 
 ## 4. Commands and phraseology (ICAO Doc 4444 §12.3.4, CAP 413 ch. 4)
 

@@ -100,11 +100,15 @@ export function Menu({
         )}
         {group(
           'Free play',
-          SCENARIOS.filter((s) => !s.lesson && s.mode === 'beginner'),
+          SCENARIOS.filter((s) => !s.lesson && !s.view && s.mode === 'beginner'),
+        )}
+        {group(
+          'Tower (preview)',
+          SCENARIOS.filter((s) => s.view === 'tower'),
         )}
         {group(
           'Professional scenarios',
-          SCENARIOS.filter((s) => !s.lesson && s.mode === 'pro'),
+          SCENARIOS.filter((s) => !s.lesson && !s.view && s.mode === 'pro'),
         )}
         <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
           <span style="display:flex;gap:8px">

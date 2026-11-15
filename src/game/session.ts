@@ -158,7 +158,18 @@ export class Session {
 
   // ------------------------------------------------------------ main loop
 
-  /** Advance by real elapsed milliseconds. Call once per animation frame. */
+  private lastFrame: number | null = null;
+  /**
+   * Advance to an animation-frame timestamp. Every view calls this from its own frame loop;
+   * only the first call in a frame moves time, so two views never run the sim at double speed.
+   */
+  frame(now: number) {
+    const dt = this.lastFrame === null ? 0 : now - this.lastFrame;
+    this.lastFrame = now;
+    if (dt > 0) this.update(dt);
+  }
+
+  /** Advance by real elapsed milliseconds. */
   update(realMs: number) {
     this.radio.update();
     if (this.paused || this.finished) return;
@@ -182,6 +193,9 @@ export class Session {
     while (this.spawnsLeft.length && this.spawnsLeft[0]!.at <= this.sim.time) {
       const { at: _at, ...spec } = this.spawnsLeft.shift()!;
       const ac = this.sim.spawn(spec);
+      // shortcut: stands in for the AI approach controller, replace it when that exists (tower step T4)
+      if (this.scenario.view === 'tower' && spec.kind === 'arrival')
+        this.sim.command(ac.callsign, [{ type: 'ils', runway: this.sim.env.landing.id }]);
       if (spec.onFrequency) this.contacted.add(ac.callsign);
     }
   }

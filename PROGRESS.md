@@ -1,6 +1,6 @@
 # Progress
 
-## Current milestone: M8 Polish (mostly done; remaining items need a human)
+## Current milestone: M9 Tower mode, step T1 done (M8 remaining items need a human)
 
 ## Done
 - **M0 Scaffold** — Vite + TS strict + Preact + Vitest + ESLint/Prettier, CI + Pages workflows, app shell.
@@ -12,8 +12,10 @@
 - **M6 Game layer** — Beginner/Pro rules, scoring, readback errors (catch/miss/debrief), 5 tutorial lessons, free play, 3 Pro scenarios, debrief, localStorage settings + progress. Session logic covered by headless tests; all 5 lessons verified completable by following their instructions with a slow reader; all 3 Pro scenarios run to the end without errors.
 - **M7 Realistic display** — STARS-like scope with 4 s sweep, DCB, text overlays.
 - **M8 Polish (partial)** — pilot voices normalised to equal loudness; axe-core reports no violations on menu, settings, both game displays and debrief; scope text colours raised to ≥4.5:1; dialogs trap focus, close on Escape and return focus; PTT key no longer fires inside dialogs; keyboard-only play verified (Tab/Enter to select a strip, Enter for the command line); README with screenshots; Learn reference screen (phonetics, values, commands, altimetry, approach concepts, with listen buttons).
+- **M9/T1 Tower view of existing traffic**: "Tower view (preview)" scenario in its own menu group. three.js view from Tower West or the central tower (keys 1/2), PDOK aerial ground (5.2 MB), sky, haze, procedural aircraft per type with colour-block liveries, gear, decal shadows, HTML labels (click to select), drag or ←/→ to look, hold B for binoculars that follow the selected aircraft. three.js is a separate chunk (~134 kB gzip) loaded only when the tower view opens; the radar bundle is unchanged. Verified in headless Chromium (SwiftShader): no console errors, axe clean, draw time under 1 ms with 3 aircraft. Georeferencing tested (thresholds map onto the photo).
 
 ## Next
+0. **Tower T1 on real hardware:** open Tower view (preview) in Chrome and check smoothness. In dev builds `__towerMs` (draw time) and `__towerStats` are on `window`. Then T2: rollout, exits, take-off roll, runway occupancy.
 1. Manual test with a real microphone in Chrome (WebGPU, whisper-base: check the 1.5 s readback target) and Firefox (WASM fallback).
 2. Listen to the Piper voices and radio FX by ear.
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
@@ -26,3 +28,5 @@
 - espeak-ng (inside the phonemizer WASM) is GPL-3.0: licence compatibility needs a decision before public release (see THIRD_PARTY.md).
 - Departures from 24 don't interact with arrivals on 18R in the sim (no runway occupancy model).
 - Holds are direct-entry only.
+- Tower preview: arrivals disappear at touchdown and departures spawn airborne, so the runways look empty until T2 (rollout and take-off roll).
+- Tower labels near the right edge of the window are clipped.

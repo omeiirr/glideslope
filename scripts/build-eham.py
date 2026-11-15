@@ -80,6 +80,12 @@ out = {
     "holds": {"ARTIP": {"inbound": 253}, "RIVER": {"inbound": 46}, "SUGOL": {"inbound": 112}},
     # Departure exits usable from runway 24 without crossing the 18R final.
     "departures": {"initialClimbFt": 6000, "exits": ["LEKKO", "LOPIK", "ARNEM", "VALKO"]},
+    # Control tower cabs for tower mode. Positions and heights from OpenStreetMap (aeroway=tower):
+    # West 60 m, Centre 101 m. Eye heights (54 m, 92 m) are assumed, a little below the roof.
+    "towers": [
+        {"id": "west", "name": "Tower West", "lat": 52.3317, "lon": 4.71787, "eyeHeightFt": 177, "runways": ["18R"], "viewBearing": 352},
+        {"id": "centre", "name": "Centre", "lat": 52.30752, "lon": 4.76244, "eyeHeightFt": 302, "runways": ["24"], "viewBearing": 145},
+    ],
     "airlines": [
         {"icao": "KLM", "telephony": "KLM", "weight": 34, "types": ["B738", "B738", "E190", "E195", "A332", "B772", "B77W", "B789"]},
         {"icao": "TRA", "telephony": "Transavia", "weight": 12, "types": ["B738"]},

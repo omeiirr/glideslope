@@ -11,7 +11,7 @@ Inspiration: openScope (radar sim, unmaintained for about 4 years) plus the voic
 ### Non-goals for v1 (do NOT build these)
 - Multiplayer, accounts, any server or backend
 - Mobile or touch layouts (desktop browsers only; the UI must not break on small screens, but it doesn't need to be good there)
-- Tower mode / 3D view. **Do keep the seam for it** (see §6).
+- Ground control, taxiing and pushback (tower mode covers the runways only, see §6).
 - More than one airport
 - En-route / area control
 
@@ -32,7 +32,8 @@ Inspiration: openScope (radar sim, unmaintained for about 4 years) plus the voic
 ## 3. Tech stack
 
 - **TypeScript (strict)**, **Vite**, **Vitest** for tests, ESLint + Prettier.
-- **Scope rendering:** Canvas 2D (one canvas, redrawn per frame). No WebGL in v1.
+- **Scope rendering:** Canvas 2D (one canvas, redrawn per frame).
+- **Tower view:** three.js (WebGL), loaded with a dynamic `import()` only when tower mode starts, so the radar game's bundle and start-up are unaffected. Ground imagery is downloaded on entering tower mode (budget: about 8 MB).
 - **Side panels and overlays:** Preact (small, fast). Keep UI state out of the sim core.
 - **Speech recognition (ASR):** Whisper via `@huggingface/transformers` (transformers.js) in a **Web Worker**.
   - Default: `whisper-base.en` on WebGPU.
@@ -87,9 +88,14 @@ Rules:
 - Frequencies (configurable in the data file): Approach (player), Tower 18R (handoff target).
 - Wind: a data-driven surface wind (affects groundspeed, and runway choice later). Default 200/12.
 
-## 6. Future tower mode seam (don't build it, design for it)
+## 6. Tower mode (added after v1; design in `docs/design/tower3d.md`)
 
-The core must not assume radar-only views. Aircraft state includes lat/lon, altitude, heading, speed, vertical speed, pitch-ish phase (approach / landing / rollout) so a future `render/tower3d/` (three.js) can be added. Keep runway geometry in true coordinates (lat/lon plus heading, length and width).
+The player is Schiphol Tower: landing, line-up and take-off clearances, vacating, handoffs. An AI Approach feeds arrivals. No ground control or taxiing. Two cabs as at the real airport: Tower West for 18R and the central tower for 24.
+
+- The core must not assume radar-only views. Aircraft state includes position, altitude, heading, speed, vertical speed and phase; runway geometry is in true coordinates (lat/lon plus heading, length and width).
+- `render/tower3d/` reads core state only, like the scope renderers. Maths that doesn't need WebGL (projection, camera, aircraft pose) lives in a DOM-free module with tests.
+- Look: clean semi-realistic. Real aerial imagery as the ground (PDOK Luchtfoto, CC BY 4.0), gradient sky and haze, smooth procedural aircraft. No third-party 3D models.
+- Everything that can be done in the 3D window must also be possible from the strips and the keyboard.
 
 ## 7. Commands, phraseology and feedback
 
@@ -188,6 +194,7 @@ Scenarios: a JSON scenario format (seed, traffic list or spawn rates, wind, dura
 7. **M6 Game layer:** Beginner/Pro rules, conflict prediction, wake, scoring, scenarios, tutorial, debrief screen.
 8. **M7 Realistic display mode.**
 9. **M8 Polish:** settings, persistence, accessibility pass, performance pass, README with screenshots, `THIRD_PARTY.md` complete.
+10. **M9 Tower mode** (see `docs/design/tower3d.md`), in steps: T1 3D view of existing traffic; T2 sim (rollout, exits, take-off roll, runway occupancy); T3 tower commands and phraseology; T4 tower game (AI Approach, rules, scoring, scenarios); T5 tower screen (desk, ground radar, dusk/night, Realistic variant); T6 lessons and polish.
 
 ## 12. Working autonomously
 

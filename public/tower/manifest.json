@@ -1,0 +1,140 @@
+{
+ "source": "PDOK Luchtfoto Beeldmateriaal 2024 25cm RGB",
+ "layer": "2024_ortho25",
+ "licence": "CC BY 4.0",
+ "attribution": "Aerial imagery: Beeldmateriaal Nederland / PDOK, CC BY 4.0",
+ "tiers": [
+  {
+   "name": "base",
+   "metresPerPixel": 30,
+   "tiles": [
+    {
+     "file": "base_0_0.webp",
+     "south": 52.0380816,
+     "west": 4.3226073,
+     "north": 52.5780384,
+     "east": 5.2057327,
+     "w": 2000,
+     "h": 2000
+    }
+   ]
+  },
+  {
+   "name": "airport",
+   "metresPerPixel": 4,
+   "tiles": [
+    {
+     "file": "airport_0_0.webp",
+     "south": 52.3125596,
+     "west": 4.6464199,
+     "north": 52.3755546,
+     "east": 4.7347325,
+     "w": 1500,
+     "h": 1750
+    },
+    {
+     "file": "airport_0_1.webp",
+     "south": 52.2495647,
+     "west": 4.6464199,
+     "north": 52.3125596,
+     "east": 4.7347325,
+     "w": 1500,
+     "h": 1750
+    },
+    {
+     "file": "airport_1_0.webp",
+     "south": 52.3125596,
+     "west": 4.7347325,
+     "north": 52.3755546,
+     "east": 4.823045,
+     "w": 1500,
+     "h": 1750
+    },
+    {
+     "file": "airport_1_1.webp",
+     "south": 52.2495647,
+     "west": 4.7347325,
+     "north": 52.3125596,
+     "east": 4.823045,
+     "w": 1500,
+     "h": 1750
+    }
+   ]
+  },
+  {
+   "name": "rwy18R",
+   "metresPerPixel": 1.0,
+   "tiles": [
+    {
+     "file": "rwy18R_0_0.webp",
+     "south": 52.3557604,
+     "west": 4.7006909,
+     "north": 52.372859,
+     "east": 4.7244912,
+     "w": 1617,
+     "h": 1900
+    },
+    {
+     "file": "rwy18R_0_1.webp",
+     "south": 52.3386617,
+     "west": 4.7006909,
+     "north": 52.3557604,
+     "east": 4.7244912,
+     "w": 1617,
+     "h": 1900
+    },
+    {
+     "file": "rwy18R_0_2.webp",
+     "south": 52.3215631,
+     "west": 4.7006909,
+     "north": 52.3386617,
+     "east": 4.7244912,
+     "w": 1617,
+     "h": 1900
+    }
+   ]
+  },
+  {
+   "name": "rwy24",
+   "metresPerPixel": 1.2,
+   "tiles": [
+    {
+     "file": "rwy24_0_0.webp",
+     "south": 52.2983263,
+     "west": 4.7299306,
+     "north": 52.3120196,
+     "east": 4.7573958,
+     "w": 1555,
+     "h": 1268
+    },
+    {
+     "file": "rwy24_0_1.webp",
+     "south": 52.284633,
+     "west": 4.7299306,
+     "north": 52.2983263,
+     "east": 4.7573958,
+     "w": 1555,
+     "h": 1268
+    },
+    {
+     "file": "rwy24_1_0.webp",
+     "south": 52.2983263,
+     "west": 4.7573958,
+     "north": 52.3120196,
+     "east": 4.7848787,
+     "w": 1556,
+     "h": 1268
+    },
+    {
+     "file": "rwy24_1_1.webp",
+     "south": 52.284633,
+     "west": 4.7573958,
+     "north": 52.2983263,
+     "east": 4.7848787,
+     "w": 1556,
+     "h": 1268
+    }
+   ]
+  }
+ ]
+}

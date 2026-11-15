@@ -6,3 +6,4 @@ tests/phrases
 data
 *.md
 public/vendor
+public/tower

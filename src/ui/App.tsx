@@ -12,6 +12,7 @@ import { Debrief, HelpCard, Menu, SettingsDialog, TutorialCard, type Progress } 
 import { PttBar, RadioPanel, Strips, TopBar } from './panels';
 import { RealisticChrome, RealisticDcb } from './realistic';
 import { ScopeView } from './ScopeView';
+import { TowerView } from './TowerView';
 
 export const APP_NAME = 'Vectors';
 const RANGES = [40, 60, 20];
@@ -248,7 +249,8 @@ interface GameProps {
 function Game(p: GameProps) {
   const { session, settings } = p;
   useSession(session);
-  const realistic = settings.display === 'realistic';
+  const tower = session.scenario.view === 'tower';
+  const realistic = settings.display === 'realistic' && !tower;
   const replay =
     settings.tts === 'off'
       ? undefined
@@ -298,14 +300,18 @@ function Game(p: GameProps) {
           <h1 class="sr-only">
             {APP_NAME} · {session.scenario.name}
           </h1>
-          <ScopeView
-            session={session}
-            realistic={realistic}
-            dcb={p.dcb}
-            range={p.range}
-            recenter={p.recenter}
-            onCycleRange={p.onCycleRange}
-          />
+          {tower ? (
+            <TowerView session={session} />
+          ) : (
+            <ScopeView
+              session={session}
+              realistic={realistic}
+              dcb={p.dcb}
+              range={p.range}
+              recenter={p.recenter}
+              onCycleRange={p.onCycleRange}
+            />
+          )}
           {realistic && (
             <RealisticChrome
               session={session}
@@ -316,7 +322,7 @@ function Game(p: GameProps) {
             />
           )}
           {session.lesson && !session.finished && <TutorialCard session={session} onInsert={p.insert} />}
-          {!realistic && !session.lesson && session.mode === 'beginner' && (
+          {!realistic && !tower && !session.lesson && session.mode === 'beginner' && (
             <HelpCard session={session} onInsert={p.insert} />
           )}
           {session.paused && !session.finished && (

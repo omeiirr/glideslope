@@ -496,5 +496,29 @@
     "PC12"
    ]
   }
+ ],
+ "towers": [
+  {
+   "id": "west",
+   "name": "Tower West",
+   "lat": 52.3317,
+   "lon": 4.71787,
+   "eyeHeightFt": 177,
+   "runways": [
+    "18R"
+   ],
+   "viewBearing": 352
+  },
+  {
+   "id": "centre",
+   "name": "Centre",
+   "lat": 52.30752,
+   "lon": 4.76244,
+   "eyeHeightFt": 302,
+   "runways": [
+    "24"
+   ],
+   "viewBearing": 145
+  }
  ]
 }

@@ -43,11 +43,9 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
     ro.observe(canvas);
     resize();
     let raf = 0;
-    let last = performance.now();
     const frame = (now: number) => {
       const { session: s, realistic: real, dcb: opts } = live.current;
-      s.update(now - last);
-      last = now;
+      s.frame(now);
       const st = s.settings;
       const scene: Scene = {
         sim: s.sim,

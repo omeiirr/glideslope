@@ -220,9 +220,11 @@ export function Strips({ session }: { session: Session }) {
             <span>{where}</span>
             <span>
               {ac.kind === 'departure' ? '↑ ' : ''}
-              {ac.tgtAlt > EHAM.transitionAltitudeFt
-                ? String(Math.round(ac.tgtAlt / 100)).padStart(3, '0')
-                : ac.tgtAlt}
+              {
+                ac.tgtAlt > EHAM.transitionAltitudeFt
+                  ? String(Math.round(ac.tgtAlt / 100)).padStart(3, '0')
+                  : Math.round(ac.tgtAlt / 100) * 100 /* on the glideslope the target is not a round number */
+              }
             </span>
           </span>
         </span>

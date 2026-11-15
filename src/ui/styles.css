@@ -982,3 +982,129 @@ dl.defs dd {
     border-bottom: 1px solid var(--line);
   }
 }
+
+/* ---------------------------------------------------------------- tower view */
+.tower {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #c6d9ea;
+}
+.tower canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+.tower-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.tower-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* anchor sits under the label's lower-left corner */
+  margin: -46px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(10, 15, 26, 0.78);
+  color: var(--text);
+  font: 11px/1.3 var(--mono);
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.tower-label span {
+  color: var(--text2);
+}
+.tower-label.est {
+  border-color: var(--green);
+}
+.tower-label.est b {
+  color: var(--green);
+}
+.tower-label.sel {
+  border-color: var(--blue);
+  background: rgba(14, 35, 55, 0.92);
+}
+.tower-label.sel b {
+  color: var(--blue-text);
+}
+.tower-tools {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.tower-tools .chipbtn,
+.tower-tools .seg {
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: rgba(13, 20, 34, 0.88);
+  color: var(--text2);
+}
+.tower-tools .seg {
+  padding: 2px;
+}
+.tower-tools .chipbtn[aria-pressed='true'] {
+  background: #1e3350;
+  color: var(--text);
+}
+.tower kbd {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  font: 10px var(--mono);
+  color: var(--dim);
+}
+.tower-bino {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.92);
+  /* dark everywhere outside both eyepieces */
+  mask-image:
+    radial-gradient(circle at 37% 50%, transparent 0 27vh, #000 28vh),
+    radial-gradient(circle at 63% 50%, transparent 0 27vh, #000 28vh);
+  mask-composite: intersect;
+}
+.tower-note {
+  position: absolute;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(13, 20, 34, 0.9);
+  font-size: 12px;
+  color: var(--text2);
+}
+.tower-credit {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  max-width: 70%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(10, 15, 26, 0.7);
+  font-size: 11px;
+  color: var(--text2);
+  text-align: right;
+}

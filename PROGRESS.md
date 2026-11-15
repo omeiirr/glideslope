@@ -1,6 +1,6 @@
 # Progress
 
-## Current milestone: M8 Polish
+## Current milestone: M8 Polish (mostly done; remaining items need a human)
 
 ## Done
 - **M0 Scaffold** — Vite + TS strict + Preact + Vitest + ESLint/Prettier, CI + Pages workflows, app shell.
@@ -11,11 +11,12 @@
 - **M5 Voice input** — PTT (Space / mic button / configurable key), Whisper worker (base WebGPU → tiny WASM → opt-in Web Speech), live transcript (WebGPU only), early callsign highlight, confidence bar. Verified with a fake microphone in headless Chromium on the WASM path: Whisper tiny loaded in 11 s, final transcript 2.1 s after release, parsed and executed correctly. **Not tested with a real microphone or on WebGPU (whisper-base).**
 - **M6 Game layer** — Beginner/Pro rules, scoring, readback errors (catch/miss/debrief), 5 tutorial lessons, free play, 3 Pro scenarios, debrief, localStorage settings + progress. Session logic covered by headless tests; all 5 lessons verified completable by following their instructions with a slow reader; all 3 Pro scenarios run to the end without errors.
 - **M7 Realistic display** — STARS-like scope with 4 s sweep, DCB, text overlays.
+- **M8 Polish (partial)** — pilot voices normalised to equal loudness; axe-core reports no violations on menu, settings, both game displays and debrief; scope text colours raised to ≥4.5:1; dialogs trap focus, close on Escape and return focus; PTT key no longer fires inside dialogs; keyboard-only play verified (Tab/Enter to select a strip, Enter for the command line); README with screenshots.
 
 ## Next
 1. Manual test with a real microphone in Chrome (WebGPU, whisper-base: check the 1.5 s readback target) and Firefox (WASM fallback).
-2. Listen to the Piper voices and radio FX; probably normalise clip loudness.
-3. M8: accessibility pass with a screen reader (strips, log, dialogs), README screenshots.
+2. Listen to the Piper voices and radio FX by ear.
+3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
 
 ## Measured
 - Scope draw time with 40 aircraft (headless Chromium, software rendering): ~0.5 ms average, 0.7 ms p95, in both display modes.

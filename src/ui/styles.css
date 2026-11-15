@@ -49,6 +49,14 @@ button {
   outline: 2px solid var(--blue);
   outline-offset: 1px;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .mono {
   font-family: var(--mono);
 }
@@ -491,7 +499,7 @@ button {
   color: var(--text);
 }
 .cmd-input::placeholder {
-  color: #6b7a93;
+  color: #7d8ba3;
 }
 .conf {
   display: flex;

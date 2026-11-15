@@ -116,7 +116,15 @@ async function synth(text: string, speaker: number, speed: number): Promise<Floa
   };
   if (config.num_speakers > 1) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([BigInt(speaker)]));
   const out = await session.run(feeds);
-  return out.output!.data as Float32Array;
+  const pcm = out.output!.data as Float32Array;
+  // Piper output peaks around 0.15–0.3 and varies by speaker: normalise so every pilot is equally loud.
+  let peak = 0;
+  for (const v of pcm) peak = Math.max(peak, Math.abs(v));
+  if (peak > 0.01) {
+    const gain = 0.9 / peak;
+    for (let i = 0; i < pcm.length; i++) pcm[i]! *= gain;
+  }
+  return pcm;
 }
 
 // One request at a time, in order.

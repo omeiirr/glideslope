@@ -169,7 +169,9 @@ export function Strips({ session }: { session: Session }) {
               : `HDG ${String(ac.tgtHdg).padStart(3, '0')}`;
     const status =
       ac.comms === 'none'
-        ? 'inbound'
+        ? ac.kind === 'departure'
+          ? 'departing'
+          : 'inbound'
         : ac.comms === 'tower'
           ? 'TWR'
           : ac.comms === 'radar'

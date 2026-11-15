@@ -66,3 +66,9 @@ Every non-trivial choice, newest milestone last. Format: **decision** — reason
 - **Lessons never inject readback errors**, even when the lesson uses Pro rules.
 - **Free play traffic rate is a setting** (2–40 arrivals/h, default 12), spec §8 "low, adjustable".
 - **Dev-only hooks** `window.__vectors` / `window.__drawMs` exist only under `import.meta.env.DEV` (stripped from production builds).
+
+## M8 Polish
+- **Pilot clips normalised to 0.9 peak** in the TTS worker (raw Piper output peaked at ~0.17 and varied by speaker); the radio effect's pre-gain went from 1.6 to 1 to match.
+- **Accessibility checked with axe-core 4.10** (headless Chromium) on every screen. Canvas text isn't covered by axe, so scope label colours were checked by hand against WCAG 4.5:1 (ring labels, fix names, untracked targets: #7D8BA3 on the scope background ≈ 5.2:1; Realistic fix labels #828282 on black ≈ 5.5:1).
+- **Game screen has a visually hidden `<h1>`** inside the scope's `<main>` landmark, for screen-reader navigation.
+- **Dialogs are modal for the keyboard** (focus moved in, Tab wrapped, Escape closes Settings, focus restored); the global PTT key is ignored while focus is inside a dialog so Space can toggle checkboxes.

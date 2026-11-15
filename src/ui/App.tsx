@@ -83,7 +83,7 @@ export function App() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const { session: s, pttDown: d } = live.current;
-      if (!s || s.finished || isTextField(e.target)) return;
+      if (!s || s.finished || isTextField(e.target) || (e.target as Element).closest?.('.overlay')) return;
       if (e.code === settingsRef.current.pttKey) {
         // Space on a focused button would also click it: PTT wins.
         e.preventDefault();
@@ -259,6 +259,9 @@ function Game(p: GameProps) {
       <div class="body">
         {!realistic && <Strips session={session} />}
         <main class="scope">
+          <h1 class="sr-only">
+            {APP_NAME} · {session.scenario.name}
+          </h1>
           <ScopeView
             session={session}
             realistic={realistic}

@@ -152,7 +152,7 @@ export function RealisticChrome({
             </span>
           );
         })}
-        <span style="color:#6A6A6A;font-size:11px">
+        <span style="color:#828282;font-size:11px">
           {voice.status === 'off' ? 'VOICE OFF' : `VOICE ${voice.status.toUpperCase()}`} · PTT{' '}
           {settings.pttKey.toUpperCase()} · ENTER TO TYPE
           {session.radio.current ? ` · ${session.radio.current.from} TRANSMITTING` : ''}

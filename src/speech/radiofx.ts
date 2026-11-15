@@ -66,7 +66,7 @@ export function playRadio(
     const shaper = ctx.createWaveShaper();
     shaper.curve = softClip(2.2);
     const pre = ctx.createGain();
-    pre.gain.value = 1.6;
+    pre.gain.value = 1; // clips arrive normalised to 0.9 peak; the shaper adds the light distortion
     src.connect(pre).connect(hp).connect(lp).connect(lp2).connect(shaper).connect(master);
     // hiss for the length of the transmission
     const hiss = ctx.createBufferSource();

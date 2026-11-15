@@ -124,7 +124,7 @@ export function drawRealistic(
   ctx.lineWidth = 1;
   // fixes
   if (o.maps) {
-    ctx.fillStyle = '#6A6A6A';
+    ctx.fillStyle = '#828282';
     ctx.font = `10px ${MONO}`;
     const major = new Set([...ap.stars.map((s) => s.iaf), ...ap.departures.exits]);
     for (const [name, pos] of Object.entries(ap.fixes)) {

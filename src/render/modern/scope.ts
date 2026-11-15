@@ -12,12 +12,12 @@ import {
 
 const C = {
   ring: '#1A2638',
-  ringText: '#4A5870',
+  ringText: '#7D8BA3',
   tma: '#22324A',
   final: '#2C4466',
   runway: '#C9D3E2',
   fix: '#5E6E88',
-  fixText: '#6B7A93',
+  fixText: '#7D8BA3',
   text: '#E6EBF2',
   sub: '#C7D0DE',
   dim: '#8B97AB',
@@ -295,7 +295,7 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
       ctx.fillText(ac.type, bx + w - ctx.measureText(ac.type).width, by + 11);
     }
     ctx.font = `11px ${MONO}`;
-    ctx.fillStyle = selected ? C.blueText : est ? C.green : mine ? C.sub : '#6B7A93';
+    ctx.fillStyle = selected ? C.blueText : est ? C.green : mine ? C.sub : C.fixText;
     ctx.fillText(line2, bx, by + 25);
     hit.labels.push({ id: ac.id, rect: { x: bx - 8, y: by - 4, w: w + 16, h: 36 } });
   }

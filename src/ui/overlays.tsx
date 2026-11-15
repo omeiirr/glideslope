@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'preact/hooks';
 import { EHAM } from '../core';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
 import { phraseologyPct, WEIGHTS } from '../game/scoring';
@@ -5,6 +6,44 @@ import type { Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT } from '../phraseology/phrases';
 import type { VoiceState } from '../speech/voice';
+
+/** Modal behaviour: focus moves into the dialog, Tab stays inside, Escape closes, focus returns afterwards. */
+function useDialog(onClose?: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const el = ref.current!;
+    const before = document.activeElement as HTMLElement | null;
+    const focusable = () => [
+      ...el.querySelectorAll<HTMLElement>('button, input, select, [tabindex]:not([tabindex="-1"])'),
+    ];
+    focusable()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && close.current) {
+        e.stopPropagation();
+        close.current();
+      } else if (e.key === 'Tab') {
+        const f = focusable();
+        const first = f[0];
+        const last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    el.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('keydown', onKey);
+      before?.focus?.();
+    };
+  }, []);
+  return ref;
+}
 
 export interface Progress {
   /** Completed tutorial lesson ids. */
@@ -24,6 +63,7 @@ export function Menu({
   onStart: (s: Scenario) => void;
   onSettings: () => void;
 }) {
+  const ref = useDialog();
   const group = (title: string, list: Scenario[]) => (
     <>
       <h2>{title}</h2>
@@ -45,7 +85,7 @@ export function Menu({
   );
   return (
     <div class="overlay">
-      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+      <div ref={ref} class="dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
         <h1 id="menu-title">Vectors · Schiphol Approach</h1>
         <p>
           You are the approach controller at Amsterdam Schiphol. Vector arrivals onto the ILS for runway 18R
@@ -87,6 +127,7 @@ interface SettingsProps {
 }
 
 export function SettingsDialog({ settings: s, voice, onChange, onClose }: SettingsProps) {
+  const ref = useDialog(onClose);
   const select = <K extends keyof Settings>(
     key: K,
     label: string,
@@ -124,6 +165,7 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
   return (
     <div class="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div
+        ref={ref}
         class="dialog"
         role="dialog"
         aria-modal="true"
@@ -274,6 +316,7 @@ export function Debrief({
   onAgain: () => void;
   onNext?: () => void;
 }) {
+  const ref = useDialog();
   const s = session.stats;
   const w = WEIGHTS[session.mode];
   const missed = session.log.filter((e) => e.kind === 'pilot' && e.rb === 'missed');
@@ -305,7 +348,7 @@ export function Debrief({
   ];
   return (
     <div class="overlay">
-      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="debrief-title">
+      <div ref={ref} class="dialog" role="dialog" aria-modal="true" aria-labelledby="debrief-title">
         <h1 id="debrief-title">
           {session.lesson ? `Lesson complete: ${session.lesson.title}` : `Debrief · ${session.scenario.name}`}
         </h1>

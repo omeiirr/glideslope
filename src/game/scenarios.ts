@@ -18,13 +18,16 @@ export interface Scenario {
   lesson?: string;
 }
 
+/** The tutorial aircraft. */
+export const STUDENT = 'KLM1426';
+
 const NONE: TrafficConfig = { arrivalsPerHour: 0, departuresPerHour: 0 };
 const CALM = { dir: 200, speed: 0 };
 /** One friendly aircraft, already on frequency, for the tutorial lessons. */
 const student = (x: number, y: number, hdg: number, alt: number, ias = 220): SpawnSpec & { at: number } => ({
   at: 0,
   kind: 'arrival',
-  callsign: 'KLM1234',
+  callsign: STUDENT,
   type: 'B738',
   pos: { x, y },
   hdg,

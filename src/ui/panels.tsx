@@ -559,7 +559,7 @@ export function PttBar({
               placeholder={
                 session.selected
                   ? `${session.selected.callsign}, turn left heading 270`
-                  : 'KLM1234, turn left heading 270'
+                  : 'KLM1426, turn left heading 270'
               }
               aria-label="Type a transmission and press Enter to send"
               autocomplete="off"

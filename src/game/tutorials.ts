@@ -1,4 +1,5 @@
 import { runwayFrame } from '../core';
+import { STUDENT } from './scenarios';
 import type { Session } from './session';
 
 export interface LessonStep {
@@ -14,7 +15,7 @@ export interface Lesson {
   steps: LessonStep[];
 }
 
-const ac = (s: Session) => s.sim.byCallsign('KLM1234');
+const ac = (s: Session) => s.sim.byCallsign(STUDENT);
 const hdg = (s: Session, h: number) => ac(s)?.nav.mode === 'heading' && ac(s)?.tgtHdg === h;
 const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 
@@ -24,18 +25,18 @@ export const LESSONS: Record<string, Lesson> = {
     title: 'Headings',
     steps: [
       {
-        text: 'KLM1234 is flying west. Every transmission starts with the callsign. Give a heading as three digits, with the direction of turn. Hold Space and speak, or press Enter and type.',
-        say: 'KLM1234, turn left heading 180',
+        text: `${STUDENT} is flying west. Every transmission starts with the callsign. Give a heading as three digits, with the direction of turn. Hold Space and speak, or press Enter and type.`,
+        say: `${STUDENT}, turn left heading 180`,
         done: (s) => hdg(s, 180),
       },
       {
         text: 'The pilot read your instruction back and is turning. Always listen to the readback. Now turn the aircraft the other way, towards the north-west.',
-        say: 'KLM1234, turn right heading 330',
+        say: `${STUDENT}, turn right heading 330`,
         done: (s) => hdg(s, 330),
       },
       {
         text: 'You can also send an aircraft straight to a fix. SPL is the beacon on the airport.',
-        say: 'KLM1234, proceed direct SPL',
+        say: `${STUDENT}, proceed direct SPL`,
         done: (s) => ac(s)?.nav.mode === 'direct',
       },
     ],
@@ -44,13 +45,13 @@ export const LESSONS: Record<string, Lesson> = {
     title: 'Levels',
     steps: [
       {
-        text: 'KLM1234 is at flight level 70. Above the transition level (FL040 today) you use flight levels.',
-        say: 'KLM1234, descend flight level 50',
+        text: `${STUDENT} is at flight level 70. Above the transition level (FL040 today) you use flight levels.`,
+        say: `${STUDENT}, descend flight level 50`,
         done: (s) => ac(s)?.tgtAlt === 5000,
       },
       {
         text: 'At or below the transition altitude (3000 ft) you use "altitude" in feet, and the first time you add the QNH so the pilot can set the altimeter.',
-        say: 'KLM1234, descend altitude 3000, QNH 1013',
+        say: `${STUDENT}, descend altitude 3000, QNH 1013`,
         done: (s) => ac(s)?.tgtAlt === 3000,
       },
       {
@@ -63,8 +64,8 @@ export const LESSONS: Record<string, Lesson> = {
     title: 'Speed',
     steps: [
       {
-        text: 'KLM1234 is doing 250 knots. Speed control is how you build a neat sequence on final. Slow it down.',
-        say: 'KLM1234, reduce speed 200 knots',
+        text: `${STUDENT} is doing 250 knots. Speed control is how you build a neat sequence on final. Slow it down.`,
+        say: `${STUDENT}, reduce speed 200 knots`,
         done: (s) => ac(s)?.tgtIas === 200,
       },
       {
@@ -73,7 +74,7 @@ export const LESSONS: Record<string, Lesson> = {
       },
       {
         text: 'When you no longer need the restriction, give the speed back to the pilot.',
-        say: 'KLM1234, resume normal speed',
+        say: `${STUDENT}, resume normal speed`,
         done: (s) => ac(s)?.tgtIas === null,
       },
     ],
@@ -82,8 +83,8 @@ export const LESSONS: Record<string, Lesson> = {
     title: 'ILS approach',
     steps: [
       {
-        text: 'Runway 18R points south; the dashed line north of it is the final approach. KLM1234 is east of it at 2000 ft. Turn it onto a heading that crosses the final at 30° or less, and clear the approach in the same transmission.',
-        say: 'KLM1234, turn left heading 210, cleared ILS approach runway 18R',
+        text: `Runway 18R points south; the dashed line north of it is the final approach. ${STUDENT} is east of it at 2000 ft. Turn it onto a heading that crosses the final at 30° or less, and clear the approach in the same transmission.`,
+        say: `${STUDENT}, turn left heading 210, cleared ILS approach runway 18R`,
         done: (s) => ac(s)?.ilsArmed === '18R',
       },
       {
@@ -92,7 +93,7 @@ export const LESSONS: Record<string, Lesson> = {
       },
       {
         text: 'Keep the speed up until short final so the runway is used efficiently.',
-        say: 'KLM1234, maintain 180 knots until 4 miles final',
+        say: `${STUDENT}, maintain 180 knots until 4 miles final`,
         done: (s) => ac(s)?.tgtIas === 180 || !ac(s),
       },
       {
@@ -105,8 +106,8 @@ export const LESSONS: Record<string, Lesson> = {
     title: 'Handoff',
     steps: [
       {
-        text: 'This lesson uses Professional rules: nothing is automatic. Clear KLM1234 for the approach.',
-        say: 'KLM1234, cleared ILS approach runway 18R',
+        text: `This lesson uses Professional rules: nothing is automatic. Clear ${STUDENT} for the approach.`,
+        say: `${STUDENT}, cleared ILS approach runway 18R`,
         done: (s) => ac(s)?.ilsArmed === '18R',
       },
       {
@@ -115,7 +116,7 @@ export const LESSONS: Record<string, Lesson> = {
       },
       {
         text: 'An established aircraft belongs to Tower. Hand it off, with the frequency, before about 6 miles from touchdown.',
-        say: 'KLM1234, contact Schiphol Tower 118.280',
+        say: `${STUDENT}, contact Schiphol Tower 118.280`,
         done: (s) => {
           const a = ac(s);
           return a?.comms === 'tower' && runwayFrame(a.pos, s.sim.env.landing).along > 0;

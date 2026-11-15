@@ -21,11 +21,11 @@ const pro = (settings = DEFAULT_SETTINGS) =>
 
 test('typed command → readback → aircraft flies it', async () => {
   const s = tutorial('tut-heading');
-  s.transmit('KLM1234, turn left heading 180', 'typed');
+  s.transmit('KLM1426, turn left heading 180', 'typed');
   await settle(s);
-  const ac = s.sim.byCallsign('KLM1234')!;
+  const ac = s.sim.byCallsign('KLM1426')!;
   expect(ac.tgtHdg).toBe(180);
-  expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Left heading 180, KLM1234')).toBe(true);
+  expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Left heading 180, KLM1426')).toBe(true);
   expect(s.stats.phraseSum).toBe(100);
 });
 
@@ -33,25 +33,25 @@ test('unknown callsign: no action, someone asks "say again"', async () => {
   const s = tutorial('tut-heading');
   s.transmit('Speedbird 999, turn left heading 180', 'typed');
   await settle(s);
-  expect(s.sim.byCallsign('KLM1234')!.tgtHdg).toBe(270);
+  expect(s.sim.byCallsign('KLM1426')!.tgtHdg).toBe(270);
   expect(s.log.some((e) => e.kind === 'pilot' && /say again/i.test(e.text))).toBe(true);
 });
 
 test('Pro readback error: caught by repeating the correct value', async () => {
   const s = pro({ ...DEFAULT_SETTINGS, readbackErrorRate: 1 });
-  s.transmit('KLM1234, descend altitude 3000, QNH 1013', 'typed');
+  s.transmit('KLM1426, descend altitude 3000, QNH 1013', 'typed');
   await settle(s);
   expect(s.stats.readbackErrors).toBe(1);
-  expect(s.sim.byCallsign('KLM1234')!.tgtAlt).not.toBe(3000); // flying the wrong value
-  s.transmit('KLM1234, negative, descend altitude 3000', 'typed');
+  expect(s.sim.byCallsign('KLM1426')!.tgtAlt).not.toBe(3000); // flying the wrong value
+  s.transmit('KLM1426, negative, descend altitude 3000', 'typed');
   await settle(s);
   expect(s.stats.readbackCaught).toBe(1);
-  expect(s.sim.byCallsign('KLM1234')!.tgtAlt).toBe(3000);
+  expect(s.sim.byCallsign('KLM1426')!.tgtAlt).toBe(3000);
 });
 
 test('Pro readback error: uncaught one is revealed only in the debrief', async () => {
   const s = pro({ ...DEFAULT_SETTINGS, readbackErrorRate: 1 });
-  s.transmit('KLM1234, turn right heading 240', 'typed');
+  s.transmit('KLM1426, turn right heading 240', 'typed');
   await settle(s);
   const entry = s.log.find((e) => e.kind === 'pilot');
   expect(entry).toMatchObject({ rb: 'hidden' });
@@ -61,13 +61,13 @@ test('Pro readback error: uncaught one is revealed only in the debrief', async (
 
 test('Pro: talking over a pilot blocks both transmissions', async () => {
   const s = pro();
-  s.transmit('KLM1234, turn right heading 240', 'typed');
+  s.transmit('KLM1426, turn right heading 240', 'typed');
   // run until the readback is on the air
   for (let i = 0; i < 50 && !s.radio.current; i++) {
     await vi.advanceTimersByTimeAsync(100);
     s.update(100);
   }
-  expect(s.radio.current?.from).toBe('KLM1234');
+  expect(s.radio.current?.from).toBe('KLM1426');
   s.keyDown();
   expect(s.keyUp()).toBe(true);
   expect(s.log.some((e) => e.kind === 'system' && /talked over/.test(e.text))).toBe(true);
@@ -76,7 +76,7 @@ test('Pro: talking over a pilot blocks both transmissions', async () => {
 test('lesson waits for the last readback to finish before ending', async () => {
   const s = tutorial('tut-heading');
   s.lessonStep = 2; // last step: proceed direct SPL
-  s.transmit('KLM1234, proceed direct SPL', 'typed');
+  s.transmit('KLM1426, proceed direct SPL', 'typed');
   let sawReadback = false;
   for (let i = 0; i < 200 && !s.finished; i++) {
     await vi.advanceTimersByTimeAsync(100);
@@ -88,5 +88,5 @@ test('lesson waits for the last readback to finish before ending', async () => {
   }
   expect(sawReadback).toBe(true);
   expect(s.finished).toBe(true);
-  expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Direct SPL, KLM1234')).toBe(true);
+  expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Direct SPL, KLM1426')).toBe(true);
 });

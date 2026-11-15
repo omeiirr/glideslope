@@ -1,0 +1,11 @@
+import { chromium } from 'playwright-core';
+const [out, query = ''] = process.argv.slice(2);
+const exe = process.env.HOME + '/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell';
+const b = await chromium.launch({ executablePath: exe, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const pg = await b.newPage({ viewport: { width: 2240, height: 1200 } });
+const errs = []; pg.on('pageerror', (e) => errs.push(String(e))); pg.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errs.push(m.text()));
+await pg.goto(`http://localhost:4191/index.html?${query}`);
+await pg.waitForFunction(() => window.__done || null, null, { timeout: 240000 }).catch((e) => errs.push('timeout'));
+await pg.locator('canvas').screenshot({ path: out });
+console.log(errs.length ? errs.slice(0, 6) : 'ok', JSON.stringify(await pg.evaluate(() => window.__labels)));
+await b.close();

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Style test, aircraft close-up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0F1A}
+a{color:#5CC8FF}a:hover{color:#9ADCFF}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 20px; background: #0A0F1A; color: #E6EBF2; font-family: Inter, system-ui, sans-serif; font-size: 13px">
+<img src="/_blob/375e2af49448099943b8c24bc98220f0" alt="Close-up from the same scene: a smooth-shaded procedural A320 with orange tail and engine cowls, window line and landing gear, casting a soft shadow on the real runway imagery" style="width: 100%; flex: 1 1 auto; min-height: 0; object-fit: cover; border-radius: 8px; display: block">
+<div style="display: flex; justify-content: space-between; gap: 16px; font-family: 'JetBrains Mono', monospace; color: #C7D0DE">
+<span>Same scene, zoomed ×8 on the A320 (847 m from the cab)</span>
+<span style="color: #8B97AB">Procedural aircraft · no model files · ground: aerial photo, 0.8 m per pixel</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

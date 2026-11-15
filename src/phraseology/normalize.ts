@@ -118,6 +118,8 @@ const WORD_FIX: Record<string, string> = {
   till: 'until',
   til: 'until',
   proceeding: 'proceed',
+  maintained: 'maintain',
+  maintaining: 'maintain',
   directly: 'direct',
   contacts: 'contact',
   identify: 'identified',

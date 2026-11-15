@@ -59,9 +59,12 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
         showConflicts: s.mode === 'beginner' || !real,
         isNew: (cs) => !s.wasContacted(cs),
       };
+      const t0 = performance.now();
       hit.current = real
         ? drawRealistic(ctx, view.current, scene, EHAM, opts)
         : drawModern(ctx, view.current, scene, EHAM);
+      // dev-only hooks for performance checks and debugging
+      if (import.meta.env.DEV) Object.assign(window, { __vectors: s, __drawMs: performance.now() - t0 });
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);

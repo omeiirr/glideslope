@@ -62,3 +62,7 @@ Every non-trivial choice, newest milestone last. Format: **decision** — reason
 - **Strips:** drag to reorder, or Alt+Up/Down with the keyboard (accessibility); unplaced aircraft sort by ETA.
 - **Tutorial:** 5 lessons, each step completes from sim state (not from parsing), so voice and typing both work. Lesson 5 runs Pro rules so the handoff is manual.
 - **Pro scenarios:** light (18 arr/h, 20 min), medium (26 arr/h, heavies, 25 min), peak (36 arr/h, 22 kt crosswind, QNH 998 → TL FL045, 30 min). Seeds fixed so runs are comparable.
+- **Live partial transcripts only on WebGPU.** On the single-threaded WASM path, re-transcribing every second queued behind the final transcription (6–8 s latency); without partials the final arrives in ~2 s.
+- **Lessons never inject readback errors**, even when the lesson uses Pro rules.
+- **Free play traffic rate is a setting** (2–40 arrivals/h, default 12), spec §8 "low, adjustable".
+- **Dev-only hooks** `window.__vectors` / `window.__drawMs` exist only under `import.meta.env.DEV` (stripped from production builds).

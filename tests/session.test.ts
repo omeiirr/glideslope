@@ -15,6 +15,9 @@ async function settle(s: Session, ms = 15000) {
 }
 
 const tutorial = (id: string, settings = DEFAULT_SETTINGS) => new Session(scenarioById(id), settings);
+/** Lesson 5's Pro setup without the lesson (lessons switch readback errors off). */
+const pro = (settings = DEFAULT_SETTINGS) =>
+  new Session({ ...scenarioById('tut-handoff'), lesson: undefined }, settings);
 
 test('typed command → readback → aircraft flies it', async () => {
   const s = tutorial('tut-heading');
@@ -35,7 +38,7 @@ test('unknown callsign: no action, someone asks "say again"', async () => {
 });
 
 test('Pro readback error: caught by repeating the correct value', async () => {
-  const s = tutorial('tut-handoff', { ...DEFAULT_SETTINGS, readbackErrorRate: 1 });
+  const s = pro({ ...DEFAULT_SETTINGS, readbackErrorRate: 1 });
   s.transmit('KLM1234, descend altitude 3000, QNH 1013', 'typed');
   await settle(s);
   expect(s.stats.readbackErrors).toBe(1);
@@ -47,7 +50,7 @@ test('Pro readback error: caught by repeating the correct value', async () => {
 });
 
 test('Pro readback error: uncaught one is revealed only in the debrief', async () => {
-  const s = tutorial('tut-handoff', { ...DEFAULT_SETTINGS, readbackErrorRate: 1 });
+  const s = pro({ ...DEFAULT_SETTINGS, readbackErrorRate: 1 });
   s.transmit('KLM1234, turn right heading 240', 'typed');
   await settle(s);
   const entry = s.log.find((e) => e.kind === 'pilot');
@@ -57,7 +60,7 @@ test('Pro readback error: uncaught one is revealed only in the debrief', async (
 });
 
 test('Pro: talking over a pilot blocks both transmissions', async () => {
-  const s = tutorial('tut-handoff');
+  const s = pro();
   s.transmit('KLM1234, turn right heading 240', 'typed');
   // run until the readback is on the air
   for (let i = 0; i < 50 && !s.radio.current; i++) {

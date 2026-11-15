@@ -228,6 +228,22 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
             %
           </span>
         </label>
+        <label class="form-row">
+          <span>
+            Free play traffic<small>Arrivals per hour (takes effect on the next start).</small>
+          </span>
+          <input
+            type="number"
+            min="2"
+            max="40"
+            step="2"
+            value={s.freeRate}
+            style="width:64px"
+            onChange={(e) =>
+              onChange({ freeRate: Math.max(2, Math.min(40, +(e.target as HTMLInputElement).value || 12)) })
+            }
+          />
+        </label>
         {toggle('showTrails', 'Trails')}
         {toggle(
           'showIntent',

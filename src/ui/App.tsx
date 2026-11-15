@@ -51,7 +51,10 @@ export function App() {
 
   const start = (sc: Scenario) => {
     // Free play follows the rules chosen in settings.
-    const scenario = sc.id === 'free' ? { ...sc, mode: settings.mode } : sc;
+    const scenario =
+      sc.id === 'free'
+        ? { ...sc, mode: settings.mode, traffic: { ...sc.traffic, arrivalsPerHour: settings.freeRate } }
+        : sc;
     const s = new Session(scenario, settings);
     s.radio.speak = tts.speak;
     s.radio.prepare = tts.prepare;
@@ -280,6 +283,11 @@ function Game(p: GameProps) {
           {session.paused && !session.finished && (
             <div class="paused" role="status">
               PAUSED
+            </div>
+          )}
+          {p.tts.state.status === 'error' && settings.tts === 'piper' && (
+            <div class="toast" role="alert">
+              Pilot voices unavailable ({p.tts.state.message}). Using browser voices.
             </div>
           )}
           {p.tts.state.status === 'loading' && settings.tts === 'piper' && (

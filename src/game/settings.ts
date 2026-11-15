@@ -10,6 +10,8 @@ export interface Settings {
   feedback: 'off' | 'errors' | 'all';
   /** Pro mode: probability of a wrong readback, 0..0.3. */
   readbackErrorRate: number;
+  /** Free play arrivals per hour. */
+  freeRate: number;
   showTrails: boolean;
   showIntent: boolean;
   /** KeyboardEvent.code of the push-to-talk key. */
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   radioFx: true,
   feedback: 'all',
   readbackErrorRate: 0.05,
+  freeRate: 12,
   showTrails: true,
   showIntent: true,
   pttKey: 'Space',

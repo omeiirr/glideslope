@@ -39,6 +39,8 @@ export class VoiceInput {
   private web: SpeechRecognitionLike | null = null;
   private webText = '';
   private backend: 'whisper' | 'webspeech' | null = null;
+  /** Live partials only on WebGPU: on one CPU thread they queue up and delay the final transcript. */
+  private livePartials = false;
 
   private set(patch: Partial<VoiceState>) {
     this.state = { ...this.state, ...patch };
@@ -109,9 +111,10 @@ export class VoiceInput {
     w.onmessage = (e: MessageEvent<AsrResponse>) => {
       const m = e.data;
       if (m.type === 'progress') this.set({ progress: m.progress });
-      else if (m.type === 'ready')
+      else if (m.type === 'ready') {
+        this.livePartials = m.model === 'base';
         this.set({ status: 'ready', progress: 1, message: `Whisper ${m.model}, on this machine` });
-      else if (m.type === 'result') {
+      } else if (m.type === 'result') {
         if (m.final && m.id === this.finalId) this.finish(m.text);
         else if (!m.final && this.recording) this.set({ partial: m.text });
       } else if (m.fatal) {
@@ -178,15 +181,16 @@ export class VoiceInput {
     this.samples = 0;
     this.recording = true;
     // Live transcript: re-transcribe what we have so far about once a second.
-    this.partialTimer = setInterval(() => {
-      if (this.samples > RATE * 0.8)
-        this.worker?.postMessage({
-          type: 'transcribe',
-          id: this.nextId++,
-          audio: this.audio(),
-          final: false,
-        } satisfies AsrRequest);
-    }, 900);
+    if (this.livePartials)
+      this.partialTimer = setInterval(() => {
+        if (this.samples > RATE * 0.8)
+          this.worker?.postMessage({
+            type: 'transcribe',
+            id: this.nextId++,
+            audio: this.audio(),
+            final: false,
+          } satisfies AsrRequest);
+      }, 900);
   }
 
   /** PTT released. Resolves with the final transcript ('' if nothing usable was said). */

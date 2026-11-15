@@ -515,6 +515,7 @@ export class Session {
     let error: ReturnType<typeof corruptReadback> = null;
     if (
       this.mode === 'pro' &&
+      !this.lesson &&
       !refusals.some(Boolean) &&
       !pending &&
       this.rng.next() < this.settings.readbackErrorRate

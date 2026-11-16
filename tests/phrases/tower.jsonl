@@ -64,3 +64,4 @@
 {"input": "KLM1234, say again", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": [], "role": "tower"}
 {"input": "Martinair one two three, cleared to land runway 18R", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"], "role": "tower"}
 {"input": "KLM one two four, cleared to land", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-ambiguous"], "role": "tower"}
+{"input": "KLM1234, Schiphol Tower, runway 18R, wind 200 degrees 12 knots, cleared to land", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "land", "runway": "18R"}], "expectedIssues": [], "role": "tower"}

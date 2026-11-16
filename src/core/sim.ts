@@ -56,6 +56,8 @@ export type SimEvent =
   | { type: 'vacated'; ac: Aircraft }
   | { type: 'goAround'; ac: Aircraft; reason: GoAroundReason }
   | { type: 'leftAirspace'; ac: Aircraft; handedOff: boolean }
+  /** Tower mode: taken off the frequency by the stand-in Approach (a go-around that has climbed out). */
+  | { type: 'removed'; ac: Aircraft }
   | { type: 'conflict'; kind: 'loss' | 'wake'; a: Aircraft; b: Aircraft };
 
 export class Sim {
@@ -268,13 +270,15 @@ export class Sim {
         } else events.push({ ...e, ac } as SimEvent);
       }
       // shortcut: tower mode, the stand-in Approach takes a go-around off the frequency once it has climbed out (T4: re-sequence it)
-      if (this.tower && ac.phase === 'goaround' && ac.alt >= this.airport.missedApproachAltFt - 100)
+      if (this.tower && ac.phase === 'goaround' && ac.alt >= this.airport.missedApproachAltFt - 100) {
         remove.add(ac);
+        events.push({ type: 'removed', ac });
+      }
     }
     if (remove.size) this.list = this.list.filter((a) => !remove.has(a));
     if (this.autoTower) this.runTower();
-    if (this.tower) this.runTowerMode(events);
     this.moveQueue();
+    if (this.tower) this.runTowerMode(events);
     if (this.tickCount % 2 === 0) {
       this._conflicts = detectConflicts(this.list, this.env.landing);
       const now = new Set<string>();

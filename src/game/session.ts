@@ -311,6 +311,7 @@ export class Session {
         break;
       }
       case 'vacated':
+      case 'removed':
         this.gone(e.ac);
         break;
       case 'goAround':

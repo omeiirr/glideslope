@@ -573,7 +573,11 @@ const vacate: Matcher = (c) => {
   return { next: i, cmd, issues };
 };
 
+/** The player's own station name ("Schiphol" is filler): "KLM1200, Schiphol Tower, …". */
+const stationName: Matcher = (c) => (c.w(c.i, 'tower') ? { next: c.i + 1 } : null);
+
 const TOWER_MATCHERS: Matcher[] = [
+  stationName,
   whenInfo,
   windInfo,
   land,

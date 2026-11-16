@@ -14,6 +14,7 @@ import type { Command, CommandResult } from './commands';
 const OK: CommandResult = { ok: true };
 /** Tower instructions a pilot on the ground (not rolling) accepts. */
 const GROUND_OK = new Set<Command['type']>(['lineUp', 'takeoff', 'cancelTakeoff', 'vacate']);
+const LATERAL = new Set<Command['type']>(['heading', 'presentHeading', 'direct', 'hold', 'ils']);
 /** Metres past the landing threshold. */
 const alongM = (ac: Aircraft, env: Env) => -runwayFrame(ac.pos, env.landing).along * 1852;
 const unable = (reason: string): CommandResult => ({ ok: false, reason });
@@ -37,6 +38,8 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
     !(cmd.type === 'handoff' && cmd.to === 'ground')
   )
     return unable('unable, on the ground');
+  // tower mode: the departure is on the frequency during the roll; turns wait until airborne
+  if (env.tower && m === 'takeoff' && LATERAL.has(cmd.type)) return unable('unable, on the take-off roll');
   const onApproach = ac.kind === 'arrival' && (m === 'loc' || ac.ilsArmed !== null);
   const queued = m === 'holding' || (m === 'taxi' && ac.nav.then !== 'vacate') || m === 'lineup';
   switch (cmd.type) {

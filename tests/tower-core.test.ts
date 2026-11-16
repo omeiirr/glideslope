@@ -33,8 +33,9 @@ describe('tower mode (T3 core)', () => {
     expect(ga && ga.type === 'goAround' && ga.reason).toBe('noClearance');
     expect(alongNm(ac)).toBeLessThan(0.5);
     expect(alongNm(ac)).toBeGreaterThan(0.4);
-    runUntil(sim, () => !sim.aircraft.length, 300);
+    const after = runUntil(sim, () => !sim.aircraft.length, 300);
     expect(sim.aircraft).toHaveLength(0);
+    expect(after.filter((e) => e.type === 'removed').map((e) => e.ac)).toEqual([ac]);
   });
 
   test('a clearance just before the half-mile point still counts', () => {
@@ -94,10 +95,21 @@ describe('tower mode (T3 core)', () => {
     expect(sim.validate(a.callsign, { type: 'handoff', to: 'departure' }).ok).toBe(false);
     expect(sim.validate(a.callsign, { type: 'lineUp', runway: '18L' }).ok).toBe(false);
     expect(sim.command(a.callsign, [{ type: 'lineUp', runway: '24' }])).toEqual([{ ok: true }]);
-    ev = runUntil(sim, () => false, 90);
+    const hp = dep.entry!.path.at(-1)!;
+    let calledFrom = Infinity;
+    ev = runUntil(
+      sim,
+      () => {
+        if (b.comms === 'tower' && calledFrom === Infinity)
+          calledFrom = Math.hypot(b.pos.x - hp.x, b.pos.y - hp.y) * 1852;
+        return false;
+      },
+      90,
+    );
     expect(a.nav.mode === 'lineup' && a.nav.ready).toBe(true);
-    // the next one moved up and called
+    // the next one moved up, then called from the holding point
     expect(b.comms).toBe('tower');
+    expect(calledFrom).toBeLessThan(25);
     expect(ev.filter((e) => e.type === 'checkIn').map((e) => e.ac)).toEqual([b]);
     expect(sim.command(a.callsign, [{ type: 'takeoff', runway: '24' }])).toEqual([{ ok: true }]);
     runUntil(sim, () => a.alt > dep.elevationFt + 1000);
@@ -112,6 +124,11 @@ describe('tower mode (T3 core)', () => {
     const a = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });
     sim.command(a.callsign, [{ type: 'takeoff', runway: '24' }]);
     runUntil(sim, () => a.nav.mode === 'takeoff' && a.ias > 60, 200);
+    expect(a.nav.mode).toBe('takeoff');
+    // no turns on the roll
+    expect(sim.command(a.callsign, [{ type: 'heading', heading: 200 }])).toEqual([
+      { ok: false, reason: 'unable, on the take-off roll' },
+    ]);
     expect(a.nav.mode).toBe('takeoff');
     expect(sim.command(a.callsign, [{ type: 'cancelTakeoff' }])).toEqual([{ ok: true }]);
     runUntil(sim, () => a.ias === 0, 60);

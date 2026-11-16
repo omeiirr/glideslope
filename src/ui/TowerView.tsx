@@ -96,8 +96,7 @@ export function TowerView({ session }: { session: Session }) {
         // three.js is only downloaded when a tower view opens
         const { TowerRenderer } = await import('../render/tower3d/view');
         if (disposed) return;
-        // graphics test: ?gfx=new
-        renderer = new TowerRenderer(canvas, EHAM, new URLSearchParams(location.search).get('gfx') === 'new');
+        renderer = new TowerRenderer(canvas, EHAM);
       } catch {
         setStatus({
           kind: 'error',

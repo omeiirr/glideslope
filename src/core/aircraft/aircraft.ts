@@ -93,6 +93,10 @@ export interface Aircraft {
   landClear: boolean;
   takeoffClear: boolean;
   vacate?: ExitPref;
+  /** "Contact Ground" given before vacating: switches once it turns off the runway. */
+  groundPending?: boolean;
+  /** Sim time of the departure's ready call to Tower. */
+  readyAt?: number;
 }
 
 export interface Env {
@@ -107,7 +111,7 @@ export interface Env {
   tower?: boolean;
 }
 
-export type GoAroundReason = 'unstable' | 'commanded' | 'noClearance';
+export type GoAroundReason = 'unstable' | 'commanded' | 'noClearance' | 'runwayOccupied';
 
 export type StepEvent =
   | { type: 'established' }
@@ -232,6 +236,7 @@ export function startGoAround(ac: Aircraft, env: Env) {
   ac.comms = 'app';
   ac.landClear = false;
   ac.vacate = undefined;
+  ac.groundPending = false;
 }
 
 /** Pilot's own speed when no speed is assigned. */
@@ -313,6 +318,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
       if (e && -frame.along * 1852 >= e.distM - 5) {
         ac.nav = { mode: 'taxi', path: e.path.slice(1), i: 0, then: 'vacate' };
         ac.phase = 'vacating';
+        if (ac.groundPending) ac.comms = 'ground';
       }
       break;
     }

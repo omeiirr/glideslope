@@ -1,4 +1,15 @@
-import { EHAM, Rng, Sim, TICK, dist, runwayFrame, type Aircraft, type Command, type SimEvent } from '../core';
+import {
+  EHAM,
+  Rng,
+  Sim,
+  TICK,
+  dist,
+  isOnGround,
+  runwayFrame,
+  type Aircraft,
+  type Command,
+  type SimEvent,
+} from '../core';
 import {
   parse,
   type AcContext,
@@ -63,6 +74,9 @@ const START_UTC = 14 * 3600;
 const LESSON_END_PAUSE_MS = 1500;
 
 /** One game: the sim, the radio, the log and the score. The UI reads it and calls its methods. */
+/** Tower: a departure still on the Tower frequency at this height above the field is a late handoff. */
+const LATE_DEP_HANDOFF_FT = 2000;
+
 export class Session {
   readonly sim: Sim;
   /** The player is Schiphol Tower (tower scenarios), else Schiphol Approach. */
@@ -135,7 +149,7 @@ export class Session {
     return `${p(Math.floor(t / 3600) % 24)}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}`;
   }
   get score(): number {
-    return totalScore(this.stats, this.mode);
+    return totalScore(this.stats, this.mode, this.tower);
   }
   get remainingSec(): number | null {
     return this.scenario.durationMin ? Math.max(0, this.scenario.durationMin * 60 - this.sim.time) : null;
@@ -224,6 +238,7 @@ export class Session {
       const entry = this.log.find((e) => e.id === p.entryId);
       if (entry?.kind === 'pilot') entry.rb = 'missed';
     }
+    if (this.tower) this.towerHousekeeping();
     for (const ac of sim.aircraft) {
       // tower mode: aircraft with Approach are the stand-in Approach's (in the sim)
       if (ac.comms !== 'app' || this.tower) continue;
@@ -273,6 +288,39 @@ export class Session {
     if (left !== null && left <= 0) this.finish();
   }
 
+  /** Tower: handoffs the player is late with (Pro: penalty) or doesn't have to make (Beginner). */
+  private towerHousekeeping() {
+    const sim = this.sim;
+    for (const ac of sim.aircraft) {
+      if (ac.comms !== 'tower') continue;
+      if (ac.kind === 'departure' && !isOnGround(ac) && ac.alt >= EHAM.elevationFt + LATE_DEP_HANDOFF_FT) {
+        sim.command(ac.callsign, [{ type: 'handoff', to: 'departure' }]);
+        this.stats.departuresOut++;
+        if (this.mode === 'pro') {
+          this.stats.missedHandoffs++;
+          this.system(`${ac.callsign} passed 2000 ft without a handoff to Departure.`, 'warn');
+        } else this.system(`${ac.callsign} handed to Departure automatically (Beginner).`, 'good');
+      } else if (this.mode === 'beginner' && ac.nav.mode === 'taxi' && ac.nav.then === 'vacate') {
+        sim.command(ac.callsign, [{ type: 'handoff', to: 'ground' }]);
+        this.system(`${ac.callsign} handed to Ground automatically (Beginner).`, 'good');
+      }
+    }
+  }
+
+  /**
+   * Beginner safety net: a landing or take-off clearance onto a runway someone else is on, before it is sent.
+   * Text, not colour: shown in the PTT bar.
+   */
+  warning(r: ParseResult): string | null {
+    if (!this.tower || this.mode !== 'beginner' || !r.callsign) return null;
+    for (const c of r.commands) {
+      if (c.type !== 'land' && c.type !== 'takeoff') continue;
+      const other = this.sim.runwayOccupants(c.runway).find((a) => a.callsign !== r.callsign);
+      if (other) return `${other.callsign} is still on runway ${c.runway}`;
+    }
+    return null;
+  }
+
   finish() {
     if (this.finished) return;
     this.finished = true;
@@ -303,7 +351,8 @@ export class Session {
         break;
       case 'landed': {
         s.landed++;
-        s.delaySum += Math.max(0, this.sim.time - e.ac.spawnTime - this.nominalTime(e.ac));
+        // tower: arrival delay is the stand-in Approach's; holding-point delay is counted instead
+        if (!this.tower) s.delaySum += Math.max(0, this.sim.time - e.ac.spawnTime - this.nominalTime(e.ac));
         if (!e.handedOff && this.mode === 'pro' && !this.tower) {
           s.missedHandoffs++;
           this.system(`${e.ac.callsign} landed without being handed to Tower.`, 'warn');
@@ -311,8 +360,40 @@ export class Session {
         break;
       }
       case 'vacated':
+        this.gone(e.ac);
+        if (this.tower && this.mode === 'pro' && e.ac.comms !== 'ground') {
+          s.missedHandoffs++;
+          this.system(`${e.ac.callsign} vacated without being sent to Ground.`, 'warn');
+        }
+        break;
       case 'removed':
         this.gone(e.ac);
+        // a go-around comes back later under the same callsign and calls in again
+        this.contacted.delete(e.ac.callsign);
+        this.lastSaid.delete(e.ac.callsign);
+        this.pendingErrors = this.pendingErrors.filter((p) => p.callsign !== e.ac.callsign);
+        break;
+      case 'incursion': {
+        s.runwayIncursions++;
+        const rwy = e.what === 'landing' ? this.sim.env.landing.id : this.sim.env.departure.id;
+        this.system(
+          e.what === 'landing'
+            ? `Runway incursion: ${e.ac.callsign} was cleared to land with ${e.other.callsign} still on runway ${rwy}. It went around.`
+            : `Runway incursion: ${e.ac.callsign} started its take-off roll with ${e.other.callsign} still on runway ${rwy}.`,
+          'bad',
+        );
+        break;
+      }
+      case 'takeoff':
+        s.departed++;
+        s.depDelaySum += e.waited;
+        break;
+      case 'wakeDeparture':
+        s.wakeInfringements++;
+        this.system(
+          `Wake turbulence: ${e.b.callsign} lifted off ${Math.round(e.gap)} s after ${e.a.callsign} (${e.a.type}); ${e.required / 60} min required.`,
+          'warn',
+        );
         break;
       case 'goAround':
         s.goArounds++;
@@ -325,6 +406,7 @@ export class Session {
           this.system(`${e.ac.callsign} went around: approach not stable.`, 'warn');
         else if (e.reason === 'noClearance')
           this.system(`${e.ac.callsign} went around: no landing clearance.`, 'bad');
+        // runwayOccupied: the incursion message explains it
         break;
       case 'leftAirspace':
         this.gone(e.ac);
@@ -576,6 +658,14 @@ export class Session {
     }
     const rb = readback(cs, rbCmds, this.sim, acCtx, refusals);
     const correct = r.commands;
+    if (
+      this.tower &&
+      accepted.some((c) => c.type === 'goAround') &&
+      !this.sim.runwayOccupants(this.sim.env.landing.id).length
+    ) {
+      s.unnecessaryGoArounds++;
+      this.system(`${cs}: go-around with the runway free.`, 'warn');
+    }
     // A landing clearance counts once given, not when the readback starts: a late one still beats the go-around.
     const now = flown.filter((c) => c.type === 'land');
     if (now.length) {
@@ -587,7 +677,12 @@ export class Session {
       rb: error ? 'hidden' : this.mode === 'beginner' && accepted.length ? 'ok' : undefined,
       detail: error?.detail,
       onStart: () => {
-        if (this.sim.byCallsign(cs)) this.sim.command(cs, flown);
+        const ac = this.sim.byCallsign(cs);
+        if (!ac) return;
+        const before = ac.comms;
+        this.sim.command(cs, flown);
+        // tower: a departure counts once handed to Departure
+        if (this.tower && before !== 'departure' && ac.comms === 'departure') s.departuresOut++;
       },
       onLogged: (entryId) => {
         if (error)

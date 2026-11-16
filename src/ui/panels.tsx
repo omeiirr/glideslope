@@ -475,6 +475,7 @@ export function PttBar({
   onEnableVoice,
 }: PttProps) {
   const [preview, setPreview] = useState<ParseResult | null>(null);
+  const warning = preview ? session.warning(preview) : null;
   const live = voice.status === 'recording' || voice.status === 'transcribing';
   const text = live ? voice.partial : draft;
   useEffect(() => {
@@ -606,6 +607,9 @@ export function PttBar({
         {preview && preview.callsign && !preview.commands.length && (
           <span class="chip hint">+ instruction?</span>
         )}
+        <span role="status" aria-live="polite">
+          {warning && <span class="chip warn">⚠ {warning}</span>}
+        </span>
       </div>
       <div class="conf" aria-label="Callsign confidence">
         <span>Confidence</span>

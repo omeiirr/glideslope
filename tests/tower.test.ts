@@ -70,8 +70,8 @@ test('unknown types fall back to a B738 airframe', () => {
 });
 
 test('two views calling frame() with the same timestamp advance the sim once', () => {
-  const a = new Session(scenarioById('tower-preview'), DEFAULT_SETTINGS);
-  const b = new Session(scenarioById('tower-preview'), DEFAULT_SETTINGS);
+  const a = new Session(scenarioById('tower-pro-light'), DEFAULT_SETTINGS);
+  const b = new Session(scenarioById('tower-pro-light'), DEFAULT_SETTINGS);
   for (let t = 0; t <= 10000; t += 16) {
     a.frame(t);
     a.frame(t);
@@ -82,7 +82,7 @@ test('two views calling frame() with the same timestamp advance the sim once', (
 });
 
 test('tower scenario: the stand-in Approach puts arrivals on the ILS and hands them to Tower', () => {
-  const s = new Session(scenarioById('tower-preview'), DEFAULT_SETTINGS);
+  const s = new Session(scenarioById('tower-pro-light'), DEFAULT_SETTINGS);
   for (let t = 0; t < 30_000; t += 100) s.update(100);
   const first = s.sim.aircraft.find((a) => a.kind === 'arrival')!;
   expect(first.nav.mode).toBe('loc');

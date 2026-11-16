@@ -62,8 +62,11 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
         ? OK
         : unable(`unable, runway ${env.landing.id} in use`);
     case 'handoff':
+      // before vacating it is "when vacated, contact Ground": the switch waits until the aircraft turns off
       if (cmd.to === 'ground')
-        return ac.kind === 'arrival' && isOnGround(ac) ? OK : unable('unable, not on the ground');
+        return ac.kind === 'arrival' && (isOnGround(ac) || onApproach)
+          ? OK
+          : unable('unable, not on the ground');
       if (cmd.to === 'departure')
         return ac.kind === 'departure' && (!isOnGround(ac) || m === 'takeoff')
           ? OK
@@ -158,7 +161,9 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
       ac.ilsArmed = cmd.runway;
       break;
     case 'handoff':
-      ac.comms = cmd.to;
+      if (cmd.to === 'ground' && !(ac.nav.mode === 'taxi' && ac.nav.then === 'vacate'))
+        ac.groundPending = true;
+      else ac.comms = cmd.to;
       break;
     case 'goAround':
       startGoAround(ac, env);

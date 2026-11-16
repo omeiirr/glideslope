@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { scenarioById } from '../src/game/scenarios';
 import { Session } from '../src/game/session';
 import { DEFAULT_SETTINGS } from '../src/game/settings';
+import type { Scenario } from '../src/game/scenarios';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -91,60 +92,104 @@ test('lesson waits for the last readback to finish before ending', async () => {
   expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Direct SPL, KLM1426')).toBe(true);
 });
 
-test('tower: arrival calls, cleared to land, vacates via V3 to Ground; departure lines up and goes', async () => {
-  const base = scenarioById('tower-preview');
-  const s = new Session(
+/** A tower scenario with only the aircraft given: KLM1200 6 NM out, plus `extra`. */
+function towerSession(mode: 'beginner' | 'pro', extra: NonNullable<Scenario['spawns']> = []) {
+  const base = scenarioById('tower-free');
+  return new Session(
     {
       ...base,
+      mode,
+      seed: 5,
       traffic: { arrivalsPerHour: 0, departuresPerHour: 0 },
-      spawns: [
-        base.spawns![0]!,
-        { at: 0, kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' },
-      ],
+      spawns: [base.spawns![0]!, ...extra],
     },
     DEFAULT_SETTINGS,
   );
-  const arr = base.spawns![0]!.callsign!;
-  const said = (re: RegExp) => s.log.some((e) => e.kind === 'pilot' && re.test(e.text));
+}
+const DEP = { at: 0, kind: 'departure' as const, callsign: 'TRA6015', type: 'B738', route: 'LEKKO' };
+const said = (s: Session, re: RegExp) => s.log.some((e) => e.kind === 'pilot' && re.test(e.text));
+async function settleUntil(s: Session, done: () => boolean, maxS = 300) {
+  for (let t = 0; t < maxS && !done(); t += 2) await settle(s, 2000);
+}
+/** Like a player: wait for a quiet frequency, then transmit (Pro blocks talking over a pilot). */
+async function say(s: Session, text: string) {
+  await settleUntil(s, () => !s.radio.current && !s.radio.waiting, 60);
+  s.transmit(text, 'typed');
+}
+
+test('tower: arrival calls, cleared to land, vacates via V3 to Ground; departure lines up, goes, to Departure', async () => {
+  const s = towerSession('pro', [DEP]);
   await settle(s, 10000);
   expect(s.station.name).toBe('Schiphol Tower');
-  expect(said(new RegExp(`^Schiphol Tower, ${arr}, ILS 18R$`))).toBe(true);
-  expect(said(/^Schiphol Tower, TRA6015, holding point S7E, ready for departure$/)).toBe(true);
+  expect(said(s, /^Schiphol Tower, KLM1200, ILS 18R$/)).toBe(true);
+  expect(said(s, /^Schiphol Tower, TRA6015, holding point S7E, ready for departure$/)).toBe(true);
 
-  s.transmit(`${arr}, runway 18R, wind 200 degrees 12 knots, cleared to land`, 'typed');
-  s.transmit('TRA6015, runway 24, line up and wait', 'typed');
+  await say(s, 'KLM1200, runway 18R, wind 200 degrees 12 knots, cleared to land');
+  await say(s, 'TRA6015, runway 24, line up and wait');
   await settle(s);
-  expect(said(new RegExp(`^Runway 18R, cleared to land, ${arr}$`))).toBe(true);
-  expect(said(/^Runway 24, line up and wait, TRA6015$/)).toBe(true);
-  expect(s.sim.byCallsign(arr)!.landClear).toBe(true);
-
-  s.transmit(`${arr}, vacate left via V3`, 'typed');
-  s.transmit('TRA6015, runway 24, wind 200 degrees 12 knots, cleared for take-off', 'typed');
-  for (let i = 0; i < 40 && s.sim.byCallsign(arr)?.nav.mode !== 'rollout'; i++) await settle(s, 5000);
-  expect(s.stats.landed).toBe(1);
-  s.transmit(`${arr}, contact ground 121.800`, 'typed');
+  expect(said(s, /^Runway 18R, cleared to land, KLM1200$/)).toBe(true);
+  expect(said(s, /^Runway 24, line up and wait, TRA6015$/)).toBe(true);
+  // "when vacated contact Ground", given on final
+  await say(s, 'KLM1200, vacate left via V3, when vacated contact ground 121.800');
   await settle(s);
-  expect(said(new RegExp(`^Schiphol Ground 121.800, ${arr}$`))).toBe(true);
-  for (let i = 0; i < 20 && s.sim.byCallsign(arr); i++) await settle(s, 5000);
-  expect(s.sim.byCallsign(arr)).toBeUndefined();
+  expect(said(s, /^Vacate left via V3, Schiphol Ground 121.800, KLM1200$/)).toBe(true);
 
   const dep = s.sim.byCallsign('TRA6015')!;
-  expect(dep.alt).toBeGreaterThan(500);
-  s.transmit('TRA6015, contact departure 120.555', 'typed');
+  await settleUntil(s, () => dep.nav.mode === 'lineup' && dep.nav.ready);
+  await say(s, 'TRA6015, runway 24, wind 200 degrees 12 knots, cleared for take-off');
+  await settleUntil(s, () => dep.alt > 400);
+  await say(s, 'TRA6015, contact departure 120.555');
   await settle(s);
   expect(dep.comms).toBe('departure');
-  expect(s.stats.goArounds).toBe(0);
+  await settleUntil(s, () => !s.sim.byCallsign('KLM1200'));
+  expect(s.stats).toMatchObject({
+    landed: 1,
+    departuresOut: 1,
+    departed: 1,
+    goArounds: 0,
+    missedHandoffs: 0,
+    runwayIncursions: 0,
+  });
   // all standard phraseology
   expect(s.stats.phraseSum).toBe(100 * s.stats.transmissions);
 });
 
-test('tower: no landing clearance means a go-around', async () => {
-  const base = scenarioById('tower-preview');
-  const s = new Session(
-    { ...base, traffic: { arrivalsPerHour: 0, departuresPerHour: 0 }, spawns: [base.spawns![0]!] },
-    DEFAULT_SETTINGS,
-  );
-  for (let i = 0; i < 40 && !s.stats.goArounds; i++) await settle(s, 5000);
+test('tower Pro: no landing clearance means a go-around; missed handoffs to Ground and Departure', async () => {
+  const s = towerSession('pro', [DEP]);
+  await settleUntil(s, () => s.stats.goArounds > 0);
   expect(s.stats.goArounds).toBe(1);
   expect(s.log.some((e) => e.kind === 'system' && /no landing clearance/.test(e.text))).toBe(true);
+  // the departure: take-off, never handed off
+  await say(s, 'TRA6015, runway 24, wind 200 degrees 12 knots, cleared for take-off');
+  await settleUntil(s, () => s.stats.missedHandoffs > 0);
+  expect(s.stats.missedHandoffs).toBe(1);
+  expect(s.stats.departuresOut).toBe(1);
+  // the go-around comes back about 4 minutes later and calls again
+  await settleUntil(
+    s,
+    () => s.log.filter((e) => e.kind === 'pilot' && /KLM1200, ILS 18R/.test(e.text)).length > 1,
+    600,
+  );
+  await say(s, 'KLM1200, runway 18R, wind 200 degrees 12 knots, cleared to land');
+  await settleUntil(s, () => s.stats.landed > 0 && !s.sim.byCallsign('KLM1200'), 600);
+  // landed and vacated without "contact Ground"
+  expect(s.stats.missedHandoffs).toBe(2);
+  expect(s.stats.runwayIncursions).toBe(0);
+});
+
+test('tower: go-around with the runway free is noted; Beginner warns before a clearance onto an occupied runway', async () => {
+  const s = towerSession('beginner', [
+    { ...DEP },
+    { at: 0, kind: 'departure', callsign: 'KLM1717', type: 'B738', route: 'LOPIK' },
+  ]);
+  await settle(s, 10000);
+  await say(s, 'KLM1200, go around');
+  await settle(s);
+  expect(s.stats.unnecessaryGoArounds).toBe(1);
+  await say(s, 'TRA6015, runway 24, line up and wait');
+  await settle(s, 30000);
+  expect(s.warning(s.hear('TRA6015, runway 24, cleared for take-off'))).toBeNull();
+  // KLM1717 is next; with TRA6015 lined up, its take-off clearance gets a warning
+  await settleUntil(s, () => s.sim.byCallsign('KLM1717')!.comms === 'tower');
+  expect(s.warning(s.hear('KLM1717, runway 24, cleared for take-off'))).toBe('TRA6015 is still on runway 24');
 });

@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import { EHAM, TICK, runwayById, runwayFrame, type Aircraft, type Sim, type SimEvent } from '../src/core';
+import {
+  EHAM,
+  TICK,
+  isOnGround,
+  runwayById,
+  runwayFrame,
+  type Aircraft,
+  type Sim,
+  type SimEvent,
+} from '../src/core';
 import { arrival, onFinal, quietSim } from './helpers';
 
 const rwy = runwayById(EHAM, '18R');
@@ -62,14 +71,17 @@ describe('tower mode (T3 core)', () => {
         { type: 'vacate', exit: 'V3', side: 'left' },
       ]),
     ).toEqual([{ ok: true }, { ok: true }]);
-    // Ground only once on the ground
-    expect(sim.validate(ac.callsign, { type: 'handoff', to: 'ground' }).ok).toBe(false);
+    // a departure can't be sent to Ground
+    expect(sim.validate('XXX', { type: 'handoff', to: 'ground' }).ok).toBe(false);
     runUntil(sim, () => ac.nav.mode === 'rollout');
     expect(ac.nav.mode === 'rollout' && ac.nav.exit?.name).toBe('V3');
     // V1 is behind it by now
     runUntil(sim, () => -alongNm(ac) * 1852 > 1700);
     expect(sim.validate(ac.callsign, { type: 'vacate', exit: 'V1' }).ok).toBe(false);
+    // "contact Ground" on the rollout: the switch waits until it turns off
     expect(sim.command(ac.callsign, [{ type: 'handoff', to: 'ground' }])).toEqual([{ ok: true }]);
+    expect(ac.comms).toBe('tower');
+    runUntil(sim, () => ac.nav.mode === 'taxi');
     expect(ac.comms).toBe('ground');
     let exitAt = 0;
     const ev = runUntil(sim, () => {
@@ -114,9 +126,10 @@ describe('tower mode (T3 core)', () => {
     expect(sim.command(a.callsign, [{ type: 'takeoff', runway: '24' }])).toEqual([{ ok: true }]);
     runUntil(sim, () => a.alt > dep.elevationFt + 1000);
     expect(sim.command(a.callsign, [{ type: 'handoff', to: 'departure' }])).toEqual([{ ok: true }]);
+    // off the scene 8 NM out
     ev = runUntil(sim, () => !sim.aircraft.includes(a), 900);
-    const left = ev.find((e) => e.type === 'leftAirspace');
-    expect(left && left.type === 'leftAirspace' && left.handedOff).toBe(true);
+    expect(ev.filter((e) => e.type === 'removed').map((e) => e.ac)).toEqual([a]);
+    expect(ev.filter((e) => e.type === 'takeoff').map((e) => e.ac)).toEqual([]); // reported once, at the roll
   });
 
   test('cleared for take-off straight from the holding point; hold position stops the roll', () => {
@@ -140,5 +153,115 @@ describe('tower mode (T3 core)', () => {
     sim.command(a.callsign, [{ type: 'takeoff', runway: '24' }]);
     runUntil(sim, () => a.alt > dep.elevationFt + 500, 200);
     expect(a.alt).toBeGreaterThan(dep.elevationFt + 500);
+  });
+});
+
+describe('tower mode (T4 rules)', () => {
+  /** A Tower that clears every arrival to land on its first call and never says anything else. */
+  function perfectTower(types: string[] | undefined, wind = { dir: 0, speed: 0 }, hours = 2) {
+    const sim = quietSim({
+      tower: true,
+      wind,
+      traffic: { arrivalsPerHour: 40, departuresPerHour: 0, types },
+    });
+    const ev: SimEvent[] = [];
+    for (let t = 0; t < hours * 3600; t += TICK)
+      for (const e of sim.step()) {
+        ev.push(e);
+        if (e.type === 'checkIn') sim.command(e.ac.callsign, [{ type: 'land', runway: '18R' }]);
+      }
+    const n = (type: string) => ev.filter((e) => e.type === type).length;
+    return { landed: n('landed'), goArounds: n('goAround'), incursions: n('incursion') };
+  }
+
+  test.each([
+    ['all types', undefined],
+    ['light behind heavy and heavy behind light', ['PC12', 'B77W']],
+    ['A380 mix', ['A388', 'E190', 'PC12']],
+    ['slow and fast', ['E190', 'B77W']],
+  ])('stand-in Approach spacing (%s): a perfect Tower never has a go-around', (_, types) => {
+    for (const wind of [
+      { dir: 0, speed: 0 },
+      { dir: 200, speed: 25 },
+    ]) {
+      const r = perfectTower(types, wind);
+      expect(r.goArounds, JSON.stringify({ wind, ...r })).toBe(0);
+      expect(r.incursions).toBe(0);
+      expect(r.landed).toBeGreaterThan(30);
+    }
+  });
+
+  test('landing clearance onto an occupied runway: go-around and one incursion', () => {
+    const sim = towerSim();
+    const a = arrival(sim, { pos: onFinal(2), hdg: rwy.heading, alt: 700, ias: 145 });
+    const b = arrival(sim, { callsign: 'EZY88', pos: onFinal(4), hdg: rwy.heading, alt: 1300, ias: 150 });
+    runUntil(sim, () => false, 1); // the stand-in Approach clears them for the ILS on the first tick
+    expect(sim.command(a.callsign, [{ type: 'land', runway: '18R' }])).toEqual([{ ok: true }]);
+    expect(sim.command(b.callsign, [{ type: 'land', runway: '18R' }])).toEqual([{ ok: true }]);
+    const ev = runUntil(sim, () => b.phase === 'goaround', 200);
+    const inc = ev.filter((e) => e.type === 'incursion');
+    expect(inc).toHaveLength(1);
+    expect(inc[0]!.type === 'incursion' && [inc[0]!.ac, inc[0]!.other, inc[0]!.what]).toEqual([
+      b,
+      a,
+      'landing',
+    ]);
+    const ga = ev.find((e) => e.type === 'goAround');
+    expect(ga?.type === 'goAround' && ga.ac === b && ga.reason).toBe('runwayOccupied');
+    expect(alongNm(b)).toBeGreaterThan(0);
+  });
+
+  test('take-off with the previous departure still on the runway, heavy ahead: incursion and wake', () => {
+    const sim = towerSim();
+    const a = sim.spawn({ kind: 'departure', callsign: 'KLM601', type: 'B77W', route: 'LEKKO' });
+    const b = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LOPIK' });
+    runUntil(sim, () => a.comms === 'tower', 30);
+    sim.command(a.callsign, [{ type: 'takeoff', runway: '24' }]);
+    runUntil(sim, () => a.nav.mode === 'takeoff', 120);
+    // b called once a left the queue
+    runUntil(sim, () => b.comms === 'tower', 60);
+    sim.command(b.callsign, [{ type: 'takeoff', runway: '24' }]);
+    const ev = runUntil(sim, () => !isOnGround(b) && b.alt > 500, 300);
+    const inc = ev.filter((e) => e.type === 'incursion');
+    expect(inc.map((e) => e.type === 'incursion' && [e.ac.callsign, e.other.callsign, e.what])).toEqual([
+      ['TRA6015', 'KLM601', 'takeoff'],
+    ]);
+    const wake = ev.filter((e) => e.type === 'wakeDeparture');
+    expect(wake).toHaveLength(1);
+    expect(wake[0]!.type === 'wakeDeparture' && wake[0]!.required).toBe(120);
+    const tk = ev.filter((e) => e.type === 'takeoff');
+    expect(tk.map((e) => e.type === 'takeoff' && e.ac)).toEqual([b]);
+  });
+
+  test('departures spaced properly: no incursion, no wake event', () => {
+    const sim = towerSim();
+    const a = sim.spawn({ kind: 'departure', callsign: 'KLM601', type: 'B77W', route: 'LEKKO' });
+    const b = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LOPIK' });
+    const ev = runUntil(sim, () => a.comms === 'tower', 30);
+    sim.command(a.callsign, [{ type: 'takeoff', runway: '24' }]);
+    let aUp = -1;
+    ev.push(
+      ...runUntil(sim, () => {
+        if (aUp < 0 && a.nav.mode === 'direct') aUp = sim.time;
+        return aUp > 0 && sim.time - aUp > 100 && b.comms === 'tower';
+      }),
+    );
+    // lined up by now; rolls 25+ s later, so lifts off more than 2 minutes after the heavy
+    sim.command(b.callsign, [{ type: 'takeoff', runway: '24' }]);
+    ev.push(...runUntil(sim, () => !isOnGround(b), 300));
+    expect(ev.filter((e) => e.type === 'incursion' || e.type === 'wakeDeparture')).toEqual([]);
+  });
+
+  test('a go-around comes back onto the final later, same callsign', () => {
+    const sim = towerSim();
+    const ac = arrival(sim, { pos: onFinal(4), hdg: rwy.heading, alt: 1300, ias: 150 });
+    const ev = runUntil(sim, () => ev2(), 900);
+    function ev2() {
+      return sim.aircraft.some((a) => a.callsign === ac.callsign && a !== ac);
+    }
+    expect(ev.filter((e) => e.type === 'removed').map((e) => e.ac)).toEqual([ac]);
+    const back = sim.byCallsign(ac.callsign)!;
+    expect(back).not.toBe(ac);
+    expect(alongNm(back)).toBeCloseTo(12, 0);
   });
 });

@@ -46,10 +46,10 @@ export class Spawner {
     this.nextDeparture = config.departuresPerHour > 0 ? rng.range(40, 120) : Infinity;
   }
 
-  /** Random spawns that are due at `time`. */
-  due(time: number, active: readonly Aircraft[]): Aircraft[] {
+  /** Random spawns that are due at `time`. `arrivals: false`: the caller feeds arrivals itself (tower mode). */
+  due(time: number, active: readonly Aircraft[], arrivals = true): Aircraft[] {
     const out: Aircraft[] = [];
-    if (time >= this.nextArrival) {
+    if (arrivals && time >= this.nextArrival) {
       const stars = this.ap.stars.filter(
         (s) =>
           (!this.config.stars || this.config.stars.includes(s.id)) &&
@@ -69,7 +69,7 @@ export class Spawner {
     return out;
   }
 
-  private gap(perHour: number, min: number): number {
+  gap(perHour: number, min: number): number {
     const mean = 3600 / perHour;
     return Math.max(min, Math.min(mean * 2.5, -Math.log(1 - this.rng.next()) * mean));
   }

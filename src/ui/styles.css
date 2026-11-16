@@ -1108,3 +1108,10 @@ dl.defs dd {
   color: var(--text2);
   text-align: right;
 }
+
+/* Beginner tower safety warning in the PTT bar */
+.chip.warn {
+  background: var(--amber-bg);
+  border-color: var(--amber-line);
+  color: var(--amber-text);
+}

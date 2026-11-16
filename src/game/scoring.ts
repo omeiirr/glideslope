@@ -18,6 +18,12 @@ export interface Stats {
   readbackCaught: number;
   /** Count per feedback rule, for the debrief. */
   rules: Record<string, number>;
+  // tower
+  runwayIncursions: number;
+  unnecessaryGoArounds: number;
+  /** Departures that started their take-off roll, and their summed wait from ready call to roll (s). */
+  departed: number;
+  depDelaySum: number;
 }
 
 export const emptyStats = (): Stats => ({
@@ -35,6 +41,10 @@ export const emptyStats = (): Stats => ({
   readbackErrors: 0,
   readbackCaught: 0,
   rules: {},
+  runwayIncursions: 0,
+  unnecessaryGoArounds: 0,
+  departed: 0,
+  depDelaySum: 0,
 });
 
 /** 100 = textbook ICAO. Warnings cost 20, style notes 5; not understood = 0. */
@@ -62,6 +72,9 @@ interface Weights {
   uncaughtReadback: number;
   caughtReadback: number;
   phraseBonus: number;
+  incursion: number;
+  unnecessaryGoAround: number;
+  depDelayPer10s: number;
 }
 
 /** Same events, different weights: Beginner only rewards, Pro also punishes. */
@@ -78,6 +91,9 @@ export const WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     uncaughtReadback: 0,
     caughtReadback: 0,
     phraseBonus: 2,
+    incursion: 0,
+    unnecessaryGoAround: 0,
+    depDelayPer10s: 0,
   },
   pro: {
     landed: 100,
@@ -91,11 +107,32 @@ export const WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     uncaughtReadback: -75,
     caughtReadback: 25,
     phraseBonus: 3,
+    incursion: 0,
+    unnecessaryGoAround: 0,
+    depDelayPer10s: 0,
   },
 };
 
-export function totalScore(s: Stats, mode: 'beginner' | 'pro'): number {
-  const w = WEIGHTS[mode];
+/** Tower: a departure is as much work as a landing; the runway is what you can get wrong. */
+export const TOWER_WEIGHTS: Record<'beginner' | 'pro', Weights> = {
+  beginner: { ...WEIGHTS.beginner, departure: 100, leftAirspace: 0 },
+  pro: {
+    ...WEIGHTS.pro,
+    departure: 100,
+    delayPer10s: 0,
+    separation: 0,
+    leftAirspace: 0,
+    incursion: -300,
+    unnecessaryGoAround: -25,
+    depDelayPer10s: -1,
+  },
+};
+
+export const weightsFor = (mode: 'beginner' | 'pro', tower = false): Weights =>
+  (tower ? TOWER_WEIGHTS : WEIGHTS)[mode];
+
+export function totalScore(s: Stats, mode: 'beginner' | 'pro', tower = false): number {
+  const w = weightsFor(mode, tower);
   return Math.round(
     s.landed * w.landed +
       s.departuresOut * w.departure +
@@ -107,6 +144,9 @@ export function totalScore(s: Stats, mode: 'beginner' | 'pro'): number {
       s.leftAirspace * w.leftAirspace +
       (s.readbackErrors - s.readbackCaught) * w.uncaughtReadback +
       s.readbackCaught * w.caughtReadback +
-      (s.phraseSum / 100) * w.phraseBonus,
+      (s.phraseSum / 100) * w.phraseBonus +
+      s.runwayIncursions * w.incursion +
+      s.unnecessaryGoArounds * w.unnecessaryGoAround +
+      (s.depDelaySum / 10) * w.depDelayPer10s,
   );
 }

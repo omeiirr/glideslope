@@ -4,6 +4,7 @@ import {
   type GoAroundReason,
   lineUp,
   runwayFrame,
+  startGoAround,
   stepAircraft,
   type Aircraft,
   type Env,
@@ -15,6 +16,7 @@ import type { Command, CommandResult } from './commands/commands';
 import { bearing, dist, headingVec, unproject } from './geo';
 import { Rng } from './rng';
 import { detectConflicts, type Conflict } from './rules/separation';
+import { FEED_KT, FEED_NM, departureWakeS, feedGap } from './rules/tower';
 import { Spawner, type SpawnSpec, type TrafficConfig } from './traffic/spawner';
 
 /** Fixed simulation time step, seconds. */
@@ -42,6 +44,11 @@ const READY_CALL_S = 5;
 /** Queue spacing at the holding point, metres (same as the spawner's). */
 const QUEUE_M = 70;
 
+/** Tower mode: a go-around comes back onto the final this long after the stand-in Approach takes it (seconds). */
+const REFEED_S = 240;
+/** Tower mode: departures leave the scene this far out (NM), handed off or not. */
+const DEPARTED_NM = 8;
+
 /** A departure waits at least this long at the holding point (seconds), and this long lined up. */
 const HOLD_MIN_S = 20;
 const LINEUP_WAIT_S = 8;
@@ -56,8 +63,14 @@ export type SimEvent =
   | { type: 'vacated'; ac: Aircraft }
   | { type: 'goAround'; ac: Aircraft; reason: GoAroundReason }
   | { type: 'leftAirspace'; ac: Aircraft; handedOff: boolean }
-  /** Tower mode: taken off the frequency by the stand-in Approach (a go-around that has climbed out). */
+  /** Tower mode: off the scene (a go-around taken by the stand-in Approach, or a departure 8 NM out). */
   | { type: 'removed'; ac: Aircraft }
+  /** Tower mode: a landing or take-off with another aircraft on the runway. */
+  | { type: 'incursion'; ac: Aircraft; other: Aircraft; what: 'landing' | 'takeoff' }
+  /** Tower mode: take-off roll started, `waited` seconds after the ready call. */
+  | { type: 'takeoff'; ac: Aircraft; waited: number }
+  /** Tower mode: lift-off closer behind a heavier departure than the wake minimum (seconds). */
+  | { type: 'wakeDeparture'; a: Aircraft; b: Aircraft; gap: number; required: number }
   | { type: 'conflict'; kind: 'loss' | 'wake'; a: Aircraft; b: Aircraft };
 
 export class Sim {
@@ -72,6 +85,11 @@ export class Sim {
   private _conflicts: Conflict[] = [];
   private autoTower: boolean;
   readonly tower: boolean;
+  /** Tower mode feed: next random arrival, the one held back for spacing, go-arounds to bring back. */
+  private nextArrival = Infinity;
+  private waiting: Aircraft | null = null;
+  private refeed: { at: number; ac: Aircraft }[] = [];
+  private lastLiftoff: { ac: Aircraft; time: number } | null = null;
 
   constructor(
     readonly airport: Airport,
@@ -91,6 +109,7 @@ export class Sim {
     this.spawner = new Spawner(airport, this.rng, opts.traffic);
     this.tower = !!opts.tower;
     this.autoTower = opts.autoTower ?? !this.tower;
+    if (this.tower && opts.traffic.arrivalsPerHour > 0) this.nextArrival = 30;
   }
 
   /**
@@ -184,8 +203,95 @@ export class Sim {
       this.time - front.spawnTime >= READY_CALL_S
     ) {
       front.comms = 'tower';
+      front.readyAt = this.time;
       front.identified = true;
       events.push({ type: 'checkIn', ac: front });
+    }
+  }
+
+  /**
+   * Tower mode: the stand-in Approach puts arrivals onto the final at FEED_NM, each one held back until it has
+   * the spacing `feedGap` asks for behind the previous one.
+   */
+  private feed(events: SimEvent[]) {
+    const landing = this.env.landing;
+    if (!this.waiting) {
+      const taken = [...this.list, ...this.refeed.map((r) => r.ac)];
+      const back = headingVec(landing.heading + 180, FEED_NM);
+      const spec: SpawnSpec = {
+        kind: 'arrival',
+        pos: { x: landing.pos.x + back.x, y: landing.pos.y + back.y },
+        hdg: landing.heading,
+        alt: 3000,
+        ias: FEED_KT,
+        onFrequency: true,
+      };
+      const i = this.refeed.findIndex((r) => r.at <= this.time);
+      if (i >= 0) {
+        const { ac } = this.refeed.splice(i, 1)[0]!;
+        this.waiting = this.spawner.create(
+          { ...spec, callsign: ac.callsign, type: ac.type },
+          this.time,
+          taken,
+        );
+      } else if (this.time >= this.nextArrival) {
+        this.waiting = this.spawner.create(spec, this.time, taken);
+        this.nextArrival = this.time + this.spawner.gap(this.spawner.config.arrivalsPerHour, 60);
+      }
+    }
+    const w = this.waiting;
+    if (!w) return;
+    let last: Aircraft | undefined;
+    let lastAlong = -Infinity;
+    for (const a of this.list) {
+      if (a.kind !== 'arrival' || isOnGround(a) || a.phase === 'goaround') continue;
+      const along = runwayFrame(a.pos, landing).along;
+      if (along > 0 && along > lastAlong) [last, lastAlong] = [a, along];
+    }
+    if (last && FEED_NM - lastAlong < feedGap(last.perf, w.perf)) return;
+    w.spawnTime = this.time;
+    this.add(w);
+    events.push({ type: 'spawned', ac: w });
+    this.waiting = null;
+  }
+
+  /** Tower mode, per aircraft after its step: runway safety, take-off events, wake, leaving the scene. */
+  private towerRules(ac: Aircraft, was: Aircraft['nav']['mode'], events: SimEvent[], remove: Set<Aircraft>) {
+    const now = ac.nav.mode;
+    const landing = this.env.landing;
+    // a cleared arrival that finds the runway occupied goes around
+    if (now === 'loc' && ac.landClear && runwayFrame(ac.pos, landing).along < 0.2) {
+      const other = this.runwayOccupants(landing.id).find((o) => o !== ac);
+      if (other) {
+        startGoAround(ac, this.env);
+        events.push({ type: 'goAround', ac, reason: 'runwayOccupied' });
+        events.push({ type: 'incursion', ac, other: other as Aircraft, what: 'landing' });
+      }
+    }
+    if (was !== 'takeoff' && now === 'takeoff') {
+      const other = this.runwayOccupants(this.env.departure.id).find((o) => o !== ac);
+      if (other) events.push({ type: 'incursion', ac, other: other as Aircraft, what: 'takeoff' });
+      // once per departure (a rejected take-off rolls again later)
+      if (ac.readyAt !== undefined) events.push({ type: 'takeoff', ac, waited: this.time - ac.readyAt });
+      ac.readyAt = undefined;
+    }
+    if (was === 'takeoff' && !isOnGround(ac)) {
+      const prev = this.lastLiftoff;
+      if (prev) {
+        const required = departureWakeS(prev.ac.perf.wake, ac.perf.wake);
+        const gap = this.time - prev.time;
+        if (gap < required) events.push({ type: 'wakeDeparture', a: prev.ac, b: ac, gap, required });
+      }
+      this.lastLiftoff = { ac, time: this.time };
+    }
+    const gone =
+      (ac.kind === 'departure' && !isOnGround(ac) && dist(ac.pos, { x: 0, y: 0 }) > DEPARTED_NM) ||
+      // the stand-in Approach takes a go-around once it has climbed out, and brings it back later
+      (ac.phase === 'goaround' && ac.alt >= this.airport.missedApproachAltFt - 100);
+    if (gone && !remove.has(ac)) {
+      remove.add(ac);
+      events.push({ type: 'removed', ac });
+      if (ac.kind === 'arrival') this.refeed.push({ at: this.time + REFEED_S, ac });
     }
   }
 
@@ -243,10 +349,11 @@ export class Sim {
     this.env.time = this.time;
     this.tickCount++;
     const events: SimEvent[] = [];
-    for (const ac of this.spawner.due(this.time, this.list)) {
+    for (const ac of this.spawner.due(this.time, this.list, !this.tower)) {
       this.add(ac);
       events.push({ type: 'spawned', ac });
     }
+    if (this.tower) this.feed(events);
     const sample = this.tickCount % 8 === 0;
     const remove = new Set<Aircraft>();
     for (const ac of this.list) {
@@ -254,6 +361,7 @@ export class Sim {
         ac.trail.unshift({ ...ac.pos });
         if (ac.trail.length > 6) ac.trail.pop();
       }
+      const was = ac.nav.mode;
       for (const e of stepAircraft(ac, TICK, this.env)) {
         if (e.type === 'gone') remove.add(ac);
         else if (e.type === 'landed') events.push({ type: 'landed', ac, handedOff: ac.comms === 'tower' });
@@ -269,17 +377,14 @@ export class Sim {
           });
         } else events.push({ ...e, ac } as SimEvent);
       }
-      // shortcut: tower mode, the stand-in Approach takes a go-around off the frequency once it has climbed out (T4: re-sequence it)
-      if (this.tower && ac.phase === 'goaround' && ac.alt >= this.airport.missedApproachAltFt - 100) {
-        remove.add(ac);
-        events.push({ type: 'removed', ac });
-      }
+      if (this.tower) this.towerRules(ac, was, events, remove);
     }
     if (remove.size) this.list = this.list.filter((a) => !remove.has(a));
     if (this.autoTower) this.runTower();
     this.moveQueue();
     if (this.tower) this.runTowerMode(events);
-    if (this.tickCount % 2 === 0) {
+    // tower mode: airborne separation is the (stand-in) Approach controller's job, not the player's
+    if (this.tickCount % 2 === 0 && !this.tower) {
       this._conflicts = detectConflicts(this.list, this.env.landing);
       const now = new Set<string>();
       for (const c of this._conflicts) {

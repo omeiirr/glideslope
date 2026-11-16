@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { EHAM } from '../core';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
-import { phraseologyPct, WEIGHTS } from '../game/scoring';
+import { phraseologyPct, weightsFor } from '../game/scoring';
 import type { Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT } from '../phraseology/phrases';
@@ -103,7 +103,7 @@ export function Menu({
           SCENARIOS.filter((s) => !s.lesson && !s.view && s.mode === 'beginner'),
         )}
         {group(
-          'Tower (preview)',
+          'Tower',
           SCENARIOS.filter((s) => s.view === 'tower'),
         )}
         {group(
@@ -329,23 +329,36 @@ export function Debrief({
 }) {
   const ref = useDialog();
   const s = session.stats;
-  const w = WEIGHTS[session.mode];
+  const w = weightsFor(session.mode, session.tower);
   const missed = session.log.filter((e) => e.kind === 'pilot' && e.rb === 'missed');
   const rules = Object.entries(s.rules).sort((a, b) => b[1] - a[1]);
   const pts = (n: number) => (n ? `${n > 0 ? '+' : ''}${Math.round(n)}` : '0');
-  const rows: [string, string | number, number][] = [
+  const delay: [string, string | number, number] = session.tower
+    ? [
+        'Average wait at the holding point',
+        s.departed ? `${(s.depDelaySum / s.departed / 60).toFixed(1)} min` : '—',
+        (s.depDelaySum / 10) * w.depDelayPer10s,
+      ]
+    : [
+        'Average arrival delay',
+        s.landed ? `${(s.delaySum / s.landed / 60).toFixed(1)} min` : '—',
+        (s.delaySum / 10) * w.delayPer10s,
+      ];
+  const all: ([string, string | number, number] | false)[] = [
     ['Landings', s.landed, s.landed * w.landed],
-    ['Departures handed off', s.departuresOut, s.departuresOut * w.departure],
-    [
-      'Average arrival delay',
-      s.landed ? `${(s.delaySum / s.landed / 60).toFixed(1)} min` : '—',
-      (s.delaySum / 10) * w.delayPer10s,
-    ],
-    ['Separation losses', s.separationLosses, s.separationLosses * w.separation],
+    [session.tower ? 'Departures' : 'Departures handed off', s.departuresOut, s.departuresOut * w.departure],
+    delay,
+    session.tower && ['Runway incursions', s.runwayIncursions, s.runwayIncursions * w.incursion],
+    !session.tower && ['Separation losses', s.separationLosses, s.separationLosses * w.separation],
     ['Wake turbulence infringements', s.wakeInfringements, s.wakeInfringements * w.wake],
     ['Missed handoffs', s.missedHandoffs, s.missedHandoffs * w.missedHandoff],
     ['Go-arounds', s.goArounds, s.goArounds * w.goAround],
-    ['Aircraft that left the airspace', s.leftAirspace, s.leftAirspace * w.leftAirspace],
+    session.tower && [
+      'Go-arounds with the runway free',
+      s.unnecessaryGoArounds,
+      s.unnecessaryGoArounds * w.unnecessaryGoAround,
+    ],
+    !session.tower && ['Aircraft that left the airspace', s.leftAirspace, s.leftAirspace * w.leftAirspace],
     [
       'Readback errors caught',
       `${s.readbackCaught} of ${s.readbackErrors}`,
@@ -357,6 +370,7 @@ export function Debrief({
       (s.phraseSum / 100) * w.phraseBonus,
     ],
   ];
+  const rows = all.filter((r): r is [string, string | number, number] => !!r);
   return (
     <div class="overlay">
       <div ref={ref} class="dialog" role="dialog" aria-modal="true" aria-labelledby="debrief-title">

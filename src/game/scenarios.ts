@@ -39,24 +39,23 @@ const student = (x: number, y: number, hdg: number, alt: number, ias = 220): Spa
 });
 
 const FINAL = runwayById(EHAM, EHAM.config.landing);
-const TOWER_TYPES = ['B738', 'A320', 'E190', 'A332', 'B738', 'A321', 'B77W', 'A20N', 'B789', 'E195'];
-const TOWER_AIRLINES = ['KLM', 'EZY', 'KLM', 'KLM', 'TRA', 'BAW', 'KLM', 'DLH', 'TFL', 'KLM'];
-/** A steady stream of arrivals already lined up on the final, one every 2.5 minutes. */
-const towerArrivals = (count: number): (SpawnSpec & { at: number })[] =>
-  Array.from({ length: count }, (_, i) => {
-    const out = headingVec(FINAL.heading + 180, i === 0 ? 5 : 13);
-    return {
-      at: i === 0 ? 0 : 20 + (i - 1) * 150,
-      kind: 'arrival' as const,
-      callsign: `${TOWER_AIRLINES[i % 10]}${1200 + ((i * 137) % 700)}`,
-      type: TOWER_TYPES[i % 10],
-      pos: { x: FINAL.pos.x + out.x, y: FINAL.pos.y + out.y },
-      hdg: FINAL.heading,
-      alt: i === 0 ? 1500 : 3000,
-      ias: i === 0 ? 170 : 190,
-      onFrequency: true,
-    };
-  });
+/** Tower scenarios start with one arrival 6 NM out, so there is something to do at once; the rest come from the feed. */
+const firstArrival = (callsign: string, type: string): SpawnSpec & { at: number } => {
+  const out = headingVec(FINAL.heading + 180, 6);
+  return {
+    at: 0,
+    kind: 'arrival',
+    callsign,
+    type,
+    pos: { x: FINAL.pos.x + out.x, y: FINAL.pos.y + out.y },
+    hdg: FINAL.heading,
+    alt: 1900,
+    ias: 170,
+    onFrequency: true,
+  };
+};
+/** Narrowbodies only (no light or heavy wake pairs). */
+const TOWER_EASY = ['B738', 'A320', 'A20N', 'E190', 'E195', 'A321', 'B38M'];
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -129,16 +128,53 @@ export const SCENARIOS: Scenario[] = [
     traffic: { arrivalsPerHour: 12, departuresPerHour: 4, alnumCallsigns: 0 },
   },
   {
-    id: 'tower-preview',
+    id: 'tower-free',
     view: 'tower',
-    name: 'Tower (preview)',
+    name: 'Tower · Free play',
     blurb:
-      'You are Schiphol Tower: clear arrivals to land on 18R and send them off the runway, line up and launch departures from 24.',
+      'You are Schiphol Tower: land arrivals on 18R and send them off the runway, line up and launch departures from 24. No penalties, warnings on.',
     mode: 'beginner',
-    seed: 7,
+    seed: 0,
     durationMin: 0,
-    traffic: { arrivalsPerHour: 0, departuresPerHour: 14 },
-    spawns: towerArrivals(40),
+    traffic: { arrivalsPerHour: 16, departuresPerHour: 14, types: TOWER_EASY },
+    spawns: [firstArrival('KLM1200', 'B738')],
+  },
+  {
+    id: 'tower-pro-light',
+    view: 'tower',
+    name: 'Tower Pro · Light',
+    blurb: '20 minutes, about 16 arrivals and 14 departures an hour, narrowbodies.',
+    mode: 'pro',
+    seed: 201,
+    durationMin: 20,
+    wind: { dir: 200, speed: 10 },
+    traffic: { arrivalsPerHour: 16, departuresPerHour: 14, types: TOWER_EASY, alnumCallsigns: 0.15 },
+    spawns: [firstArrival('EZY45MP', 'A320')],
+  },
+  {
+    id: 'tower-pro-heavy',
+    view: 'tower',
+    name: 'Tower Pro · Heavies',
+    blurb:
+      '25 minutes of mixed traffic with widebodies and an A380: mind the wake turbulence between departures.',
+    mode: 'pro',
+    seed: 202,
+    durationMin: 25,
+    wind: { dir: 220, speed: 14 },
+    traffic: { arrivalsPerHour: 18, departuresPerHour: 18, alnumCallsigns: 0.15 },
+    spawns: [firstArrival('KLM642', 'B77W')],
+  },
+  {
+    id: 'tower-pro-peak',
+    view: 'tower',
+    name: 'Tower Pro · Peak',
+    blurb: '25 minutes at the busiest: about 28 arrivals and 24 departures an hour.',
+    mode: 'pro',
+    seed: 203,
+    durationMin: 25,
+    wind: { dir: 190, speed: 8 },
+    traffic: { arrivalsPerHour: 28, departuresPerHour: 24, alnumCallsigns: 0.2 },
+    spawns: [firstArrival('TRA5422', 'B738')],
   },
   {
     id: 'pro-light',

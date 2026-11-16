@@ -246,7 +246,8 @@ export class Sim {
     for (const a of this.list) {
       if (a.kind !== 'arrival' || isOnGround(a) || a.phase === 'goaround') continue;
       const along = runwayFrame(a.pos, landing).along;
-      if (along > 0 && along > lastAlong) [last, lastAlong] = [a, along];
+      // beyond the feed point (turned back out by Tower) it is not ahead in the stream
+      if (along > 0 && along <= FEED_NM && along > lastAlong) [last, lastAlong] = [a, along];
     }
     if (last && FEED_NM - lastAlong < feedGap(last.perf, w.perf)) return;
     w.spawnTime = this.time;

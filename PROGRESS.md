@@ -33,7 +33,7 @@
 - espeak-ng (inside the phonemizer WASM) is GPL-3.0: licence compatibility needs a decision before public release (see THIRD_PARTY.md).
 - Holds are direct-entry only.
 - Tower: aircraft disappear at the holding position after vacating (no taxi to the gates; ground control is a non-goal). Queued departures stand in a straight line behind the holding point, not along the taxiway.
-- Tower: Beginner help card and Learn screen have no tower phrases yet (T6); "stop" alone, traffic information and conditional clearances are not parsed. The stand-in Approach has no speed control: compression on the final is absorbed by wider release gaps.
+- Tower: Beginner help card and Learn screen have no tower phrases yet (T6); "stop" alone, traffic information and conditional clearances are not parsed. The stand-in Approach has no speed control: compression on the final is absorbed by wider release gaps. Readback errors (Pro) only affect headings, levels and speeds, so tower clearances are always read back right.
 - Wake spacing between departures applies in tower mode only; the stand-in tower in Approach mode launches without it.
 - Tower labels near the right edge of the window are clipped.
 - The Realistic display toggle has no effect in the tower view yet (T5).

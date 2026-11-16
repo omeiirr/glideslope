@@ -192,4 +192,7 @@ test('tower: go-around with the runway free is noted; Beginner warns before a cl
   // KLM1717 is next; with TRA6015 lined up, its take-off clearance gets a warning
   await settleUntil(s, () => s.sim.byCallsign('KLM1717')!.comms === 'tower');
   expect(s.warning(s.hear('KLM1717, runway 24, cleared for take-off'))).toBe('TRA6015 is still on runway 24');
+  // half-said runways while still talking: no warning, no crash
+  expect(s.warning(s.hear('KLM1717, cleared for take-off runway 2'))).toBeNull();
+  expect(s.warning(s.hear('KLM1200, cleared to land runway 1'))).toBeNull();
 });

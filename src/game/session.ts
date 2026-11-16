@@ -315,6 +315,8 @@ export class Session {
     if (!this.tower || this.mode !== 'beginner' || !r.callsign) return null;
     for (const c of r.commands) {
       if (c.type !== 'land' && c.type !== 'takeoff') continue;
+      // a half-said or misheard runway ("runway 1…") is no runway at all yet
+      if (c.runway !== this.sim.env.landing.id && c.runway !== this.sim.env.departure.id) continue;
       const other = this.sim.runwayOccupants(c.runway).find((a) => a.callsign !== r.callsign);
       if (other) return `${other.callsign} is still on runway ${c.runway}`;
     }

@@ -158,10 +158,16 @@ describe('tower mode (T3 core)', () => {
 
 describe('tower mode (T4 rules)', () => {
   /** A Tower that clears every arrival to land on its first call and never says anything else. */
-  function perfectTower(types: string[] | undefined, wind = { dir: 0, speed: 0 }, hours = 2) {
+  function perfectTower(
+    types: string[] | undefined,
+    wind = { dir: 0, speed: 0 },
+    strictIls = false,
+    hours = 2,
+  ) {
     const sim = quietSim({
       tower: true,
       wind,
+      strictIls,
       traffic: { arrivalsPerHour: 40, departuresPerHour: 0, types },
     });
     const ev: SimEvent[] = [];
@@ -180,12 +186,13 @@ describe('tower mode (T4 rules)', () => {
     ['A380 mix', ['A388', 'E190', 'PC12']],
     ['slow and fast', ['E190', 'B77W']],
   ])('stand-in Approach spacing (%s): a perfect Tower never has a go-around', (_, types) => {
-    for (const wind of [
-      { dir: 0, speed: 0 },
-      { dir: 200, speed: 25 },
-    ]) {
-      const r = perfectTower(types, wind);
-      expect(r.goArounds, JSON.stringify({ wind, ...r })).toBe(0);
+    for (const [wind, strict] of [
+      [{ dir: 0, speed: 0 }, false],
+      [{ dir: 200, speed: 25 }, false],
+      [{ dir: 200, speed: 12 }, true], // Pro: strict ILS and stable-approach rules
+    ] as const) {
+      const r = perfectTower(types, wind, strict);
+      expect(r.goArounds, JSON.stringify({ wind, strict, ...r })).toBe(0);
       expect(r.incursions).toBe(0);
       expect(r.landed).toBeGreaterThan(30);
     }

@@ -2,10 +2,11 @@
 // Whisper speech recognition via transformers.js. Audio never leaves this worker.
 import { env, pipeline, type AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers';
 import { WHISPER } from './models';
+import { isPromptEcho } from './prompt';
 
 export type AsrRequest =
   | { type: 'load'; vendor: string; model: keyof typeof WHISPER }
-  | { type: 'transcribe'; id: number; audio: Float32Array; final: boolean };
+  | { type: 'transcribe'; id: number; audio: Float32Array; final: boolean; prompt: string };
 export type AsrResponse =
   | { type: 'progress'; progress: number }
   | { type: 'ready'; model: keyof typeof WHISPER; ms: number }
@@ -51,6 +52,33 @@ async function load(vendor: string, model: keyof typeof WHISPER) {
   return performance.now() - t0;
 }
 
+/**
+ * Transcribe with a prompt: Whisper reads it as the text said before (<|startofprev|> … ) and expects its words.
+ * The pipeline has no prompt option, so call the model directly and cut the prompt off the output.
+ */
+async function transcribe(audio: Float32Array, prompt: string): Promise<string> {
+  const p = asr!;
+  if (!prompt) {
+    const out = await p(audio);
+    return (Array.isArray(out) ? out[0]?.text : out.text) ?? '';
+  }
+  const tok = (t: string) => p.tokenizer.encode(t, { add_special_tokens: false });
+  const prefix = [
+    ...tok('<|startofprev|>'),
+    ...tok(' ' + prompt),
+    ...tok('<|startoftranscript|>'),
+    ...tok('<|notimestamps|>'),
+  ];
+  const { input_features } = await p.processor(audio);
+  const ids = (await p.model.generate({
+    inputs: input_features,
+    decoder_input_ids: prefix,
+    max_new_tokens: 96,
+  })) as { tolist(): number[][] };
+  const text = p.tokenizer.decode(ids.tolist()[0]!.slice(prefix.length), { skip_special_tokens: true });
+  return isPromptEcho(text, prompt) ? '' : text;
+}
+
 self.onmessage = async (e: MessageEvent<AsrRequest>) => {
   const msg = e.data;
   if (msg.type === 'load') {
@@ -67,8 +95,7 @@ self.onmessage = async (e: MessageEvent<AsrRequest>) => {
   while (busy) await new Promise((r) => setTimeout(r, 20));
   busy = true;
   try {
-    const out = await asr!(msg.audio);
-    const text = (Array.isArray(out) ? out[0]?.text : out.text) ?? '';
+    const text = await transcribe(msg.audio, msg.prompt);
     post({ type: 'result', id: msg.id, text: text.trim(), final: msg.final });
   } catch (err) {
     post({ type: 'error', id: msg.id, message: String((err as Error)?.message ?? err), fatal: false });

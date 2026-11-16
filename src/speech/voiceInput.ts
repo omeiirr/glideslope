@@ -28,6 +28,8 @@ interface SpeechRecognitionLike {
 /** Push-to-talk voice input: microphone → Whisper in a worker (or the Web Speech API, opt-in). */
 export class VoiceInput {
   state: VoiceState = VOICE_OFF;
+  /** Words Whisper should expect (asrPrompt), set before each transmission. */
+  prompt = '';
   onChange: () => void = () => {};
   private worker: Worker | null = null;
   private ctx: AudioContext | null = null;
@@ -196,6 +198,7 @@ export class VoiceInput {
             id: this.nextId++,
             audio: this.audio(),
             final: false,
+            prompt: this.prompt,
           } satisfies AsrRequest);
       }, 900);
   }
@@ -222,6 +225,7 @@ export class VoiceInput {
         id: this.finalId,
         audio,
         final: true,
+        prompt: this.prompt,
       } satisfies AsrRequest);
     });
   }

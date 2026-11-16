@@ -13,6 +13,7 @@ import { PttBar, RadioPanel, Strips, TopBar } from './panels';
 import { RealisticChrome, RealisticDcb } from './realistic';
 import { ScopeView } from './ScopeView';
 import { TowerView } from './TowerView';
+import { asrPrompt } from '../speech/prompt';
 
 export const APP_NAME = 'Vectors';
 const RANGES = [40, 60, 20];
@@ -73,6 +74,7 @@ export function App() {
   const pttDown = () => {
     if (!session || voice.state.status !== 'ready') return;
     session.keyDown();
+    voice.prompt = asrPrompt(session.parseContext(false));
     voice.start();
   };
   const pttUp = () => {

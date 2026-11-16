@@ -1,4 +1,4 @@
-import { transitionLevel, type Airport, type Command } from '../core';
+import { runwayById, transitionLevel, type Airport, type Command } from '../core';
 import { matchCallsign } from './callsign';
 import { PHONETIC, similarity, tokens, words, type Tok } from './normalize';
 import { canonical } from './phrases';
@@ -28,6 +28,10 @@ export interface ParseContext {
   aircraft: readonly AcContext[];
   /** Typed input without a callsign applies to this aircraft (the selected one). */
   defaultCallsign?: string;
+  /** Who the player is. Tower adds the runway clearances (default: approach). */
+  role?: 'approach' | 'tower';
+  /** Surface wind, for the canonical landing and take-off clearances. */
+  wind?: { dir: number; speed: number };
 }
 
 export interface ParseResult {
@@ -57,6 +61,10 @@ class Cursor {
     readonly ctx: ParseContext,
     readonly ac: AcContext | undefined,
   ) {}
+  /** "runway 24" said on its own, before the clearance it belongs to (ICAO order). */
+  runway?: string;
+  /** A surface wind was given in this transmission. */
+  wind = false;
   w(i: number, ...alts: string[]): boolean {
     const k = this.t[i];
     return k?.t === 'w' && alts.includes(k.v);
@@ -90,6 +98,9 @@ const identify: Matcher = (c) => {
 };
 
 const sayAgain: Matcher = (c) => {
+  // the controller repeating themselves ("I say again") is not a request to the pilot
+  if (c.ctx.role === 'tower' && c.w(c.i, 'i') && c.w(c.i + 1, 'say') && c.w(c.i + 2, 'again'))
+    return { next: c.i + 3 };
   if (c.w(c.i, 'say') && c.w(c.i + 1, 'again')) return { next: c.i + 2, cmd: { type: 'sayAgain' } };
   if (c.w(c.i, 'repeat')) return { next: c.i + 1, cmd: { type: 'sayAgain' } };
   return null;
@@ -139,8 +150,11 @@ const handoff: Matcher = (c) => {
   if (c.w(i, 'contact', 'call')) i++;
   else if (c.w(i, 'switch', 'over') && c.w(i + 1, 'to')) i += 2;
   else return null;
-  let to: 'tower' | 'radar';
+  let to: Extract<Command, { type: 'handoff' }>['to'];
+  const tower = c.ctx.role === 'tower';
   if (c.w(i, 'tower')) to = 'tower';
+  else if (tower && c.w(i, 'ground')) to = 'ground';
+  else if (tower && c.w(i, 'departure')) to = 'departure';
   else if (c.w(i, 'radar', 'control', 'departure', 'center')) to = 'radar';
   else return null;
   i = c.skip(i + 1, 'on', 'frequency');
@@ -148,7 +162,8 @@ const handoff: Matcher = (c) => {
   const f = c.n(i);
   if (f) {
     i++;
-    if (freqKey(f.s) !== freqKey(c.ctx.airport.frequencies[to].mhz))
+    const want = c.ctx.airport.frequencies[to];
+    if (!want.placeholder && freqKey(f.s) !== freqKey(want.mhz))
       issues.push(issue('warn', 'handoff-frequency-wrong', f.s));
   } else issues.push(issue('warn', 'handoff-frequency-missing', c.said(c.i, i)));
   return { next: i, cmd: { type: 'handoff', to }, issues };
@@ -429,6 +444,147 @@ const expectInfo: Matcher = (c) => {
   return { next: i };
 };
 
+// ---------------------------------------------------------------- tower matchers (role 'tower' only)
+
+/** Runway after a clearance ("cleared to land runway 18R"), else one said before it ("runway 24, cleared …"). */
+function clearanceRunway(c: Cursor, i: number, fallback: string) {
+  const r = runwayAt(c, i);
+  if (r) return { id: r.id, next: r.next, missing: false };
+  return { id: c.runway ?? fallback, next: i, missing: c.runway === undefined };
+}
+
+const runwayIssue = (c: Cursor, r: { missing: boolean; next: number }) =>
+  r.missing ? [issue('warn', 'runway-missing', c.said(c.i, r.next))] : [];
+
+/** "runway 24" on its own: remembered for the clearance that follows. */
+const runwayInfo: Matcher = (c) => {
+  if (!c.w(c.i, 'runway')) return null;
+  const r = runwayAt(c, c.i);
+  if (!r) return null;
+  c.runway = r.id;
+  return { next: r.next };
+};
+
+/** "wind 200 degrees 12 knots", "wind calm": information that goes with a clearance. */
+const windInfo: Matcher = (c) => {
+  if (!c.w(c.i, 'wind')) return null;
+  c.wind = true;
+  if (c.w(c.i + 1, 'calm')) return { next: c.i + 2 };
+  let i = c.i + 1;
+  if (!c.n(i)) return { next: i };
+  i = c.skip(i + 1, 'degrees', 'degree', 'at');
+  if (c.n(i)) i = c.skip(i + 1, 'knots', 'knot');
+  return { next: i };
+};
+
+/** "when vacated", "when airborne": condition for the handoff that follows. */
+const whenInfo: Matcher = (c) =>
+  c.w(c.i, 'when') && c.w(c.i + 1, 'vacated', 'airborne') ? { next: c.i + 2 } : null;
+
+const land: Matcher = (c) => {
+  if (!c.w(c.i, 'cleared')) return null;
+  const i = c.skip(c.i + 1, 'to', 'too');
+  if (!c.w(i, 'land')) return null;
+  const r = clearanceRunway(c, i + 1, c.ctx.airport.config.landing);
+  return { next: r.next, cmd: { type: 'land', runway: r.id }, issues: runwayIssue(c, r) };
+};
+
+const takeoff: Matcher = (c) => {
+  if (!c.w(c.i, 'cleared')) return null;
+  let i = c.skip(c.i + 1, 'for', 'to');
+  if (c.w(i, 'takeoff')) i++;
+  else if (c.w(i, 'take') && c.w(i + 1, 'off', 'of')) i += 2;
+  else return null;
+  const r = clearanceRunway(c, i, c.ctx.airport.config.departure);
+  return { next: r.next, cmd: { type: 'takeoff', runway: r.id }, issues: runwayIssue(c, r) };
+};
+
+const lineUp: Matcher = (c) => {
+  let i = c.skip(c.i, 'taxi', 'into');
+  let faa = false;
+  if (c.w(i, 'lineup')) i++;
+  else if (c.w(i, 'line') && c.w(i + 1, 'up')) i += 2;
+  else if (c.w(i, 'position') && c.w(i + 1, 'and') && c.w(i + 2, 'hold')) {
+    faa = true;
+    i += 3;
+  } else return null;
+  let wait = faa;
+  if (!faa && c.w(i, 'and') && c.w(i + 1, 'wait', 'weight', 'hold')) {
+    wait = c.w(i + 1, 'wait', 'weight');
+    i += 2;
+  }
+  const r = clearanceRunway(c, i, c.ctx.airport.config.departure);
+  const issues = runwayIssue(c, r);
+  if (faa) issues.push(issue('warn', 'faa-position-and-hold', c.said(c.i, r.next)));
+  else if (!wait) issues.push(issue('info', 'lineup-wording', c.said(c.i, r.next)));
+  return { next: r.next, cmd: { type: 'lineUp', runway: r.id }, issues };
+};
+
+const cancelTakeoff: Matcher = (c) => {
+  const i = c.i;
+  if (c.w(i, 'hold') && c.w(i + 1, 'position')) return { next: i + 2, cmd: { type: 'cancelTakeoff' } };
+  if (c.w(i, 'stop') && c.w(i + 1, 'immediately')) return { next: i + 2, cmd: { type: 'cancelTakeoff' } };
+  if (
+    c.w(i, 'cancel', 'abort') &&
+    (c.w(i + 1, 'takeoff') || (c.w(i + 1, 'take') && c.w(i + 2, 'off', 'of')))
+  ) {
+    const next = c.w(i + 1, 'takeoff') ? i + 2 : i + 3;
+    return { next, cmd: { type: 'cancelTakeoff' } };
+  }
+  return null;
+};
+
+const continueApproach: Matcher = (c) =>
+  c.w(c.i, 'continue') && c.w(c.i + 1, 'approach')
+    ? { next: c.i + 2, cmd: { type: 'continueApproach' } }
+    : null;
+
+/** Exit of the landing runway at i: "V2", "victor two", "sierra seven echo". */
+function exitAt(c: Cursor, i: number): { exit: string; next: number } | null {
+  const names = (runwayById(c.ctx.airport, c.ctx.airport.config.landing).exits ?? []).map((e) => e.name);
+  let s = '';
+  let best: { exit: string; next: number } | null = null;
+  for (let j = i; j < Math.min(c.t.length, i + 4); j++) {
+    const k = c.t[j]!;
+    if (k.t === 'n') s += k.s;
+    else if (k.v in PHONETIC) s += PHONETIC[k.v];
+    else if (k.v.length === 1) s += k.v;
+    else if (s && (k.v === 'to' || k.v === 'too'))
+      s += '2'; // ASR: "victor to"
+    else if (s && k.v === 'for') s += '4';
+    else break;
+    const hit = names.find((n) => n.toLowerCase() === s.toLowerCase());
+    if (hit) best = { exit: hit, next: j + 1 };
+  }
+  return best;
+}
+
+const vacate: Matcher = (c) => {
+  if (!c.w(c.i, 'vacate')) return null;
+  let i = c.skip(c.i + 1, 'the', 'runway');
+  let side: 'left' | 'right' | undefined;
+  if (c.w(i, 'left', 'right')) side = (c.t[i++] as { v: 'left' | 'right' }).v;
+  const e = exitAt(c, c.skip(i, 'via', 'at', 'the', 'taxiway'));
+  if (e) i = e.next;
+  const cmd: Command = { type: 'vacate' };
+  if (e) cmd.exit = e.exit;
+  if (side) cmd.side = side;
+  const issues = !e || !side ? [issue('info', 'vacate-wording', c.said(c.i, i))] : [];
+  return { next: i, cmd, issues };
+};
+
+const TOWER_MATCHERS: Matcher[] = [
+  whenInfo,
+  windInfo,
+  land,
+  takeoff,
+  lineUp,
+  cancelTakeoff,
+  continueApproach,
+  vacate,
+  runwayInfo,
+];
+
 /** A stray "QNH 1013" on its own is harmless information. */
 const qnhInfo: Matcher = (c) => (c.w(c.i, 'qnh') && c.n(c.i + 1) ? { next: c.i + 2 } : null);
 
@@ -504,6 +660,7 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
   }
   const ac = ctx.aircraft.find((a) => a.callsign === res.callsign);
   const c = new Cursor(tokens(rest), 0, ctx, ac);
+  const matchers = ctx.role === 'tower' ? [sayAgain, ...TOWER_MATCHERS, ...MATCHERS] : MATCHERS;
   const pending: { cmd: Command; issues: Omit<Issue, 'expected'>[] }[] = [];
   while (c.i < c.t.length) {
     const k = c.t[c.i]!;
@@ -513,7 +670,7 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
       continue;
     }
     let hit: Hit | null = null;
-    for (const match of MATCHERS) if ((hit = match(c))) break;
+    for (const match of matchers) if ((hit = match(c))) break;
     if (hit) {
       if (hit.cmd) pending.push({ cmd: hit.cmd, issues: hit.issues ?? [] });
       c.i = hit.next;
@@ -530,6 +687,8 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
     seen.add(key);
   }
   for (const p of pending) {
+    if ((p.cmd.type === 'land' || p.cmd.type === 'takeoff') && !c.wind)
+      p.issues.push(issue('info', 'wind-missing', c.said(0, c.t.length)));
     res.commands.push(p.cmd);
     const expected = canonical(p.cmd, ctx, ac);
     for (const is of p.issues) res.issues.push({ ...is, expected });

@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { EHAM } from '../src/core';
 import { matchCallsign, spokenCallsign } from '../src/phraseology/callsign';
 import { words } from '../src/phraseology/normalize';
-import { canonicalTransmission, checkIn, chip, readback } from '../src/phraseology/phrases';
+import { canonicalTransmission, checkIn, chip, readback, towerCheckIn } from '../src/phraseology/phrases';
 
 const env = { airport: EHAM, qnh: 1013 };
 const ac = { callsign: 'KLM1234', alt: 7000, hdg: 90, ias: 250, qnhGiven: false };
@@ -59,4 +59,46 @@ test('callsign is recognised on a partial transcript (early highlight)', () => {
   expect(matchCallsign(words('Speedbird four'), on, EHAM.airlines).callsign).toBeNull();
   expect(matchCallsign(words('Speedbird four three two'), on, EHAM.airlines).callsign).toBe('BAW432');
   expect(matchCallsign(words('Speedbird four three two turn le'), on, EHAM.airlines).callsign).toBe('BAW432');
+});
+
+test('tower: controller phrases with wind, readbacks without, chips and calls', () => {
+  const wenv = { ...env, wind: { dir: 203, speed: 12 } };
+  const ctx = { ...wenv, aircraft: [ac] };
+  expect(canonicalTransmission('KLM1234', [{ type: 'land', runway: '18R' }], ctx)).toBe(
+    'KLM1234, runway 18R, wind 200 degrees 12 knots, cleared to land',
+  );
+  expect(
+    readback(
+      'KLM1234',
+      [
+        { type: 'land', runway: '18R' },
+        { type: 'vacate', exit: 'V2', side: 'left' },
+      ],
+      wenv,
+    ).text,
+  ).toBe('Runway 18R, cleared to land, vacate left via V2, KLM1234');
+  const tko = readback('TRA6015', [{ type: 'takeoff', runway: '24' }], wenv);
+  expect(tko.text).toBe('Runway 24, cleared for take-off, TRA6015');
+  expect(tko.speech).toContain('Runway two four, cleared for take-off');
+  expect(readback('TRA6015', [{ type: 'lineUp', runway: '24' }], env).text).toBe(
+    'Runway 24, line up and wait, TRA6015',
+  );
+  expect(readback('TRA6015', [{ type: 'cancelTakeoff' }], env).text).toBe('Holding, TRA6015');
+  expect(readback('KLM1234', [{ type: 'handoff', to: 'ground' }], env).text).toBe(
+    'Schiphol Ground 121.800, KLM1234',
+  );
+  expect(chip({ type: 'vacate', exit: 'V2', side: 'left' })).toBe('VACATE L V2');
+  expect(chip({ type: 'handoff', to: 'departure' })).toBe('DEP');
+  expect(towerCheckIn({ callsign: 'KLM1234', kind: 'arrival' }, env).text).toBe(
+    'Schiphol Tower, KLM1234, ILS 18R',
+  );
+  expect(towerCheckIn({ callsign: 'TRA6015', kind: 'departure' }, env).text).toBe(
+    'Schiphol Tower, TRA6015, holding point S7E, ready for departure',
+  );
+  expect(
+    canonicalTransmission('KLM1234', [{ type: 'land', runway: '18R' }], {
+      ...ctx,
+      wind: { dir: 0, speed: 0 },
+    }),
+  ).toBe('KLM1234, runway 18R, wind calm, cleared to land');
 });

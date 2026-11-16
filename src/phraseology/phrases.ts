@@ -1,4 +1,4 @@
-import { angleDiff, transitionLevel, type Airport, type Command } from '../core';
+import { angleDiff, runwayById, transitionLevel, type Airport, type Command } from '../core';
 import { spell, spokenCallsign } from './callsign';
 import type { AcContext, ParseContext } from './parser';
 
@@ -39,6 +39,23 @@ function level(cmd: Extract<Command, { type: 'altitude' }>): Phrase {
 interface PhraseEnv {
   airport: Airport;
   qnh: number;
+  /** Surface wind: the controller gives it with landing and take-off clearances. */
+  wind?: { dir: number; speed: number };
+}
+
+/** "wind 200 degrees 12 knots" (direction to the nearest 10 degrees), "wind calm". */
+function windPhrase(w: { dir: number; speed: number }): Phrase {
+  if (w.speed < 1) return both('wind calm');
+  const dir = pad3(Math.round(w.dir / 10) * 10 || 360);
+  const kt = String(Math.round(w.speed));
+  return both(`wind ${dir} degrees ${kt} knots`, `wind ${spell(dir)} degrees ${spell(kt)} knots`);
+}
+
+/** "runway 18R, [wind …,] cleared to land": the wind only in the controller's version. */
+function clearance(runway: string, what: string, env: PhraseEnv, readback: boolean): Phrase {
+  const parts = [both(`runway ${runway}`, `runway ${spokenRunway(runway)}`)];
+  if (!readback && env.wind) parts.push(windPhrase(env.wind));
+  return join([...parts, both(what)]);
 }
 
 /** One instruction element as the controller should say it (canonical ICAO). */
@@ -113,10 +130,7 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
     case 'sayAgain':
       return both('say again');
     case 'land':
-      return both(
-        `runway ${cmd.runway}, cleared to land`,
-        `runway ${spokenRunway(cmd.runway)}, cleared to land`,
-      );
+      return clearance(cmd.runway, 'cleared to land', env, readback);
     case 'continueApproach':
       return both('continue approach');
     case 'vacate': {
@@ -134,10 +148,7 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
         `runway ${spokenRunway(cmd.runway)}, line up and wait`,
       );
     case 'takeoff':
-      return both(
-        `runway ${cmd.runway}, cleared for take-off`,
-        `runway ${spokenRunway(cmd.runway)}, cleared for take-off`,
-      );
+      return clearance(cmd.runway, 'cleared for take-off', env, readback);
     case 'cancelTakeoff':
       return both(readback ? 'holding' : 'hold position');
   }
@@ -258,6 +269,20 @@ export function checkIn(
   return join([station, cs, levelPart, both(`information ${ap.atis}`, `information ${spell(ap.atis)}`)]);
 }
 
+/** Pilot's first call to Tower: arrivals on the ILS, departures from the holding point. */
+export function towerCheckIn(ac: { callsign: string; kind: string }, env: PhraseEnv): Phrase {
+  const ap = env.airport;
+  const cs = both(ac.callsign, spokenCallsign(ac.callsign, ap.airlines));
+  const station = both(ap.frequencies.tower.name);
+  if (ac.kind === 'departure') {
+    const hp = runwayById(ap, ap.config.departure).entry?.name;
+    const at = hp ? [both(`holding point ${hp}`, `holding point ${spokenFix(hp)}`)] : [];
+    return join([station, cs, ...at, both('ready for departure')]);
+  }
+  const rw = ap.config.landing;
+  return join([station, cs, both(`ILS ${rw}`, `I L S ${spokenRunway(rw)}`)]);
+}
+
 /** Human-readable explanation for each feedback rule. */
 export const RULE_TEXT: Record<string, string> = {
   'qnh-missing': 'Give the QNH with the first clearance to an altitude.',
@@ -282,6 +307,11 @@ export const RULE_TEXT: Record<string, string> = {
   'hold-wording': 'Standard wording: "hold at … as published".',
   'handoff-frequency-missing': 'Give the frequency with a handoff.',
   'handoff-frequency-wrong': 'That is not the frequency of that unit.',
+  'runway-missing': 'Include the runway in a runway clearance.',
+  'wind-missing': 'Give the surface wind with a landing or take-off clearance.',
+  'lineup-wording': 'Standard wording: "runway …, line up and wait".',
+  'faa-position-and-hold': '"Position and hold" is FAA phraseology; ICAO says "line up and wait".',
+  'vacate-wording': 'Give the direction and the exit: "vacate left via V2".',
   'unknown-words': 'Some words were not understood and were ignored.',
   'callsign-unknown': 'Callsign not recognized.',
   'callsign-ambiguous': 'Callsign unclear: it could be more than one aircraft.',

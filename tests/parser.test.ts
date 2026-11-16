@@ -11,6 +11,7 @@ interface Case {
   defaultCallsign?: string;
   /** Issues are not checked for this case (free-form input). */
   anyIssues?: boolean;
+  role?: 'approach' | 'tower';
 }
 
 const dir = new URL('./phrases/', import.meta.url);
@@ -31,6 +32,7 @@ function check(c: Case): string | null {
     qnh: fixture.qnh,
     aircraft: fixture.aircraft,
     defaultCallsign: c.defaultCallsign,
+    role: c.role,
   });
   const issues = r.issues
     .map((i) => i.rule)

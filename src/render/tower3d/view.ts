@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Airport } from '../../core';
 import { buildAircraft, disposeAircraftAssets, type AircraftMesh } from './aircraftMesh';
+import { fieldTexture, mownGrassTexture, shadeWalls, skyEnvironment, trees, tyreMarks } from './enhance';
 import {
   holdingPosition,
   llToGround,
@@ -86,6 +87,8 @@ export class TowerRenderer {
   constructor(
     canvas: HTMLCanvasElement,
     private ap: Airport,
+    /** Graphics test: the extra detail in enhance.ts. */
+    private hi = false,
   ) {
     // throws when WebGL is unavailable: the caller shows a message instead
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -115,6 +118,12 @@ export class TowerRenderer {
     this.scene.add(sun, sun.target, new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4));
     this.addSky();
     this.shadowTex = shadowTexture();
+    if (hi) {
+      const env = skyEnvironment(this.renderer, SKY_TOP, SKY_HORIZON);
+      this.scene.environment = env;
+      this.scene.environmentIntensity = 0.6;
+      this.disposables.push(env);
+    }
   }
 
   /**
@@ -138,7 +147,7 @@ export class TowerRenderer {
     };
     const polygons = this.polygons.bind(this);
 
-    const grass = grassTexture();
+    const grass = this.hi ? mownGrassTexture() : grassTexture();
     this.disposables.push(grass);
     polygons(g.grass, '#ffffff', -46, grass);
 
@@ -180,6 +189,11 @@ export class TowerRenderer {
     layer(surface, RUNWAY, -40, asphalt);
     layer(marks, WHITE_PAINT, -39);
     for (const d of designators) this.addDesignator(d);
+    if (this.hi)
+      for (const m of tyreMarks(ap)) {
+        this.scene.add(m);
+        this.disposables.push(m.geometry, m.material as THREE.Material);
+      }
   }
 
   /** Filled polygons on the ground, uv in metres east / north so repeating textures keep their real size. */
@@ -210,7 +224,20 @@ export class TowerRenderer {
 
   /** The land around the airport (land use, water, motorways) and the airport buildings, all from OSM. */
   loadLand(l: LandData) {
-    LAND.forEach(([cls, color], i) => l.land[cls] && this.polygons(l.land[cls], color, -72 + i));
+    const fields = this.hi ? fieldTexture() : undefined;
+    if (fields) this.disposables.push(fields);
+    LAND.forEach(
+      ([cls, color], i) =>
+        l.land[cls] && this.polygons(l.land[cls], color, -72 + i, cls === 'farm' ? fields : undefined),
+    );
+    if (this.hi) {
+      const cabs = this.ap.towers.map((t) => toWorld(t.pos));
+      for (const o of trees(this.ap, l, cabs)) {
+        this.scene.add(o);
+        const m = o as THREE.InstancedMesh;
+        this.disposables.push(m.geometry, m.material as THREE.Material);
+      }
+    }
     const roads: number[] = [];
     for (const r of l.roads)
       ribbon(
@@ -244,12 +271,15 @@ export class TowerRenderer {
       // the cab's own tower would wall off the view
       if (cabs.some((k) => Math.hypot(k.x - c.x, k.z - c.z) < 80)) continue;
       const shape = new THREE.Shape(pts.map((q) => new THREE.Vector2(q.x, -q.z)));
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: b.h, bevelEnabled: false });
+      // hi: a ring every 4 m or less, so the darkened wall base fades over the bottom 4 m
+      const steps = this.hi ? Math.max(1, Math.ceil(b.h / 4)) : 1;
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: b.h, bevelEnabled: false, steps });
       geo.rotateX(-Math.PI / 2);
       // ExtrudeGeometry: group 0 = caps, group 1 = side walls
       const [caps, sides] = geo.groups as [THREE.GeometryGroup, THREE.GeometryGroup];
       roofs.push(slice(geo, caps.start, caps.count));
-      (PLAIN.has(b.k) ? plain : glazed).push(slice(geo, sides.start, sides.count));
+      const wall = slice(geo, sides.start, sides.count);
+      (PLAIN.has(b.k) ? plain : glazed).push(this.hi ? shadeWalls(wall) : wall);
       geo.dispose();
     }
     const windows = windowTexture();
@@ -258,7 +288,10 @@ export class TowerRenderer {
       if (!geos.length) return;
       const geo = mergeGeometries(geos)!;
       geos.forEach((g) => g.dispose());
-      const mat = new THREE.MeshLambertMaterial({ color, map: map ?? null });
+      const walls = !!geo.attributes.color;
+      const mat = this.hi
+        ? new THREE.MeshStandardMaterial({ color, map: map ?? null, vertexColors: walls, roughness: 0.82 })
+        : new THREE.MeshLambertMaterial({ color, map: map ?? null });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;

@@ -3,6 +3,7 @@ import { DEG, EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
 import type { Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition } from '../render/tower3d/math';
 import type { GroundData, LandData } from '../render/tower3d/ground';
+import type { TimeOfDay } from '../render/tower3d/lights';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 import { GroundRadar } from '../render/groundradar';
 import { TowerDesk, radarTargets } from './TowerDesk';
@@ -15,6 +16,9 @@ const LABEL_RANGE_NM = 15;
 
 type Status =
   { kind: 'loading'; done: number; total: number } | { kind: 'ready' } | { kind: 'error'; message: string };
+
+const NEXT_TOD: Record<TimeOfDay, TimeOfDay> = { day: 'dusk', dusk: 'night', night: 'day' };
+const TOD_LABEL: Record<TimeOfDay, string> = { day: 'Day', dusk: 'Dusk', night: 'Night' };
 
 const isTyping = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null;
@@ -31,6 +35,8 @@ export function TowerView({ session }: { session: Session }) {
     () => (EHAM.towers.find((t) => t.runways.includes(EHAM.config.landing)) ?? EHAM.towers[0]!).id,
   );
   const [bino, setBino] = useState(false);
+  const [tod, setTod] = useState<TimeOfDay>('day');
+  const rendererRef = useRef<TowerRenderer | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'loading', done: 0, total: 0 });
   const [attribution, setAttribution] = useState('');
   const cab = EHAM.towers.find((t) => t.id === cabId)!;
@@ -38,6 +44,9 @@ export function TowerView({ session }: { session: Session }) {
   const look = useRef({ yaw: 0, depression: DEFAULT_DEPRESSION, bearing: cab.viewBearing });
   const live = useRef({ session, cab, bino });
   live.current = { session, cab, bino };
+  const todRef = useRef(tod);
+  todRef.current = tod;
+  useEffect(() => rendererRef.current?.setTimeOfDay(tod), [tod]);
   const anchors = useRef<Anchor[]>([]);
 
   const resetLook = () => Object.assign(look.current, { yaw: 0, depression: DEFAULT_DEPRESSION });
@@ -107,6 +116,8 @@ export function TowerView({ session }: { session: Session }) {
         const { TowerRenderer } = await import('../render/tower3d/view');
         if (disposed) return;
         renderer = new TowerRenderer(canvas, EHAM);
+        rendererRef.current = renderer;
+        renderer.setTimeOfDay(todRef.current);
       } catch {
         setStatus({
           kind: 'error',
@@ -142,6 +153,7 @@ export function TowerView({ session }: { session: Session }) {
       cancelAnimationFrame(raf);
       ro.disconnect();
       renderer?.dispose();
+      rendererRef.current = null;
     };
   }, []);
 
@@ -272,6 +284,14 @@ export function TowerView({ session }: { session: Session }) {
           </button>
           <button type="button" class="chipbtn" onClick={resetLook}>
             Reset view
+          </button>
+          <button
+            type="button"
+            class="chipbtn"
+            aria-label={`Time of day: ${tod}. Change to ${NEXT_TOD[tod]}`}
+            onClick={() => setTod(NEXT_TOD[tod])}
+          >
+            {TOD_LABEL[tod]}
           </button>
         </div>
 

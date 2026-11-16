@@ -17,6 +17,7 @@ import {
   type LandData,
   type Polygon,
 } from './ground';
+import { airportLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 
 export interface TowerAircraft {
@@ -48,6 +49,69 @@ const SKY_TOP = '#2a66ad';
 const SKY_MID = '#6fa6da';
 const SKY_HORIZON = '#cfe1f0';
 const HAZE = '#c6d9ea';
+/** Look per time of day. `away` is the horizon opposite the sun (the glow is on the sun's side). */
+interface Look {
+  top: string;
+  mid: string;
+  horizon: string;
+  away: string;
+  haze: string;
+  sun: { az: number; el: number; color: string; i: number };
+  hemi: [string, string, number];
+  env: number;
+  exposure: number;
+  cloud: [string, number];
+  /** Window glow (emissive intensity) and airport/aircraft light brightness; 0 = off. */
+  windows: number;
+  lights: number;
+}
+const LOOKS: Record<TimeOfDay, Look> = {
+  day: {
+    top: SKY_TOP,
+    mid: SKY_MID,
+    horizon: SKY_HORIZON,
+    away: SKY_HORIZON,
+    haze: HAZE,
+    sun: { az: SUN.azimuth, el: SUN.elevation, color: '#fff4e2', i: 6.5 },
+    hemi: ['#cfe2ff', '#8a8f7a', 2.4],
+    env: 0.6,
+    exposure: 0.3,
+    cloud: ['#ffffff', 0.92],
+    windows: 0,
+    lights: 0,
+  },
+  // sun just below the trees in the west-south-west, an orange glow on that side
+  dusk: {
+    top: '#1b2a52',
+    mid: '#4e5f8f',
+    horizon: '#f0a060',
+    away: '#7a7c9e',
+    haze: '#8d8590',
+    sun: { az: 250, el: 3, color: '#ff9a55', i: 2.6 },
+    hemi: ['#8f9fd0', '#4a4238', 2.2],
+    env: 0.35,
+    exposure: 0.6,
+    cloud: ['#f2a07c', 0.85],
+    windows: 0.8,
+    lights: 0.75,
+  },
+  // moonlight from the south-east, the city glow low on the horizon
+  night: {
+    top: '#02040a',
+    mid: '#081122',
+    horizon: '#262a36',
+    away: '#1a2131',
+    haze: '#131925',
+    sun: { az: 150, el: 35, color: '#8fa6ff', i: 0.5 },
+    hemi: ['#3e5080', '#141414', 1.1],
+    env: 0.12,
+    exposure: 0.75,
+    cloud: ['#1b2232', 0.5],
+    windows: 1.4,
+    lights: 1,
+  },
+};
+
 /** Shadows fade out as the aircraft climbs; above this they are not drawn. */
 const SHADOW_MAX_AGL = 160;
 /** Surface colours: a modelled airport, no photo (see docs/design/tower3d.md). */
@@ -78,7 +142,19 @@ export class TowerRenderer {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(26, 1, 2, 130000);
-  private aircraft = new Map<number, { mesh: AircraftMesh; shadow: THREE.Mesh }>();
+  private aircraft = new Map<
+    number,
+    { mesh: AircraftMesh; shadow: THREE.Mesh; nav: THREE.Points; landing: THREE.Points }
+  >();
+  private sun!: THREE.DirectionalLight;
+  private hemi!: THREE.HemisphereLight;
+  private skyGeo!: THREE.SphereGeometry;
+  private clouds: THREE.SpriteMaterial[] = [];
+  private env: THREE.Texture | null = null;
+  private glazed: THREE.MeshStandardMaterial | null = null;
+  private lightMat = lightMaterial();
+  private lightPts: THREE.Points[] = [];
+  private look: Look = LOOKS.day;
   private shadowTex: THREE.CanvasTexture;
   private w = 1;
   private h = 1;
@@ -113,13 +189,60 @@ export class TowerRenderer {
     });
     sun.shadow.camera.updateProjectionMatrix();
     sun.shadow.bias = -0.00005;
-    this.scene.add(sun, sun.target, new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4));
+    this.sun = sun;
+    this.hemi = new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4);
+    this.scene.add(sun, sun.target, this.hemi);
     this.addSky();
     this.shadowTex = shadowTexture();
-    const env = skyEnvironment(this.renderer, SKY_TOP, SKY_HORIZON);
-    this.scene.environment = env;
-    this.scene.environmentIntensity = 0.6;
-    this.disposables.push(env);
+    this.disposables.push(this.lightMat);
+    this.addLights(airportLights(ap));
+    this.setTimeOfDay('day');
+  }
+
+  /** Day, dusk or night: sky, sun (or moon), haze, reflections, window glow and the lights. */
+  setTimeOfDay(t: TimeOfDay) {
+    const L = (this.look = LOOKS[t]);
+    this.paintSky(L);
+    (this.scene.fog as THREE.FogExp2).color.set(L.haze);
+    const d = lookDirection(L.sun.az, -L.sun.el);
+    this.sun.position.set(d.x * 6000, d.y * 6000, d.z * 6000);
+    this.sun.color.set(L.sun.color);
+    this.sun.intensity = L.sun.i;
+    this.hemi.color.set(L.hemi[0]);
+    this.hemi.groundColor.set(L.hemi[1]);
+    this.hemi.intensity = L.hemi[2];
+    this.env?.dispose();
+    this.env = skyEnvironment(this.renderer, L.top, L.horizon);
+    this.scene.environment = this.env;
+    this.scene.environmentIntensity = L.env;
+    this.renderer.toneMappingExposure = L.exposure;
+    for (const m of this.clouds) {
+      m.color.set(L.cloud[0]);
+      m.opacity = L.cloud[1];
+    }
+    if (this.glazed) this.glazed.emissiveIntensity = L.windows;
+    this.lightMat.uniforms.uIntensity!.value = L.lights;
+    for (const p of this.lightPts) p.visible = L.lights > 0;
+  }
+
+  /** Point lights (airport or aircraft) as one draw call each. */
+  private points(s: LightSet): THREE.Points {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(s.pos, 3));
+    geo.setAttribute('lcolor', new THREE.Float32BufferAttribute(s.color, 3));
+    geo.setAttribute('size', new THREE.Float32BufferAttribute(s.size, 1));
+    geo.setAttribute('blink', new THREE.Float32BufferAttribute(s.blink, 1));
+    const p = new THREE.Points(geo, this.lightMat);
+    p.renderOrder = 10;
+    return p;
+  }
+
+  private addLights(s: LightSet) {
+    const p = this.points(s);
+    p.visible = this.look.lights > 0;
+    this.scene.add(p);
+    this.lightPts.push(p);
+    this.disposables.push(p.geometry);
   }
 
   /**
@@ -189,6 +312,7 @@ export class TowerRenderer {
       this.scene.add(m);
       this.disposables.push(m.geometry, m.material as THREE.Material);
     }
+    this.addLights(taxiwayLights(ap, g));
   }
 
   /** Filled polygons on the ground, uv in metres east / north so repeating textures keep their real size. */
@@ -276,7 +400,8 @@ export class TowerRenderer {
       geo.dispose();
     }
     const windows = windowTexture();
-    this.disposables.push(windows);
+    const glow = windowGlowTexture();
+    this.disposables.push(windows, glow);
     const add = (geos: THREE.BufferGeometry[], color: string, map?: THREE.Texture) => {
       if (!geos.length) return;
       const geo = mergeGeometries(geos)!;
@@ -288,6 +413,12 @@ export class TowerRenderer {
         vertexColors: walls,
         roughness: 0.82,
       });
+      if (map) {
+        // lit windows at dusk and night
+        Object.assign(mat, { emissive: new THREE.Color('#ffd49a'), emissiveMap: glow });
+        mat.emissiveIntensity = this.look.windows;
+        this.glazed = mat;
+      }
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -351,21 +482,11 @@ export class TowerRenderer {
 
   private addSky() {
     const R = 100000;
-    const geo = new THREE.SphereGeometry(R, 32, 16);
-    const top = new THREE.Color(SKY_TOP);
-    const mid = new THREE.Color(SKY_MID);
-    const hor = new THREE.Color(SKY_HORIZON);
-    const colors: number[] = [];
-    const pos = geo.attributes.position!;
-    for (let i = 0; i < pos.count; i++) {
-      const t = Math.max(0, pos.getY(i) / R);
-      const c =
-        t < 0.1
-          ? hor.clone().lerp(mid, Math.pow(t / 0.1, 0.8))
-          : mid.clone().lerp(top, Math.min(1, (t - 0.1) / 0.45));
-      colors.push(c.r, c.g, c.b);
-    }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const geo = (this.skyGeo = new THREE.SphereGeometry(R, 32, 16));
+    geo.setAttribute(
+      'color',
+      new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position!.count * 3), 3),
+    );
     const skyMat = new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.BackSide,
@@ -409,8 +530,36 @@ export class TowerRenderer {
       sp.position.set(Math.sin(brg) * d, 1500 + rnd() * 1400 + d * 0.035, -Math.cos(brg) * d);
       sp.renderOrder = -80;
       this.scene.add(sp);
+      this.clouds.push(mat);
       this.disposables.push(tex, mat);
     }
+  }
+
+  /** Sky gradient: horizon → mid → top, the horizon shading from `horizon` on the sun's side to `away`. */
+  private paintSky(L: Look) {
+    const geo = this.skyGeo;
+    const R = geo.parameters.radius;
+    const top = new THREE.Color(L.top);
+    const mid = new THREE.Color(L.mid);
+    const near = new THREE.Color(L.horizon);
+    const away = new THREE.Color(L.away);
+    const sx = Math.sin((L.sun.az * Math.PI) / 180);
+    const sz = -Math.cos((L.sun.az * Math.PI) / 180);
+    const pos = geo.attributes.position!;
+    const col = geo.attributes.color!;
+    const hor = new THREE.Color();
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const t = Math.max(0, pos.getY(i) / R);
+      const toSun = (1 + (x * sx + z * sz) / (Math.hypot(x, z) || 1)) / 2;
+      hor.copy(away).lerp(near, Math.pow(toSun, 1.6));
+      if (t < 0.1) c.copy(hor).lerp(mid, Math.pow(t / 0.1, 0.8));
+      else c.copy(mid).lerp(top, Math.min(1, (t - 0.1) / 0.45));
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    col.needsUpdate = true;
   }
 
   setSize(width: number, height: number, dpr: number) {
@@ -441,10 +590,16 @@ export class TowerRenderer {
         );
         shadow.rotation.order = 'YXZ';
         shadow.renderOrder = -10;
+        const nav = this.points(mesh.userData.lights.nav);
+        const landing = this.points(mesh.userData.lights.landing);
+        mesh.add(nav, landing);
         this.scene.add(mesh, shadow);
-        this.aircraft.set(a.id, (e = { mesh, shadow }));
+        this.aircraft.set(a.id, (e = { mesh, shadow, nav, landing }));
       }
-      const { mesh, shadow } = e;
+      const { mesh, shadow, nav, landing } = e;
+      nav.visible = this.look.lights > 0;
+      // landing lights stay on below 10,000 ft, which is all the traffic a tower sees
+      landing.visible = nav.visible;
       const p = a.pose;
       mesh.position.set(p.pos.x, p.pos.y + mesh.userData.wheelBase, p.pos.z);
       mesh.rotation.order = 'YXZ';
@@ -471,6 +626,10 @@ export class TowerRenderer {
       this.aircraft.delete(id);
     }
 
+    const u = this.lightMat.uniforms;
+    u.uTime!.value = performance.now() / 1000;
+    u.uPx!.value = this.renderer.getPixelRatio();
+    u.uFog!.value = (this.scene.fog as THREE.FogExp2).density;
     const d = lookDirection(cam.bearing, cam.depression);
     this.camera.position.set(cam.eye.x, cam.eye.y, cam.eye.z);
     this.camera.lookAt(cam.eye.x + d.x, cam.eye.y + d.y, cam.eye.z + d.z);
@@ -509,8 +668,55 @@ export class TowerRenderer {
     for (const d of this.disposables) d.dispose();
     this.shadowTex.dispose();
     disposeAircraftAssets();
+    this.env?.dispose();
     this.renderer.dispose();
   }
+}
+
+/** Glowing points with a fixed on-screen size (shrinking a little with distance), faded by the haze. */
+function lightMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uPx: { value: 1 }, uFog: { value: 0 }, uIntensity: { value: 1 } },
+    vertexShader: /* glsl */ `
+      attribute vec3 lcolor;
+      attribute float size;
+      attribute float blink;
+      uniform float uTime;
+      uniform float uPx;
+      uniform float uFog;
+      varying vec3 vColor;
+      varying float vA;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        float d = max(1.0, -mv.z);
+        float on = 1.0;
+        if (blink > 0.5 && blink < 1.5) on = step(0.55, fract(uTime * 1.1));
+        else if (blink > 1.5) {
+          float t = fract(uTime * 0.75);
+          on = step(t, 0.05) + step(0.12, t) * step(t, 0.17);
+        }
+        float f = uFog * d;
+        vA = on * exp(-f * f);
+        vColor = lcolor;
+        // grow with the zoom (binoculars), by its square root so lights stay points; 4.33 = 1/tan(13°), the cab FOV
+        float zoom = sqrt(max(1.0, projectionMatrix[1][1] / 4.33));
+        gl_PointSize = on > 0.0 ? size * uPx * zoom * clamp(1500.0 / d, 0.8, 2.4) : 0.0;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float uIntensity;
+      varying vec3 vColor;
+      varying float vA;
+      void main() {
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        if (r > 1.0) discard;
+        float a = exp(-r * r * 4.0) + 0.6 * exp(-r * r * 30.0);
+        gl_FragColor = vec4(vColor * uIntensity, a * vA);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
 }
 
 /** Geometries are per aircraft; materials and textures are shared and freed by disposeAircraftAssets. */
@@ -689,6 +895,28 @@ function windowTexture(): THREE.CanvasTexture {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1 / 4, 1 / 3.5);
+  t.anisotropy = 4;
+  return t;
+}
+
+/** Emissive map for the window bands: warm light, some offices dark, same layout as windowTexture. */
+function windowGlowTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 32 * 8;
+  c.height = 28;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, c.width, 28);
+  const rnd = seeded(5);
+  for (let k = 0; k < 8; k++) {
+    const v = rnd() < 0.3 ? 0.08 : 0.55 + rnd() * 0.45;
+    g.fillStyle = `rgb(${Math.round(255 * v)},${Math.round(235 * v)},${Math.round(200 * v)})`;
+    g.fillRect(k * 32 + 1, 8, 31, 14);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 32, 1 / 3.5);
   t.anisotropy = 4;
   return t;
 }

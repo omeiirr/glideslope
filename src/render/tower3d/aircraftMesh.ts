@@ -1,9 +1,17 @@
 import * as THREE from 'three';
+import { LIGHT, addLight, emptyLights, type LightSet } from './lights';
 import { airframe, liveryFor, type Livery } from './math';
 
 /** Procedural airliner: smooth lathe fuselage with a window line, swept wings, engines, gear. No model files. */
 export interface AircraftMesh extends THREE.Group {
-  userData: { gear: THREE.Group; wheelBase: number; len: number; span: number };
+  userData: {
+    gear: THREE.Group;
+    wheelBase: number;
+    len: number;
+    span: number;
+    /** Light positions in the model's own frame (nose towards -z), shown at dusk and night. */
+    lights: { nav: LightSet; landing: LightSet };
+  };
 }
 
 const textures = new Map<string, THREE.CanvasTexture>();
@@ -125,7 +133,29 @@ export function buildAircraft(type: string, airline: string): AircraftMesh {
   const wingY = -r * 0.55;
   const gear = new THREE.Group();
   g.add(gear);
-  g.userData = { gear, wheelBase: r * 0.6 + T.gearH + 0.28, len: L, span: T.span };
+  // nav lights: red on the left tip, green on the right, white tail; red beacons top and bottom; white strobes
+  const nav = emptyLights();
+  const tipY = wingY + semi * 0.09;
+  const tipZ = wingZ + sweep;
+  addLight(nav, -semi, tipY, tipZ, LIGHT.red, 2.6);
+  addLight(nav, semi, tipY, tipZ, LIGHT.green, 2.6);
+  addLight(nav, 0, r * 0.3, L * 0.5, LIGHT.white, 2.2);
+  addLight(nav, 0, r * 1.02, -L * 0.05, LIGHT.red, 3.2, 1);
+  addLight(nav, 0, -r * 1.0, -L * 0.1, LIGHT.red, 3.2, 1);
+  addLight(nav, -semi, tipY, tipZ + tipC, [1, 1, 1], 4, 2);
+  addLight(nav, semi, tipY, tipZ + tipC, [1, 1, 1], 4, 2);
+  // landing and taxi lights: what you see first of an arrival at night
+  const landing = emptyLights();
+  addLight(landing, 0, -r * 0.7, -L * 0.36, [1, 0.97, 0.9], 9);
+  for (const side of [1, -1])
+    addLight(landing, side * r * 1.6, wingY, wingZ + rootC * 0.1, [1, 0.97, 0.9], 7);
+  g.userData = {
+    gear,
+    wheelBase: r * 0.6 + T.gearH + 0.28,
+    len: L,
+    span: T.span,
+    lights: { nav, landing },
+  };
 
   for (const side of [1, -1]) {
     const wing = surface(

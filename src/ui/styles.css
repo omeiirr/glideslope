@@ -643,6 +643,10 @@ table.score td:last-child {
   gap: 8px;
   line-height: 1.5;
 }
+/* tower: below the view toolbar */
+.scope.tower-mode .tutorial {
+  top: 58px;
+}
 .tutorial .say {
   font-family: var(--mono);
   color: var(--blue-text);

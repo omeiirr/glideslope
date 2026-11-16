@@ -298,7 +298,7 @@ function Game(p: GameProps) {
       )}
       <div class="body">
         {!realistic && !tower && <Strips session={session} />}
-        <main class="scope">
+        <main class={`scope ${tower ? 'tower-mode' : ''}`}>
           <h1 class="sr-only">
             {APP_NAME} · {session.scenario.name}
           </h1>

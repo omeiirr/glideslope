@@ -54,6 +54,34 @@ const firstArrival = (callsign: string, type: string): SpawnSpec & { at: number 
     onFrequency: true,
   };
 };
+/** An arrival established on the 18R final, `nm` out, on the glideslope (about 318 ft per NM), calling Tower. */
+const onFinal = (callsign: string, nm: number, type = 'B738'): SpawnSpec & { at: number } => {
+  const out = headingVec(FINAL.heading + 180, nm);
+  return {
+    at: 0,
+    kind: 'arrival',
+    callsign,
+    type,
+    pos: { x: FINAL.pos.x + out.x, y: FINAL.pos.y + out.y },
+    hdg: FINAL.heading,
+    alt: Math.round(nm * 318),
+    ias: nm > 5 ? 170 : 160,
+    onFrequency: true,
+  };
+};
+const atHoldingPoint = (callsign: string, route = 'LEKKO'): SpawnSpec & { at: number } => ({
+  at: 0,
+  kind: 'departure',
+  callsign,
+  type: 'B738',
+  route,
+});
+/** Tower lessons: light wind, so the clearances carry a real wind but it changes nothing. */
+const LESSON_WIND = { dir: 200, speed: 8 };
+/** Other aircraft in the tower lessons. */
+export const LESSON_LEADER = 'EZY81Q';
+export const LESSON_DEPARTURE = 'TRA6015';
+
 /** Narrowbodies only (no light or heavy wake pairs). */
 const TOWER_EASY = ['B738', 'A320', 'A20N', 'E190', 'E195', 'A321', 'B38M'];
 
@@ -126,6 +154,60 @@ export const SCENARIOS: Scenario[] = [
     seed: 0,
     durationMin: 0,
     traffic: { arrivalsPerHour: 12, departuresPerHour: 4, alnumCallsigns: 0 },
+  },
+  {
+    id: 'tw-land',
+    view: 'tower',
+    lesson: 'twLand',
+    name: '1 · Landing clearance',
+    blurb: 'You are Schiphol Tower. An arrival calls on final: clear it to land.',
+    mode: 'beginner',
+    seed: 1,
+    durationMin: 0,
+    wind: LESSON_WIND,
+    traffic: NONE,
+    spawns: [onFinal(STUDENT, 6)],
+  },
+  {
+    id: 'tw-depart',
+    view: 'tower',
+    lesson: 'twDepart',
+    name: '2 · Line up and take-off',
+    blurb: 'A departure is ready at the holding point: line it up, then clear it for take-off.',
+    mode: 'beginner',
+    seed: 1,
+    durationMin: 0,
+    wind: LESSON_WIND,
+    traffic: NONE,
+    spawns: [atHoldingPoint(STUDENT)],
+  },
+  {
+    id: 'tw-vacate',
+    view: 'tower',
+    lesson: 'twVacate',
+    name: '3 · Vacate and handoffs',
+    blurb: 'Professional rules: tell the arrival where to leave the runway and pass both aircraft on.',
+    mode: 'pro',
+    seed: 1,
+    durationMin: 0,
+    wind: LESSON_WIND,
+    traffic: NONE,
+    // the departure calls after the landing clearance and the vacate instruction, not over them
+    spawns: [onFinal(STUDENT, 5), { ...atHoldingPoint(LESSON_DEPARTURE), at: 75 }],
+  },
+  {
+    id: 'tw-goaround',
+    view: 'tower',
+    lesson: 'twGoAround',
+    name: '4 · Go-around',
+    blurb: 'Two arrivals too close together: the runway will not be free in time.',
+    mode: 'beginner',
+    seed: 1,
+    durationMin: 0,
+    wind: LESSON_WIND,
+    traffic: NONE,
+    // 2.6 NM apart: the follower is about 2.3 NM out at the leader's touchdown, time to read and act
+    spawns: [onFinal(LESSON_LEADER, 2.7, 'A320'), onFinal(STUDENT, 5.3)],
   },
   {
     id: 'tower-free',

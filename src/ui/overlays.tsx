@@ -96,7 +96,7 @@ export function Menu({
         </p>
         {group(
           'Tutorial',
-          SCENARIOS.filter((s) => s.lesson),
+          SCENARIOS.filter((s) => s.lesson && !s.view),
         )}
         {group(
           'Free play',

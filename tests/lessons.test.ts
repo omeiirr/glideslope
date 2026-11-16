@@ -23,6 +23,8 @@ for (const sc of SCENARIOS.filter((x) => x.lesson)) {
         lastStep = s.lessonStep;
         // a slow reader: 20 s of sim time before answering
         for (let k = 0; k < 20; k++) await tick(s);
+        // and, like a player, never over a pilot (Pro blocks it); radio calls take real time even at 4×
+        for (let k = 0; k < 200 && (s.radio.current || s.radio.waiting); k++) await tick(s);
         if (step.say) s.transmit(step.say, 'typed');
       }
       await tick(s);
@@ -31,6 +33,11 @@ for (const sc of SCENARIOS.filter((x) => x.lesson)) {
       true,
     );
     expect(s.stats.readbackErrors).toBe(0);
+    // tower lessons: no automatic go-around (the lesson's own needs the player's "go around"), none needless
+    if (sc.view === 'tower') {
+      expect(s.log.some((e) => e.kind === 'system' && /no landing clearance/.test(e.text))).toBe(false);
+      expect(s.stats.unnecessaryGoArounds).toBe(0);
+    }
   });
 }
 

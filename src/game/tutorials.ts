@@ -1,5 +1,5 @@
 import { runwayFrame } from '../core';
-import { STUDENT } from './scenarios';
+import { LESSON_DEPARTURE, LESSON_LEADER, STUDENT } from './scenarios';
 import type { Session } from './session';
 
 export interface LessonStep {
@@ -18,8 +18,15 @@ export interface Lesson {
 const ac = (s: Session) => s.sim.byCallsign(STUDENT);
 const hdg = (s: Session, h: number) => ac(s)?.nav.mode === 'heading' && ac(s)?.tgtHdg === h;
 const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
+const other = (s: Session, cs: string) => s.sim.byCallsign(cs);
+/** Gone from the sim, or handed to another station: the tower lesson aircraft is done. */
+const passedOn = (s: Session, cs: string) => {
+  const a = other(s, cs);
+  return !a || (a.comms !== 'tower' && a.comms !== 'none');
+};
+const WIND = 'wind 200 degrees 8 knots';
 
-/** Five short guided lessons. Each step completes when the aircraft state shows the instruction was given. */
+/** Five short guided lessons for Approach, four for Tower. Each step completes when the aircraft state shows the instruction was given. */
 export const LESSONS: Record<string, Lesson> = {
   heading: {
     title: 'Headings',
@@ -125,6 +132,106 @@ export const LESSONS: Record<string, Lesson> = {
       {
         text: 'Done. Once it has switched frequency it no longer hears you. Watch it land.',
         done: (s) => s.stats.landed > 0,
+      },
+    ],
+  },
+  twLand: {
+    title: 'Landing clearance',
+    steps: [
+      {
+        text: `You are Schiphol Tower, in the Tower West cab looking north along runway 18R. Approach has sent ${STUDENT}: it calls you on final and is in the Arrivals bay below the window. A landing clearance has three parts: the runway, the surface wind, then "cleared to land".`,
+        say: `${STUDENT}, runway 18R, ${WIND}, cleared to land`,
+        done: (s) => !!ac(s)?.landClear,
+      },
+      {
+        text: 'The pilot read it back: always check the runway in the readback. Without a landing clearance by half a mile out, a pilot must go around. Watch it touch down (hold B for the binoculars).',
+        done: (s) => s.stats.landed > 0,
+      },
+      {
+        text: 'In Beginner mode the aircraft turns off by itself and changes to Ground. Wait until it has left the runway: the On runway bay empties.',
+        done: (s) => passedOn(s, STUDENT),
+      },
+    ],
+  },
+  twDepart: {
+    title: 'Line up and take-off',
+    steps: [
+      {
+        text: `${STUDENT} is at holding point S7E for runway 24 and has called ready (Departures bay). Press 2 for the Centre cab, which looks along 24. "Line up and wait" lets it enter the runway and stop, so it is ready to go the moment the runway is yours.`,
+        say: `${STUDENT}, runway 24, line up and wait`,
+        done: (s) => {
+          const n = ac(s)?.nav;
+          return n?.mode === 'lineup' || (n?.mode === 'taxi' && n.then === 'lineup');
+        },
+      },
+      {
+        text: 'Wait until it is lined up on the centreline (strip: "lined up").',
+        done: (s) => {
+          const n = ac(s)?.nav;
+          return n?.mode === 'lineup' && n.ready;
+        },
+      },
+      {
+        text: 'The take-off clearance mirrors the landing one: runway, wind, "cleared for take-off". Only this phrase uses the word "take-off".',
+        say: `${STUDENT}, runway 24, ${WIND}, cleared for take-off`,
+        done: (s) => !!ac(s)?.takeoffClear || ac(s)?.nav.mode === 'takeoff',
+      },
+      {
+        text: 'In Beginner mode it changes to Departure by itself once airborne. Watch it go.',
+        done: (s) => passedOn(s, STUDENT),
+      },
+    ],
+  },
+  twVacate: {
+    title: 'Vacate and handoffs',
+    steps: [
+      {
+        text: `This lesson uses Professional rules: nothing is automatic. Clear ${STUDENT} to land.`,
+        say: `${STUDENT}, runway 18R, ${WIND}, cleared to land`,
+        done: (s) => !!ac(s)?.landClear,
+      },
+      {
+        text: 'Tell it where to leave the runway, and pass it to Ground in the same call so you need not talk to it again. Exits on 18R are V1 to V4; V3 on the left suits a 737.',
+        say: `${STUDENT}, vacate left via V3, when vacated contact Ground 121.800`,
+        done: (s) => !!ac(s)?.vacate,
+      },
+      {
+        text: 'It changes to Ground by itself once it is off the runway. Wait for that.',
+        done: (s) => passedOn(s, STUDENT),
+      },
+      {
+        text: `${LESSON_DEPARTURE} is ready at S7E. With nothing on the runway you can clear it for take-off straight from the holding point.`,
+        say: `${LESSON_DEPARTURE}, runway 24, ${WIND}, cleared for take-off`,
+        done: (s) =>
+          !!other(s, LESSON_DEPARTURE)?.takeoffClear || other(s, LESSON_DEPARTURE)?.nav.mode === 'takeoff',
+      },
+      {
+        text: 'Once it is airborne, hand it to Departure before it reaches 2000 ft, or it counts as a late handoff.',
+        say: `${LESSON_DEPARTURE}, contact Departure 120.555`,
+        done: (s) => other(s, LESSON_DEPARTURE)?.comms === 'departure' || passedOn(s, LESSON_DEPARTURE),
+      },
+    ],
+  },
+  twGoAround: {
+    title: 'Go-around',
+    steps: [
+      {
+        text: `Two arrivals: ${LESSON_LEADER} is close in, ${STUDENT} follows too closely behind. Clear the leader to land first.`,
+        say: `${LESSON_LEADER}, runway 18R, ${WIND}, cleared to land`,
+        done: (s) => !!other(s, LESSON_LEADER)?.landClear,
+      },
+      {
+        text: `${STUDENT} is too close: ${LESSON_LEADER} will still be on the runway when it arrives. Do not clear it to land. Watch the leader touch down.`,
+        done: (s) => s.stats.landed > 0,
+      },
+      {
+        text: `The runway is occupied and ${STUDENT} is about 2 miles out. Send it around: the instruction is short, so the pilot cannot mishear it.`,
+        say: `${STUDENT}, go around`,
+        done: (s) => ac(s)?.phase === 'goaround',
+      },
+      {
+        text: 'It flies the missed approach: straight ahead, climbing to 2000 ft. Approach takes it back and will feed it in again. Wait until it is handed back.',
+        done: (s) => passedOn(s, STUDENT) || (ac(s)?.alt ?? 0) >= 1900,
       },
     ],
   },

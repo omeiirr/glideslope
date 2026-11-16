@@ -113,6 +113,8 @@ export class Spawner {
       entered: false,
       trail: [],
       stableChecked: false,
+      landClear: false,
+      takeoffClear: false,
       identified: !!spec.onFrequency,
       comms: spec.onFrequency ? ('app' as const) : ('none' as const),
     };
@@ -124,9 +126,9 @@ export class Spawner {
         // at the holding point facing the runway; later arrivals queue behind (shortcut: straight back, not along the taxiway)
         const hold = hp[hp.length - 1]!;
         const face = bearing(hold, hp[hp.length - 2]!);
-        // the slot behind the last one taken (queued aircraft don't move up yet)
+        // the slot behind the last one taken
         const slots = active
-          .filter((a) => a.nav.mode === 'holding')
+          .filter((a) => a.nav.mode === 'holding' || (a.nav.mode === 'taxi' && a.nav.then === 'hold'))
           .map((a) => Math.round((dist(a.pos, hold) * 1852) / 70));
         const queue = slots.length ? Math.max(...slots) + 1 : 0;
         const back = headingVec(face + 180, (queue * 70) / 1852);

@@ -24,8 +24,8 @@ export type NavMode =
   | { mode: 'takeoff' }
   /** After touchdown: slowing down on the runway towards `exit` (null: no exit data, stop on the runway). */
   | { mode: 'rollout'; exit: RunwayExit | null }
-  /** Following a taxiway path: off the runway (`vacate`) or from the holding point onto it (`lineup`). */
-  | { mode: 'taxi'; path: Vec[]; i: number; then: 'vacate' | 'lineup' }
+  /** Following a taxiway path: off the runway (`vacate`), from the holding point onto it (`lineup`), or up the queue (`hold`). */
+  | { mode: 'taxi'; path: Vec[]; i: number; then: 'vacate' | 'lineup' | 'hold' }
   /** Departure waiting at the runway holding point. */
   | { mode: 'holding' }
   /** Turning onto the centreline, then stopped and waiting for take-off (`ready`). */
@@ -40,7 +40,12 @@ export const isOnGround = (ac: Pick<Aircraft, 'nav'>) => GROUND_MODES.has(ac.nav
 /** Shown on the approach radar: airborne, rolling for take-off, or just landed. Ground traffic at the holding point or on an exit is not. */
 export const onRadar = (ac: Pick<Aircraft, 'nav'>) =>
   !isOnGround(ac) || ac.nav.mode === 'takeoff' || ac.nav.mode === 'rollout';
-export type Comms = 'none' | 'app' | 'tower' | 'radar';
+export type Comms = 'none' | 'app' | 'tower' | 'radar' | 'ground' | 'departure';
+/** Exit asked for by Tower: by name, or the first one on a side. */
+export interface ExitPref {
+  exit?: string;
+  side?: 'left' | 'right';
+}
 
 export interface Aircraft {
   id: number;
@@ -84,6 +89,10 @@ export interface Aircraft {
   trail: Vec[];
   stableChecked: boolean;
   checkInAt: number | null;
+  /** Tower clearances (tower mode). */
+  landClear: boolean;
+  takeoffClear: boolean;
+  vacate?: ExitPref;
 }
 
 export interface Env {
@@ -94,13 +103,17 @@ export interface Env {
   /** Pro-mode ILS rules: ≤30° intercept, glideslope from at or below, stable-approach gate. */
   strictIls: boolean;
   time: number;
+  /** Tower mode: the player is Tower, so arrivals need a landing clearance. */
+  tower?: boolean;
 }
+
+export type GoAroundReason = 'unstable' | 'commanded' | 'noClearance';
 
 export type StepEvent =
   | { type: 'established' }
   | { type: 'landed' }
   | { type: 'vacated' }
-  | { type: 'goAround'; reason: 'unstable' | 'commanded' }
+  | { type: 'goAround'; reason: GoAroundReason }
   | { type: 'leftAirspace' }
   | { type: 'gone' }
   | { type: 'checkIn' };
@@ -109,6 +122,8 @@ export type StepEvent =
 const BRAKE_KT_S = 3;
 const TAKEOFF_ACCEL_KT_S = 4;
 const TAXI_KT = 15;
+/** Moving up the departure queue: slow, so it stops short of the aircraft ahead. */
+const QUEUE_KT = 8;
 /** Speed along an exit until clear of the runway (rapid exits are long and shallow). */
 const VACATE_KT = 25;
 /** About a 22 m turn radius at 15 kt. */
@@ -122,15 +137,27 @@ function exitTurn(e: RunwayExit, rwy: Runway): number {
   return angleDiff(rwy.heading, bearing(e.path[0]!, e.path[e.path.length - 1]!));
 }
 
-/** First exit the aircraft can make from `alongM` metres past the threshold at `ias`, braking normally. */
-export function pickExit(rwy: Runway, alongM: number, ias: number): RunwayExit | null {
-  const list = rwy.exits ?? [];
-  for (const e of list) {
-    const ve = exitSpeed(e, rwy);
-    const need = ((ias * ias - ve * ve) / (2 * BRAKE_KT_S)) * KTS_TO_M;
-    if (e.distM >= alongM + need + 30) return e;
+/** Can the aircraft make exit `e` from `alongM` metres past the threshold at `ias`, braking normally? */
+export function canMakeExit(rwy: Runway, e: RunwayExit, alongM: number, ias: number): boolean {
+  const ve = Math.min(exitSpeed(e, rwy), ias);
+  return e.distM >= alongM + ((ias * ias - ve * ve) / (2 * BRAKE_KT_S)) * KTS_TO_M + 30;
+}
+
+/** Exits matching Tower's request (all of them without one). */
+export function exitsFor(rwy: Runway, pref?: ExitPref): RunwayExit[] {
+  return (rwy.exits ?? []).filter(
+    (e) => (!pref?.exit || e.name === pref.exit) && (!pref?.side || e.side === pref.side[0]!.toUpperCase()),
+  );
+}
+
+/** First exit the aircraft can make, braking normally; one Tower asked for if it still can. */
+export function pickExit(rwy: Runway, alongM: number, ias: number, pref?: ExitPref): RunwayExit | null {
+  if (pref) {
+    const asked = exitsFor(rwy, pref).find((e) => canMakeExit(rwy, e, alongM, ias));
+    if (asked) return asked;
   }
-  return list[list.length - 1] ?? null;
+  const list = rwy.exits ?? [];
+  return list.find((e) => canMakeExit(rwy, e, alongM, ias)) ?? list[list.length - 1] ?? null;
 }
 
 /** Departure at the holding point: taxi onto the runway and line up. */
@@ -149,6 +176,7 @@ export function lineUp(ac: Aircraft, rwy: Runway) {
 export function clearTakeoff(ac: Aircraft) {
   ac.nav = { mode: 'takeoff' };
   ac.phase = 'takeoff';
+  ac.takeoffClear = false;
 }
 
 const tasOf = (ias: number, alt: number) => ias * (1 + (Math.max(alt, 0) / 1000) * 0.02);
@@ -202,6 +230,8 @@ export function startGoAround(ac: Aircraft, env: Env) {
   ac.stableChecked = false;
   ac.phase = 'goaround';
   ac.comms = 'app';
+  ac.landClear = false;
+  ac.vacate = undefined;
 }
 
 /** Pilot's own speed when no speed is assigned. */
@@ -298,6 +328,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
       ) {
         if (++n.i >= n.path.length) {
           if (n.then === 'vacate') ev.push({ type: 'vacated' });
+          else if (n.then === 'hold') ac.nav = { mode: 'holding' };
           else ac.nav = { mode: 'lineup', ready: false, timer: 0 };
         }
       } else steer(ac, brg, dt, 0, undefined, TAXI_TURN_DEG_S);
@@ -318,6 +349,7 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
           ac.hdg = dep.heading;
         }
       } else n.timer += dt;
+      if (n.ready && ac.takeoffClear) clearTakeoff(ac);
       break;
     }
   }
@@ -362,11 +394,16 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
       }
     }
     if (frame.along < 1 && ac.phase === 'approach') ac.phase = 'landing';
+    // tower mode: no landing clearance by about 300 ft above the runway
+    if (env.tower && ac.nav.mode === 'loc' && !ac.landClear && frame.along < 0.5) {
+      startGoAround(ac, env);
+      ev.push({ type: 'goAround', reason: 'noClearance' });
+    }
     if (ac.nav.mode === 'loc' && frame.along <= 0) {
       if (ac.gsEstablished) {
         // past the threshold the glide path meets the runway about 290 m in: touchdown there
         if (gsAlt <= rwy.elevationFt) {
-          ac.nav = { mode: 'rollout', exit: pickExit(rwy, -frame.along * 1852, ac.ias) };
+          ac.nav = { mode: 'rollout', exit: pickExit(rwy, -frame.along * 1852, ac.ias, ac.vacate) };
           ac.phase = 'rollout';
           ac.ilsArmed = null;
           ac.locEstablished = ac.gsEstablished = false;
@@ -407,7 +444,8 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
   // --- speed ---
   let want: number;
   if (ac.nav.mode === 'rollout') want = ac.nav.exit ? exitSpeed(ac.nav.exit, rwy) : 0;
-  else if (ac.nav.mode === 'taxi') want = ac.nav.then === 'vacate' ? VACATE_KT : TAXI_KT;
+  else if (ac.nav.mode === 'taxi')
+    want = ac.nav.then === 'vacate' ? VACATE_KT : ac.nav.then === 'hold' ? QUEUE_KT : TAXI_KT;
   else if (ac.nav.mode === 'lineup') want = ac.nav.ready ? 0 : 6;
   else if (ac.nav.mode === 'holding') want = 0;
   else if (ac.nav.mode === 'takeoff') want = ac.perf.vr + 20;

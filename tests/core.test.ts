@@ -374,12 +374,17 @@ describe('runway (tower T2)', () => {
     let aRolled = -1;
     let bLinedUp = -1;
     const third = sim.spawn({ kind: 'departure', callsign: 'EZY88', type: 'A320', route: 'VALKO' });
+    const hp = dep.entry!.path;
+    let thirdFront = Infinity;
     for (let t = 0; t < 400; t += TICK) {
       sim.step();
+      if (third.nav.mode === 'holding')
+        thirdFront = Math.min(thirdFront, dist(third.pos, hp[hp.length - 1]!) * 1852);
       // never two departures entering or on the runway at once
       const moving = [a, b, third].filter(
         (d) =>
-          ['taxi', 'lineup'].includes(d.nav.mode) ||
+          (d.nav.mode === 'taxi' && d.nav.then === 'lineup') ||
+          d.nav.mode === 'lineup' ||
           (d.nav.mode === 'takeoff' && d.alt < dep.elevationFt + 100),
       );
       expect(moving.length).toBeLessThanOrEqual(1);
@@ -397,6 +402,8 @@ describe('runway (tower T2)', () => {
       }
       if (b.alt > 1000) break;
     }
+    // the queue moved up: the third aircraft waited at the front
+    expect(thirdFront).toBeLessThan(25);
     expect(aRolled).toBeGreaterThan(20);
     expect(aRolled).toBeLessThan(100);
     expect(bLinedUp).toBeGreaterThan(aRolled);

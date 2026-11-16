@@ -30,6 +30,8 @@ export interface Runway {
 export interface Frequency {
   name: string;
   mhz: string;
+  /** Not checked against the AIP: feedback never calls a readback of it wrong. */
+  placeholder?: boolean;
 }
 
 export interface Airline {
@@ -66,7 +68,13 @@ export interface Airport {
   qnh: number;
   wind: { dir: number; speed: number };
   atis: string;
-  frequencies: { approach: Frequency; tower: Frequency; radar: Frequency };
+  frequencies: {
+    approach: Frequency;
+    tower: Frequency;
+    radar: Frequency;
+    ground: Frequency;
+    departure: Frequency;
+  };
   airspace: { floorFt: number; ceilingFt: number; poly: Vec[] };
   config: { landing: string; departure: string };
   missedApproachAltFt: number;

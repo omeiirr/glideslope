@@ -112,6 +112,34 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
       return both(readback ? 'going around' : 'go around');
     case 'sayAgain':
       return both('say again');
+    case 'land':
+      return both(
+        `runway ${cmd.runway}, cleared to land`,
+        `runway ${spokenRunway(cmd.runway)}, cleared to land`,
+      );
+    case 'continueApproach':
+      return both('continue approach');
+    case 'vacate': {
+      const via = cmd.exit ? ` via ${cmd.exit}` : '';
+      const sVia = cmd.exit ? ` via ${spokenFix(cmd.exit)}` : '';
+      const side = cmd.side ? ` ${cmd.side}` : '';
+      return both(
+        `vacate${side}${via || (side ? '' : ' runway')}`,
+        `vacate${side}${sVia || (side ? '' : ' runway')}`,
+      );
+    }
+    case 'lineUp':
+      return both(
+        `runway ${cmd.runway}, line up and wait`,
+        `runway ${spokenRunway(cmd.runway)}, line up and wait`,
+      );
+    case 'takeoff':
+      return both(
+        `runway ${cmd.runway}, cleared for take-off`,
+        `runway ${spokenRunway(cmd.runway)}, cleared for take-off`,
+      );
+    case 'cancelTakeoff':
+      return both(readback ? 'holding' : 'hold position');
   }
 }
 
@@ -182,11 +210,23 @@ export function chip(cmd: Command): string {
     case 'hold':
       return `HOLD ${cmd.fix}`;
     case 'handoff':
-      return cmd.to === 'tower' ? 'TWR' : 'RADAR';
+      return { tower: 'TWR', radar: 'RADAR', ground: 'GND', departure: 'DEP' }[cmd.to];
     case 'goAround':
       return 'GO AROUND';
     case 'sayAgain':
       return 'SAY AGAIN';
+    case 'land':
+      return `LAND ${cmd.runway}`;
+    case 'continueApproach':
+      return 'CONT APCH';
+    case 'vacate':
+      return ['VACATE', cmd.side?.[0]!.toUpperCase(), cmd.exit].filter(Boolean).join(' ');
+    case 'lineUp':
+      return `LUP ${cmd.runway}`;
+    case 'takeoff':
+      return `T/O ${cmd.runway}`;
+    case 'cancelTakeoff':
+      return 'HOLD POS';
   }
 }
 

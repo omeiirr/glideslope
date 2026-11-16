@@ -1,8 +1,21 @@
-import { isOnGround, startGoAround, type Aircraft, type Env } from '../aircraft/aircraft';
+import {
+  canMakeExit,
+  exitsFor,
+  isOnGround,
+  lineUp,
+  runwayFrame,
+  startGoAround,
+  type Aircraft,
+  type Env,
+} from '../aircraft/aircraft';
 import { bearing } from '../geo';
 import type { Command, CommandResult } from './commands';
 
 const OK: CommandResult = { ok: true };
+/** Tower instructions a pilot on the ground (not rolling) accepts. */
+const GROUND_OK = new Set<Command['type']>(['lineUp', 'takeoff', 'cancelTakeoff', 'vacate']);
+/** Metres past the landing threshold. */
+const alongM = (ac: Aircraft, env: Env) => -runwayFrame(ac.pos, env.landing).along * 1852;
 const unable = (reason: string): CommandResult => ({ ok: false, reason });
 
 function leaveApproach(ac: Aircraft) {
@@ -15,8 +28,17 @@ function leaveApproach(ac: Aircraft) {
 /** Check a command without applying it (pilots use this to decide between readback and "unable"). */
 export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandResult {
   const ap = env.airport;
+  const m = ac.nav.mode;
   // the take-off roll keeps accepting instructions for after departure, as before
-  if (isOnGround(ac) && ac.nav.mode !== 'takeoff') return unable('unable, on the ground');
+  if (
+    isOnGround(ac) &&
+    m !== 'takeoff' &&
+    !GROUND_OK.has(cmd.type) &&
+    !(cmd.type === 'handoff' && cmd.to === 'ground')
+  )
+    return unable('unable, on the ground');
+  const onApproach = ac.kind === 'arrival' && (m === 'loc' || ac.ilsArmed !== null);
+  const queued = m === 'holding' || (m === 'taxi' && ac.nav.then !== 'vacate') || m === 'lineup';
   switch (cmd.type) {
     case 'heading':
       return cmd.heading >= 1 && cmd.heading <= 360 ? OK : unable('unable, invalid heading');
@@ -37,6 +59,12 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
         ? OK
         : unable(`unable, runway ${env.landing.id} in use`);
     case 'handoff':
+      if (cmd.to === 'ground')
+        return ac.kind === 'arrival' && isOnGround(ac) ? OK : unable('unable, not on the ground');
+      if (cmd.to === 'departure')
+        return ac.kind === 'departure' && (!isOnGround(ac) || m === 'takeoff')
+          ? OK
+          : unable('unable, not airborne');
       if (cmd.to === 'tower') {
         if (ac.kind !== 'arrival') return unable('unable, we are a departure');
         // Game-friendly simplification: pilots refuse Tower until on the localizer (see DECISIONS.md).
@@ -45,6 +73,32 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
       return ac.kind === 'departure' ? OK : unable('negative, we are inbound');
     case 'goAround':
       return ac.nav.mode === 'loc' ? OK : unable('unable, not on approach');
+    case 'land':
+    case 'continueApproach':
+      if (!onApproach) return unable('unable, not on approach');
+      return cmd.type === 'continueApproach' || cmd.runway === env.landing.id
+        ? OK
+        : unable(`negative, approaching runway ${env.landing.id}`);
+    case 'vacate': {
+      if (ac.kind !== 'arrival' || !(onApproach || m === 'rollout' || m === 'taxi'))
+        return unable('unable, not on the runway');
+      const exits = exitsFor(env.landing, cmd);
+      const what = cmd.exit ?? `to the ${cmd.side}`;
+      if (!exits.length) return unable(`unable, no exit ${what}`);
+      if (m === 'taxi') return OK; // already off the centreline: keep going
+      if (m === 'rollout' && !exits.some((e) => canMakeExit(env.landing, e, alongM(ac, env), ac.ias)))
+        return unable(`unable, too late for ${cmd.exit ?? `an exit ${what}`}`);
+      return OK;
+    }
+    case 'lineUp':
+    case 'takeoff':
+      if (ac.kind !== 'departure' || !queued) return unable('unable, not at the holding point');
+      return cmd.runway === env.departure.id
+        ? OK
+        : unable(`negative, we are departing runway ${env.departure.id}`);
+    case 'cancelTakeoff':
+      if (ac.kind !== 'departure' || !(queued || m === 'takeoff')) return unable('unable, airborne');
+      return OK;
     default:
       return OK;
   }
@@ -107,6 +161,35 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
       startGoAround(ac, env);
       break;
     case 'sayAgain':
+      break;
+    case 'land':
+      ac.landClear = true;
+      break;
+    case 'continueApproach':
+      break;
+    case 'vacate':
+      ac.vacate = { exit: cmd.exit, side: cmd.side };
+      if (ac.nav.mode === 'rollout') {
+        const along = alongM(ac, env);
+        ac.nav.exit = exitsFor(env.landing, cmd).find((e) => canMakeExit(env.landing, e, along, ac.ias))!;
+      }
+      break;
+    case 'lineUp':
+      if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
+        lineUp(ac, env.departure);
+      break;
+    case 'takeoff':
+      ac.takeoffClear = true;
+      if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
+        lineUp(ac, env.departure);
+      break;
+    case 'cancelTakeoff':
+      ac.takeoffClear = false;
+      // rejected take-off: brake to a stop on the runway, lined up
+      if (ac.nav.mode === 'takeoff') {
+        ac.nav = { mode: 'lineup', ready: true, timer: 0 };
+        ac.phase = 'lineup';
+      }
       break;
   }
   return OK;

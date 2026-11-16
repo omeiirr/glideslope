@@ -1,6 +1,7 @@
 import {
   clearTakeoff,
   isOnGround,
+  type GoAroundReason,
   lineUp,
   runwayFrame,
   stepAircraft,
@@ -11,7 +12,7 @@ import { reciprocalRunway, runwayById } from './airport/load';
 import type { Airport } from './airport/types';
 import { applyCommand, validateCommand } from './commands/apply';
 import type { Command, CommandResult } from './commands/commands';
-import { dist, unproject } from './geo';
+import { bearing, dist, headingVec, unproject } from './geo';
 import { Rng } from './rng';
 import { detectConflicts, type Conflict } from './rules/separation';
 import { Spawner, type SpawnSpec, type TrafficConfig } from './traffic/spawner';
@@ -25,9 +26,21 @@ export interface SimOptions {
   strictIls?: boolean;
   wind?: { dir: number; speed: number };
   qnh?: number;
-  /** Line up and launch departures automatically when the runway is free (default on; tower mode turns it off in T3). */
+  /** Line up and launch departures automatically when the runway is free (default on, off in tower mode). */
   autoTower?: boolean;
+  /**
+   * Tower mode: the player is Tower. A stand-in Approach clears arrivals for the ILS and hands them over at 8 NM;
+   * departures call from the holding point; arrivals need a landing clearance.
+   */
+  tower?: boolean;
 }
+
+/** Stand-in Approach hands arrivals to Tower at this distance from the threshold (NM). */
+const TOWER_HANDOVER_NM = 8;
+/** Departures wait this long at the holding point before calling Tower (seconds). */
+const READY_CALL_S = 5;
+/** Queue spacing at the holding point, metres (same as the spawner's). */
+const QUEUE_M = 70;
 
 /** A departure waits at least this long at the holding point (seconds), and this long lined up. */
 const HOLD_MIN_S = 20;
@@ -41,7 +54,7 @@ export type SimEvent =
   | { type: 'landed'; ac: Aircraft; handedOff: boolean }
   /** Reached the holding position on its exit; removed. */
   | { type: 'vacated'; ac: Aircraft }
-  | { type: 'goAround'; ac: Aircraft; reason: 'unstable' | 'commanded' }
+  | { type: 'goAround'; ac: Aircraft; reason: GoAroundReason }
   | { type: 'leftAirspace'; ac: Aircraft; handedOff: boolean }
   | { type: 'conflict'; kind: 'loss' | 'wake'; a: Aircraft; b: Aircraft };
 
@@ -56,6 +69,7 @@ export class Sim {
   private tickCount = 0;
   private _conflicts: Conflict[] = [];
   private autoTower: boolean;
+  readonly tower: boolean;
 
   constructor(
     readonly airport: Airport,
@@ -70,9 +84,11 @@ export class Sim {
       wind: opts.wind ?? airport.wind,
       strictIls: !!opts.strictIls,
       time: 0,
+      tower: !!opts.tower,
     };
     this.spawner = new Spawner(airport, this.rng, opts.traffic);
-    this.autoTower = opts.autoTower ?? true;
+    this.tower = !!opts.tower;
+    this.autoTower = opts.autoTower ?? !this.tower;
   }
 
   /**
@@ -91,7 +107,7 @@ export class Sim {
         (ac.kind === 'departure' && ids.has(this.env.departure.id));
       if (!mine) return false;
       if (m === 'rollout' || m === 'lineup' || m === 'takeoff') return true;
-      if (m === 'taxi') return true; // vacating, or cleared to line up and already moving
+      if (m === 'taxi') return ac.nav.then !== 'hold'; // vacating, or cleared to line up and already moving
       // departure airborne but not yet past the far end
       return (
         ac.kind === 'departure' &&
@@ -121,6 +137,56 @@ export class Sim {
     if (next) lineUp(next, dep);
   }
 
+  /** Departures queued at the holding point, front first. */
+  private queue(): Aircraft[] {
+    const hp = this.env.departure.entry?.path;
+    if (!hp) return [];
+    const hold = hp[hp.length - 1]!;
+    return this.list
+      .filter((a) => a.nav.mode === 'holding' || (a.nav.mode === 'taxi' && a.nav.then === 'hold'))
+      .sort((a, b) => dist(a.pos, hold) - dist(b.pos, hold));
+  }
+
+  /** The queue moves up when the front aircraft lines up. */
+  private moveQueue() {
+    const hp = this.env.departure.entry?.path;
+    if (!hp || hp.length < 2) return;
+    const hold = hp[hp.length - 1]!;
+    const back = bearing(hp[hp.length - 2]!, hold);
+    this.queue().forEach((ac, slot) => {
+      if (ac.nav.mode !== 'holding') return;
+      const v = headingVec(back, (slot * QUEUE_M) / 1852);
+      const target = { x: hold.x + v.x, y: hold.y + v.y };
+      if (dist(ac.pos, target) * 1852 > 20) ac.nav = { mode: 'taxi', path: [target], i: 0, then: 'hold' };
+    });
+  }
+
+  /** Tower mode: the stand-in Approach and the pilots' calls to Tower. */
+  private runTowerMode(events: SimEvent[]) {
+    const landing = this.env.landing;
+    for (const ac of this.list) {
+      if (ac.kind !== 'arrival' || ac.comms === 'tower' || ac.comms === 'ground' || isOnGround(ac)) continue;
+      if (ac.phase === 'goaround') continue;
+      if (!ac.ilsArmed && ac.nav.mode !== 'loc') ac.ilsArmed = landing.id;
+      if (ac.nav.mode === 'loc' && runwayFrame(ac.pos, landing).along < TOWER_HANDOVER_NM) {
+        ac.comms = 'tower';
+        ac.identified = true;
+        events.push({ type: 'checkIn', ac });
+      }
+    }
+    const front = this.queue()[0];
+    if (
+      front &&
+      front.nav.mode === 'holding' &&
+      front.comms === 'none' &&
+      this.time - front.spawnTime >= READY_CALL_S
+    ) {
+      front.comms = 'tower';
+      front.identified = true;
+      events.push({ type: 'checkIn', ac: front });
+    }
+  }
+
   /** Read-only views for renderers and UI. */
   get aircraft(): readonly Readonly<Aircraft>[] {
     return this.list;
@@ -143,8 +209,14 @@ export class Sim {
 
   spawn(spec: SpawnSpec): Readonly<Aircraft> {
     const ac = this.spawner.create(spec, this.time, this.list);
-    this.list.push(ac);
+    this.add(ac);
     return ac;
+  }
+
+  private add(ac: Aircraft) {
+    // tower mode: nobody calls Approach; runTowerMode makes the calls to Tower
+    if (this.tower) ac.checkInAt = null;
+    this.list.push(ac);
   }
 
   validate(callsign: string, cmd: Command): CommandResult {
@@ -170,7 +242,7 @@ export class Sim {
     this.tickCount++;
     const events: SimEvent[] = [];
     for (const ac of this.spawner.due(this.time, this.list)) {
-      this.list.push(ac);
+      this.add(ac);
       events.push({ type: 'spawned', ac });
     }
     const sample = this.tickCount % 8 === 0;
@@ -188,12 +260,21 @@ export class Sim {
           events.push({ type: 'vacated', ac });
         } else if (e.type === 'leftAirspace') {
           remove.add(ac);
-          events.push({ type: 'leftAirspace', ac, handedOff: ac.comms === 'radar' });
+          events.push({
+            type: 'leftAirspace',
+            ac,
+            handedOff: ac.comms === 'radar' || ac.comms === 'departure',
+          });
         } else events.push({ ...e, ac } as SimEvent);
       }
+      // shortcut: tower mode, the stand-in Approach takes a go-around off the frequency once it has climbed out (T4: re-sequence it)
+      if (this.tower && ac.phase === 'goaround' && ac.alt >= this.airport.missedApproachAltFt - 100)
+        remove.add(ac);
     }
     if (remove.size) this.list = this.list.filter((a) => !remove.has(a));
     if (this.autoTower) this.runTower();
+    if (this.tower) this.runTowerMode(events);
+    this.moveQueue();
     if (this.tickCount % 2 === 0) {
       this._conflicts = detectConflicts(this.list, this.env.landing);
       const now = new Set<string>();

@@ -37,6 +37,16 @@
   "radar": {
    "name": "Amsterdam Radar",
    "mhz": "125.750"
+  },
+  "ground": {
+   "name": "Schiphol Ground",
+   "mhz": "121.800",
+   "placeholder": true
+  },
+  "departure": {
+   "name": "Schiphol Departure",
+   "mhz": "120.555",
+   "placeholder": true
   }
  },
  "airspace": {

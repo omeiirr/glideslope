@@ -282,7 +282,7 @@ export function TowerView({ session }: { session: Session }) {
         </div>
       )}
       <div class="tower-credit">
-        Preview: a stand-in Approach feeds the arrivals onto the ILS. {attribution}
+        A stand-in Approach feeds the arrivals onto the ILS. {attribution}
       </div>
     </div>
   );

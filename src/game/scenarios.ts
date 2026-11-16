@@ -131,8 +131,9 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'tower-preview',
     view: 'tower',
-    name: 'Tower view (preview)',
-    blurb: 'Watch arrivals land on 18R from the tower cab, in 3D. A first look: no tower commands yet.',
+    name: 'Tower (preview)',
+    blurb:
+      'You are Schiphol Tower: clear arrivals to land on 18R and send them off the runway, line up and launch departures from 24.',
     mode: 'beginner',
     seed: 7,
     durationMin: 0,

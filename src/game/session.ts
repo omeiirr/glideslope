@@ -6,7 +6,14 @@ import {
   type ParseContext,
   type ParseResult,
 } from '../phraseology/parser';
-import { canonicalTransmission, checkIn, chip, readback, type Phrase } from '../phraseology/phrases';
+import {
+  canonicalTransmission,
+  checkIn,
+  chip,
+  readback,
+  towerCheckIn,
+  type Phrase,
+} from '../phraseology/phrases';
 import { corruptReadback } from '../phraseology/readbackError';
 import { spokenCallsign } from '../phraseology/callsign';
 import { Frequency, type Transmission } from '../radio/frequency';
@@ -58,6 +65,10 @@ const LESSON_END_PAUSE_MS = 1500;
 /** One game: the sim, the radio, the log and the score. The UI reads it and calls its methods. */
 export class Session {
   readonly sim: Sim;
+  /** The player is Schiphol Tower (tower scenarios), else Schiphol Approach. */
+  readonly tower: boolean;
+  /** The player's frequency, as aircraft comms. */
+  readonly mine: Aircraft['comms'];
   readonly radio = new Frequency();
   readonly mode: 'beginner' | 'pro';
   readonly lesson?: Lesson;
@@ -89,6 +100,8 @@ export class Session {
     public settings: Settings,
   ) {
     this.mode = scenario.mode;
+    this.tower = scenario.view === 'tower';
+    this.mine = this.tower ? 'tower' : 'app';
     const seed = scenario.seed || Date.now() & 0xffff;
     this.sim = new Sim(EHAM, {
       seed,
@@ -96,6 +109,7 @@ export class Session {
       strictIls: this.mode === 'pro',
       wind: scenario.wind,
       qnh: scenario.qnh,
+      tower: this.tower,
     });
     this.rng = new Rng(seed ^ 0x5eed);
     this.radio.blocking = this.mode === 'pro';
@@ -125,6 +139,10 @@ export class Session {
   }
   get remainingSec(): number | null {
     return this.scenario.durationMin ? Math.max(0, this.scenario.durationMin * 60 - this.sim.time) : null;
+  }
+  /** The player's station: name and frequency. */
+  get station() {
+    return this.tower ? EHAM.frequencies.tower : EHAM.frequencies.approach;
   }
   get selected(): Readonly<Aircraft> | undefined {
     return this.selectedId === null ? undefined : this.sim.byId(this.selectedId);
@@ -193,10 +211,8 @@ export class Session {
     while (this.spawnsLeft.length && this.spawnsLeft[0]!.at <= this.sim.time) {
       const { at: _at, ...spec } = this.spawnsLeft.shift()!;
       const ac = this.sim.spawn(spec);
-      // shortcut: stands in for the AI approach controller, replace it when that exists (tower step T4)
-      if (this.scenario.view === 'tower' && spec.kind === 'arrival')
-        this.sim.command(ac.callsign, [{ type: 'ils', runway: this.sim.env.landing.id }]);
-      if (spec.onFrequency) this.contacted.add(ac.callsign);
+      // tower mode: aircraft "on frequency" are with the stand-in Approach, and call Tower themselves
+      if (spec.onFrequency && !this.tower) this.contacted.add(ac.callsign);
     }
   }
 
@@ -209,7 +225,8 @@ export class Session {
       if (entry?.kind === 'pilot') entry.rb = 'missed';
     }
     for (const ac of sim.aircraft) {
-      if (ac.comms !== 'app') continue;
+      // tower mode: aircraft with Approach are the stand-in Approach's (in the sim)
+      if (ac.comms !== 'app' || this.tower) continue;
       if (this.mode === 'beginner') {
         // Beginner: handoffs happen automatically.
         if (ac.kind === 'arrival' && ac.locEstablished && runwayFrame(ac.pos, sim.env.landing).along < 8) {
@@ -278,7 +295,7 @@ export class Session {
       case 'spawned':
         break;
       case 'checkIn':
-        this.pilotSays(e.ac.callsign, checkIn(e.ac, this.sim), 0);
+        this.pilotSays(e.ac.callsign, this.tower ? towerCheckIn(e.ac, this.sim) : checkIn(e.ac, this.sim), 0);
         break;
       case 'established':
         if (this.mode === 'beginner')
@@ -287,7 +304,7 @@ export class Session {
       case 'landed': {
         s.landed++;
         s.delaySum += Math.max(0, this.sim.time - e.ac.spawnTime - this.nominalTime(e.ac));
-        if (!e.handedOff && this.mode === 'pro') {
+        if (!e.handedOff && this.mode === 'pro' && !this.tower) {
           s.missedHandoffs++;
           this.system(`${e.ac.callsign} landed without being handed to Tower.`, 'warn');
         } else this.system(`${e.ac.callsign} landed.`, 'good');
@@ -305,6 +322,8 @@ export class Session {
         );
         if (e.reason === 'unstable')
           this.system(`${e.ac.callsign} went around: approach not stable.`, 'warn');
+        else if (e.reason === 'noClearance')
+          this.system(`${e.ac.callsign} went around: no landing clearance.`, 'bad');
         break;
       case 'leftAirspace':
         this.gone(e.ac);
@@ -394,14 +413,16 @@ export class Session {
 
   parseContext(defaultToSelected: boolean): ParseContext {
     const aircraft: AcContext[] = this.sim.aircraft
-      .filter((a) => a.comms === 'app')
+      .filter((a) => a.comms === this.mine)
       .map((a) => ({ callsign: a.callsign, alt: a.alt, hdg: a.hdg, ias: a.ias, qnhGiven: a.qnhGiven }));
     const sel = this.selected;
     return {
       airport: EHAM,
       qnh: this.sim.qnh,
       aircraft,
-      defaultCallsign: defaultToSelected && sel?.comms === 'app' ? sel.callsign : undefined,
+      defaultCallsign: defaultToSelected && sel?.comms === this.mine ? sel.callsign : undefined,
+      role: this.tower ? 'tower' : 'approach',
+      wind: this.sim.env.wind,
     };
   }
 
@@ -482,7 +503,7 @@ export class Session {
       // Somebody answers, as on a real frequency.
       const anyone = ctx.aircraft[Math.floor(this.rng.next() * ctx.aircraft.length)];
       if (anyone) {
-        const station = EHAM.frequencies.approach.name;
+        const station = this.station.name;
         this.pilotSays(
           anyone.callsign,
           { text: `Station calling ${station}, say again?`, speech: `Station calling ${station}, say again` },
@@ -554,6 +575,12 @@ export class Session {
     }
     const rb = readback(cs, rbCmds, this.sim, acCtx, refusals);
     const correct = r.commands;
+    // A landing clearance counts once given, not when the readback starts: a late one still beats the go-around.
+    const now = flown.filter((c) => c.type === 'land');
+    if (now.length) {
+      this.sim.command(cs, now);
+      flown = flown.filter((c) => c.type !== 'land');
+    }
     this.pilotSays(cs, rb, 500 + this.rng.next() * 700, {
       // In Pro nothing marks a readback as right or wrong: the player has to listen.
       rb: error ? 'hidden' : this.mode === 'beginner' && accepted.length ? 'ok' : undefined,

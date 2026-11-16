@@ -468,7 +468,7 @@ export function TutorialCard({ session, onInsert }: { session: Session; onInsert
 /** Beginner command help: example phrases for the selected aircraft. */
 export function HelpCard({ session, onInsert }: { session: Session; onInsert: (text: string) => void }) {
   const ac = session.selected;
-  if (!ac || ac.comms !== 'app') {
+  if (!ac || ac.comms !== session.mine) {
     return (
       <div class="help">
         <b>Command help</b>

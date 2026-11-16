@@ -32,8 +32,25 @@ interface TopBarProps {
   onEnd: () => void;
 }
 
+/** Another unit's frequency, on a strip. */
+const COMMS_LABEL: Record<string, string> = {
+  app: 'APP',
+  tower: 'TWR',
+  radar: 'RADAR',
+  ground: 'GND',
+  departure: 'DEP',
+};
+/** Tower strips: where an aircraft on the ground is. */
+const GROUND_WHERE: Partial<Record<Aircraft['nav']['mode'], string>> = {
+  holding: 'HOLDING',
+  lineup: 'LINED UP',
+  takeoff: 'ROLLING',
+  rollout: 'ROLLOUT',
+  taxi: 'TAXI',
+};
+
 export function TopBar({ session, settings, onDisplay, onSettings, onLearn, onEnd }: TopBarProps) {
-  const f = EHAM.frequencies.approach;
+  const f = session.station;
   const left = session.remainingSec;
   const speeds = [1, 2, 4, 8];
   return (
@@ -54,7 +71,7 @@ export function TopBar({ session, settings, onDisplay, onSettings, onLearn, onEn
         </svg>
         <span class="brand-name">{f.name}</span>
         <span class="mono dim">
-          {EHAM.icao} · APP {f.mhz}
+          {EHAM.icao} · {session.tower ? 'TWR' : 'APP'} {f.mhz}
         </span>
       </div>
       <div class="seg" role="group" aria-label="Display mode">
@@ -139,7 +156,8 @@ export function Strips({ session }: { session: Session }) {
   const [order, setOrder] = useState<number[]>([]);
   const dragId = useRef<number | null>(null);
   const all = session.sim.aircraft;
-  const arrivals = all.filter((a) => a.kind === 'arrival' && !isOnGround(a));
+  // Tower keeps a landed arrival's strip until it has vacated
+  const arrivals = all.filter((a) => a.kind === 'arrival' && (session.tower || !isOnGround(a)));
   const departures = all.filter((a) => a.kind === 'departure');
   const rank = (a: Readonly<Aircraft>) => {
     const i = order.indexOf(a.id);
@@ -162,24 +180,26 @@ export function Strips({ session }: { session: Session }) {
       ac.comms === 'none' ? 'pending' : '',
     ].join(' ');
     const where =
-      ac.kind === 'departure'
-        ? ac.route
-        : est
-          ? 'ILS'
-          : ac.nav.mode === 'hold'
-            ? `HOLD ${ac.nav.fix}`
-            : ac.nav.mode === 'direct'
-              ? ac.nav.fix
-              : `HDG ${String(ac.tgtHdg).padStart(3, '0')}`;
+      session.tower && GROUND_WHERE[ac.nav.mode]
+        ? GROUND_WHERE[ac.nav.mode]
+        : ac.kind === 'departure'
+          ? ac.route
+          : est
+            ? 'ILS'
+            : ac.nav.mode === 'hold'
+              ? `HOLD ${ac.nav.fix}`
+              : ac.nav.mode === 'direct'
+                ? ac.nav.fix
+                : `HDG ${String(ac.tgtHdg).padStart(3, '0')}`;
     const status =
       ac.comms === 'none'
         ? ac.kind === 'departure'
           ? 'departing'
           : 'inbound'
-        : ac.comms === 'tower'
-          ? 'TWR'
-          : ac.comms === 'radar'
-            ? 'RADAR'
+        : ac.comms !== session.mine
+          ? COMMS_LABEL[ac.comms]
+          : ac.landClear || ac.takeoffClear
+            ? 'CLR'
             : !session.wasContacted(ac.callsign)
               ? 'calling'
               : null;
@@ -210,7 +230,8 @@ export function Strips({ session }: { session: Session }) {
           <span class="row">
             <span class="cs">{ac.callsign}</span>
             <span class="dim">
-              {status ?? (ac.kind === 'arrival' ? `+${etaMin(ac, session)}` : 'airborne')}
+              {status ??
+                (ac.kind === 'arrival' ? `+${etaMin(ac, session)}` : isOnGround(ac) ? '' : 'airborne')}
             </span>
           </span>
           <span class="row sub">
@@ -264,7 +285,7 @@ export function Strips({ session }: { session: Session }) {
         {departures.map((ac) => strip(ac, null))}
         {!departures.length && (
           <span class="dim" style="padding:4px 6px">
-            None airborne.
+            {session.tower ? 'None waiting.' : 'None airborne.'}
           </span>
         )}
       </div>
@@ -382,7 +403,7 @@ export function RadioPanel({
         <div class="panel-title">
           <span>RADIO</span>
           <span class="mono" style="color:var(--text2);letter-spacing:0">
-            {EHAM.frequencies.approach.mhz}
+            {session.station.mhz}
           </span>
         </div>
         <div class={`tx ${tx}`} role="status" aria-live="polite">
@@ -467,7 +488,7 @@ export function PttBar({
     setPreview(
       live || r.callsign
         ? r
-        : { ...r, callsign: session.selected?.comms === 'app' ? session.selected.callsign : null },
+        : { ...r, callsign: session.selected?.comms === session.mine ? session.selected.callsign : null },
     );
   }, [text, live]);
 
@@ -562,11 +583,13 @@ export function PttBar({
               value={draft}
               onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
               onKeyDown={(e) => e.key === 'Escape' && (e.target as HTMLInputElement).blur()}
-              placeholder={
-                session.selected
-                  ? `${session.selected.callsign}, turn left heading 270`
-                  : 'KLM1426, turn left heading 270'
-              }
+              placeholder={`${session.selected?.callsign ?? 'KLM1426'}, ${
+                !session.tower
+                  ? 'turn left heading 270'
+                  : session.selected?.kind === 'departure'
+                    ? `runway ${EHAM.config.departure}, line up and wait`
+                    : `runway ${EHAM.config.landing}, cleared to land`
+              }`}
               aria-label="Type a transmission and press Enter to send"
               autocomplete="off"
               spellcheck={false}

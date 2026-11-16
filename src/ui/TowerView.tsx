@@ -211,10 +211,11 @@ export function TowerView({ session }: { session: Session }) {
       {bino && <div class="tower-bino" aria-hidden="true" />}
       <div ref={labelsRef} class="tower-labels">
         {session.sim.aircraft.map((ac) => {
+          const cleared = ac.landClear || ac.takeoffClear;
           const kind =
             ac.id === session.selectedId || ac.id === session.heardId
               ? 'sel'
-              : ac.locEstablished
+              : ac.locEstablished || cleared
                 ? 'est'
                 : '';
           return (
@@ -229,7 +230,7 @@ export function TowerView({ session }: { session: Session }) {
             >
               <b>
                 {ac.callsign}
-                {ac.locEstablished ? ' · ILS' : ''}
+                {cleared ? ' · CLR' : ac.locEstablished ? ' · ILS' : ''}
               </b>
               <span>{info(ac)}</span>
             </button>
@@ -281,7 +282,7 @@ export function TowerView({ session }: { session: Session }) {
         </div>
       )}
       <div class="tower-credit">
-        Preview: arrivals are cleared for the approach automatically. {attribution}
+        Preview: a stand-in Approach feeds the arrivals onto the ILS. {attribution}
       </div>
     </div>
   );

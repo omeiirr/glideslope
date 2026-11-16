@@ -81,11 +81,13 @@ test('two views calling frame() with the same timestamp advance the sim once', (
   expect(a.sim.time).toBeGreaterThan(5);
 });
 
-test('tower preview arrivals are cleared for the ILS and land', () => {
+test('tower scenario: the stand-in Approach puts arrivals on the ILS and hands them to Tower', () => {
   const s = new Session(scenarioById('tower-preview'), DEFAULT_SETTINGS);
-  for (let t = 0; t < 4 * 60_000; t += 100) s.update(100);
-  expect(s.stats.landed).toBeGreaterThan(0);
-  expect(s.stats.goArounds).toBe(0);
+  for (let t = 0; t < 30_000; t += 100) s.update(100);
+  const first = s.sim.aircraft.find((a) => a.kind === 'arrival')!;
+  expect(first.nav.mode).toBe('loc');
+  expect(first.comms).toBe('tower');
+  expect(s.parseContext(false).aircraft.map((a) => a.callsign)).toContain(first.callsign);
 });
 
 // ------------------------------------------------------------------ airport surfaces (OSM + drawn markings)

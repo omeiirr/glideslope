@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
+import { DEG, EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
 import type { Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition } from '../render/tower3d/math';
 import type { GroundData, LandData } from '../render/tower3d/ground';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
+import { GroundRadar } from '../render/groundradar';
+import { TowerDesk, radarTargets } from './TowerDesk';
 
 const CAB_FOV = 26;
 const BINO_FOV = 2.6;
@@ -23,6 +25,8 @@ const isTyping = (e: KeyboardEvent) => {
 export function TowerView({ session }: { session: Session }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
+  const radarCanvas = useRef<HTMLCanvasElement>(null);
+  const radar = useRef<GroundRadar | null>(null);
   const [cabId, setCabId] = useState(
     () => (EHAM.towers.find((t) => t.runways.includes(EHAM.config.landing)) ?? EHAM.towers[0]!).id,
   );
@@ -45,6 +49,7 @@ export function TowerView({ session }: { session: Session }) {
 
   useEffect(() => {
     const canvas = canvasRef.current!;
+    radar.current = new GroundRadar(radarCanvas.current!);
     let renderer: TowerRenderer | null = null;
     let disposed = false;
     let raf = 0;
@@ -70,7 +75,12 @@ export function TowerView({ session }: { session: Session }) {
       if (target) ({ bearing, depression } = aimAt(eye, target.pose.pos));
       look.current.bearing = bearing;
       const t0 = performance.now();
-      anchors.current = renderer!.render(list, { eye, bearing, depression, fov: zoom ? BINO_FOV : CAB_FOV });
+      const fov = zoom ? BINO_FOV : CAB_FOV;
+      anchors.current = renderer!.render(list, { eye, bearing, depression, fov });
+      // fov is vertical: the radar's view cone needs the horizontal angle
+      const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
+      const hfov = (2 * Math.atan(Math.tan((fov / 2) * DEG) * aspect)) / DEG;
+      radar.current?.draw({ ap: EHAM, targets: radarTargets(s), cab: c.pos, bearing, fov: hfov });
       if (import.meta.env.DEV)
         Object.assign(window, {
           __vectors: s,
@@ -115,6 +125,7 @@ export function TowerView({ session }: { session: Session }) {
         if (disposed) return;
         renderer.loadLand(land);
         renderer.loadSurfaces(ground);
+        radar.current?.setGround(ground);
         setAttribution(`${ground.attribution}.`);
         setStatus({ kind: 'ready' });
       } catch {
@@ -199,89 +210,96 @@ export function TowerView({ session }: { session: Session }) {
   const bearingText = String(Math.round(((look.current.bearing % 360) + 360) % 360)).padStart(3, '0');
 
   return (
-    <div class="tower">
-      <canvas
-        ref={canvasRef}
-        role="img"
-        aria-label={`View from the ${cab.name} cab with ${count} aircraft in the area. Use the flight strips to select aircraft with the keyboard.`}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
+    <div class="tower-wrap">
+      <div class="tower">
+        <canvas
+          ref={canvasRef}
+          role="img"
+          aria-label={`View from the ${cab.name} cab with ${count} aircraft in the area. Use the flight strips to select aircraft with the keyboard.`}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerUp={onUp}
+        />
+        {bino && <div class="tower-bino" aria-hidden="true" />}
+        <div ref={labelsRef} class="tower-labels">
+          {session.sim.aircraft.map((ac) => {
+            const cleared = ac.landClear || ac.takeoffClear;
+            const kind =
+              ac.id === session.selectedId || ac.id === session.heardId
+                ? 'sel'
+                : ac.locEstablished || cleared
+                  ? 'est'
+                  : '';
+            return (
+              <button
+                type="button"
+                key={ac.id}
+                data-id={ac.id}
+                class={`tower-label ${kind}`}
+                style="display:none"
+                onClick={() => session.select(ac.id)}
+                aria-label={`Select ${ac.callsign}, ${info(ac)}`}
+              >
+                <b>
+                  {ac.callsign}
+                  {cleared ? ' · CLR' : ac.locEstablished ? ' · ILS' : ''}
+                </b>
+                <span>{info(ac)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div class="tower-tools">
+          <span class="chipbtn mono">
+            {cab.name.toUpperCase()} · {bearingText}° · {Math.round((cab.eyeHeightFt / FT_PER_NM) * 1852)} m
+          </span>
+          <span role="group" aria-label="Tower cab" class="seg">
+            {EHAM.towers.map((t, i) => (
+              <button type="button" key={t.id} aria-pressed={t.id === cabId} onClick={() => pickCab(t.id)}>
+                {t.name} · {t.runways.join(', ')} <kbd>{i + 1}</kbd>
+              </button>
+            ))}
+          </span>
+          <button type="button" class="chipbtn" aria-pressed={bino} onClick={() => setBino(!bino)}>
+            Binoculars <kbd>B</kbd>
+          </button>
+          <button type="button" class="chipbtn" aria-label="Look left" onClick={() => turn(-10)}>
+            ◀
+          </button>
+          <button type="button" class="chipbtn" aria-label="Look right" onClick={() => turn(10)}>
+            ▶
+          </button>
+          <button type="button" class="chipbtn" onClick={resetLook}>
+            Reset view
+          </button>
+        </div>
+
+        {bino && (
+          <div class="tower-note" role="status">
+            Binoculars ×10
+            {session.selectedId === null
+              ? ' · select an aircraft to follow it'
+              : ' · following the selected aircraft'}
+          </div>
+        )}
+        {status.kind === 'loading' && status.total > 0 && (
+          <div class="toast" role="status">
+            Loading the airport… {status.done}/{status.total}
+          </div>
+        )}
+        {status.kind === 'error' && (
+          <div class="toast" role="alert">
+            {status.message}
+          </div>
+        )}
+        <div class="tower-credit">A stand-in Approach feeds the arrivals onto the ILS. {attribution}</div>
+      </div>
+      <TowerDesk
+        session={session}
+        radarRef={radarCanvas}
+        onRadarClick={(x, y) => session.select(radar.current?.pick(x, y) ?? null)}
       />
-      {bino && <div class="tower-bino" aria-hidden="true" />}
-      <div ref={labelsRef} class="tower-labels">
-        {session.sim.aircraft.map((ac) => {
-          const cleared = ac.landClear || ac.takeoffClear;
-          const kind =
-            ac.id === session.selectedId || ac.id === session.heardId
-              ? 'sel'
-              : ac.locEstablished || cleared
-                ? 'est'
-                : '';
-          return (
-            <button
-              type="button"
-              key={ac.id}
-              data-id={ac.id}
-              class={`tower-label ${kind}`}
-              style="display:none"
-              onClick={() => session.select(ac.id)}
-              aria-label={`Select ${ac.callsign}, ${info(ac)}`}
-            >
-              <b>
-                {ac.callsign}
-                {cleared ? ' · CLR' : ac.locEstablished ? ' · ILS' : ''}
-              </b>
-              <span>{info(ac)}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div class="tower-tools">
-        <span class="chipbtn mono">
-          {cab.name.toUpperCase()} · {bearingText}° · {Math.round((cab.eyeHeightFt / FT_PER_NM) * 1852)} m
-        </span>
-        <span role="group" aria-label="Tower cab" class="seg">
-          {EHAM.towers.map((t, i) => (
-            <button type="button" key={t.id} aria-pressed={t.id === cabId} onClick={() => pickCab(t.id)}>
-              {t.name} · {t.runways.join(', ')} <kbd>{i + 1}</kbd>
-            </button>
-          ))}
-        </span>
-        <button type="button" class="chipbtn" aria-pressed={bino} onClick={() => setBino(!bino)}>
-          Binoculars <kbd>B</kbd>
-        </button>
-        <button type="button" class="chipbtn" aria-label="Look left" onClick={() => turn(-10)}>
-          ◀
-        </button>
-        <button type="button" class="chipbtn" aria-label="Look right" onClick={() => turn(10)}>
-          ▶
-        </button>
-        <button type="button" class="chipbtn" onClick={resetLook}>
-          Reset view
-        </button>
-      </div>
-
-      {bino && (
-        <div class="tower-note" role="status">
-          Binoculars ×10
-          {session.selectedId === null
-            ? ' · select an aircraft to follow it'
-            : ' · following the selected aircraft'}
-        </div>
-      )}
-      {status.kind === 'loading' && status.total > 0 && (
-        <div class="toast" role="status">
-          Loading the airport… {status.done}/{status.total}
-        </div>
-      )}
-      {status.kind === 'error' && (
-        <div class="toast" role="alert">
-          {status.message}
-        </div>
-      )}
-      <div class="tower-credit">A stand-in Approach feeds the arrivals onto the ILS. {attribution}</div>
     </div>
   );
 }

@@ -297,7 +297,7 @@ function Game(p: GameProps) {
         />
       )}
       <div class="body">
-        {!realistic && <Strips session={session} />}
+        {!realistic && !tower && <Strips session={session} />}
         <main class="scope">
           <h1 class="sr-only">
             {APP_NAME} · {session.scenario.name}

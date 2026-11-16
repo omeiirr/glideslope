@@ -4,6 +4,8 @@ import { scenarioById } from '../src/game/scenarios';
 import { Session } from '../src/game/session';
 import { DEFAULT_SETTINGS } from '../src/game/settings';
 import { pickTarget, radarFrame, radarPx, targetPx, type RadarTarget } from '../src/render/groundradar';
+import { parse } from '../src/phraseology/parser';
+import { towerTips } from '../src/ui/overlays';
 import { radarTargets, towerBays } from '../src/ui/TowerDesk';
 
 test('ground radar: every runway threshold fits on the map, north up', () => {
@@ -67,4 +69,26 @@ test('desk bays: each aircraft in at most one bay, the runway bay is the runway 
     expect(radarTargets(s).map((t) => t.id)).toEqual(near);
   }
   expect(seenRunway).toBe(true);
+});
+
+test('help card: every tower tip parses to the right aircraft with no phraseology issue, in every state', () => {
+  const s = new Session(scenarioById('tower-free'), DEFAULT_SETTINGS);
+  const seen = new Set<string>();
+  for (let min = 1; min <= 15; min++) {
+    for (let i = 0; i < 600; i++) s.update(100);
+    for (const a of s.sim.aircraft.filter((x) => x.comms === s.mine)) {
+      for (const tip of towerTips(s, a)) {
+        const r = parse(tip, s.parseContext(false));
+        expect(r.callsign, tip).toBe(a.callsign);
+        expect(r.commands.length, tip).toBeGreaterThan(0);
+        expect(r.issues, tip).toEqual([]);
+        seen.add(r.commands.map((c) => c.type).join('+'));
+      }
+      // move the traffic along, as a player would
+      const rw = a.kind === 'arrival' ? EHAM.config.landing : EHAM.config.departure;
+      s.sim.command(a.callsign, [{ type: a.kind === 'arrival' ? 'land' : 'takeoff', runway: rw }]);
+    }
+  }
+  // the states seen include both clearances, line-up and the vacate-and-Ground call
+  expect([...seen]).toEqual(expect.arrayContaining(['land', 'vacate+handoff', 'lineUp', 'takeoff']));
 });

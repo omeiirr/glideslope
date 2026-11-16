@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'preact/hooks';
-import { EHAM } from '../core';
+import { EHAM, isOnGround, runwayById, type Aircraft, type Command } from '../core';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
 import { phraseologyPct, weightsFor } from '../game/scoring';
 import type { Session } from '../game/session';
 import type { Settings } from '../game/settings';
-import { RULE_TEXT } from '../phraseology/phrases';
+import { RULE_TEXT, canonicalTransmission } from '../phraseology/phrases';
 import type { VoiceState } from '../speech/voice';
 
 /** Modal behaviour: focus moves into the dialog, Tab stays inside, Escape closes, focus returns afterwards. */
@@ -482,21 +482,9 @@ export function TutorialCard({ session, onInsert }: { session: Session; onInsert
 }
 
 /** Beginner command help: example phrases for the selected aircraft. */
-export function HelpCard({ session, onInsert }: { session: Session; onInsert: (text: string) => void }) {
-  const ac = session.selected;
-  if (!ac || ac.comms !== session.mine) {
-    return (
-      <div class="help">
-        <b>Command help</b>
-        <span class="dim">
-          Click an aircraft or a strip to see example phrases. Aircraft marked “calling” are waiting for you
-          to answer.
-        </span>
-      </div>
-    );
-  }
+/** Approach example phrases for the aircraft's state. */
+function approachTips(session: Session, ac: Readonly<Aircraft>): string[] {
   const cs = ac.callsign;
-  const rwy = EHAM.config.landing;
   const tips: string[] = [];
   if (!session.wasContacted(cs)) tips.push(`${cs}, ${EHAM.frequencies.approach.name}, identified`);
   if (ac.kind === 'departure') {
@@ -514,8 +502,56 @@ export function HelpCard({ session, onInsert }: { session: Session; onInsert: (t
     else if (ac.tgtAlt > 2000) tips.push(`${cs}, descend altitude 2000, QNH ${session.sim.qnh}`);
     tips.push(`${cs}, turn left heading 270`);
     if ((ac.tgtIas ?? 250) > 200) tips.push(`${cs}, reduce speed 200 knots`);
-    tips.push(`${cs}, turn left heading 210, cleared ILS approach runway ${rwy}`);
+    tips.push(`${cs}, turn left heading 210, cleared ILS approach runway ${EHAM.config.landing}`);
   }
+  return tips;
+}
+
+/** Tower example phrases for the aircraft's state, in the standard form the feedback expects. */
+export function towerTips(session: Session, ac: Readonly<Aircraft>): string[] {
+  const ctx = session.parseContext(false);
+  const say = (...cmds: Command[]) => canonicalTransmission(ac.callsign, cmds, ctx);
+  const { landing, departure } = EHAM.config;
+  // the middle exit: a sensible turn-off for a typical airliner (V3 on 18R)
+  const exits = runwayById(EHAM, landing).exits ?? [];
+  const mid = exits[Math.floor(exits.length / 2)];
+  const vacate: Command = mid
+    ? { type: 'vacate', exit: mid.name, side: mid.side === 'L' ? 'left' : 'right' }
+    : { type: 'vacate' };
+  const n = ac.nav;
+  if (ac.kind === 'arrival') {
+    if (isOnGround(ac))
+      return [say(vacate, { type: 'handoff', to: 'ground' }), say({ type: 'handoff', to: 'ground' })];
+    if (!ac.landClear)
+      return [
+        say({ type: 'land', runway: landing }),
+        say({ type: 'continueApproach' }),
+        say({ type: 'goAround' }),
+      ];
+    return [say(vacate, { type: 'handoff', to: 'ground' }), say({ type: 'goAround' })];
+  }
+  if (n.mode === 'holding' || (n.mode === 'taxi' && n.then === 'hold'))
+    return [say({ type: 'lineUp', runway: departure }), say({ type: 'takeoff', runway: departure })];
+  if (n.mode === 'lineup' || n.mode === 'taxi')
+    return [say({ type: 'takeoff', runway: departure }), say({ type: 'cancelTakeoff' })];
+  if (n.mode === 'takeoff') return [say({ type: 'cancelTakeoff' })];
+  return [say({ type: 'handoff', to: 'departure' })];
+}
+
+export function HelpCard({ session, onInsert }: { session: Session; onInsert: (text: string) => void }) {
+  const ac = session.selected;
+  if (!ac || ac.comms !== session.mine) {
+    return (
+      <div class="help">
+        <b>Command help</b>
+        <span class="dim">
+          Click an aircraft or a strip to see example phrases. Aircraft marked “calling” are waiting for you
+          to answer.
+        </span>
+      </div>
+    );
+  }
+  const tips = session.tower ? towerTips(session, ac) : approachTips(session, ac);
   return (
     <div class="help">
       <b>Try saying</b>

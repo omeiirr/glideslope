@@ -1,7 +1,8 @@
 import { useState } from 'preact/hooks';
-import { EHAM, transitionLevel, wakeMinimum, type Command, type Wake } from '../core';
+import { EHAM, runwayById, transitionLevel, wakeMinimum, type Command, type Wake } from '../core';
 import { STUDENT } from '../game/scenarios';
 import { spell, spokenCallsign } from '../phraseology/callsign';
+import type { AcContext } from '../phraseology/parser';
 import { controllerPhrase, readback, RULE_TEXT, spokenAltitude, type Phrase } from '../phraseology/phrases';
 import { useDialog } from './overlays';
 
@@ -330,17 +331,22 @@ const MISTAKES = [
   'ils-runway-missing',
 ];
 
-function Commands({ say }: { say: Say }) {
+function CommandDocs({
+  docs,
+  env,
+  ac,
+  say,
+}: {
+  docs: CommandDoc[];
+  env: Parameters<typeof controllerPhrase>[2];
+  ac?: AcContext;
+  say: Say;
+}) {
   return (
     <>
-      <p>
-        Every transmission starts with the <b>callsign</b>, then one or more instructions. The pilot reads the
-        instructions back and ends with their callsign. Listen to the readback: it is your only check that
-        they heard you right. Below, each example is followed by the pilot's readback.
-      </p>
-      {COMMANDS.map((c) => {
-        const you = c.custom?.you ?? controllerPhrase(STUDENT, c.cmds, env, AC);
-        const pilot = c.custom ? c.custom.pilot : readback(STUDENT, c.cmds, env, AC);
+      {docs.map((c) => {
+        const you = c.custom?.you ?? controllerPhrase(STUDENT, c.cmds, env, ac);
+        const pilot = c.custom ? c.custom.pilot : readback(STUDENT, c.cmds, env, ac);
         return (
           <section class="cmd-doc">
             <h3>{c.title}</h3>
@@ -350,6 +356,19 @@ function Commands({ say }: { say: Say }) {
           </section>
         );
       })}
+    </>
+  );
+}
+
+function Commands({ say }: { say: Say }) {
+  return (
+    <>
+      <p>
+        Every transmission starts with the <b>callsign</b>, then one or more instructions. The pilot reads the
+        instructions back and ends with their callsign. Listen to the readback: it is your only check that
+        they heard you right. Below, each example is followed by the pilot's readback.
+      </p>
+      <CommandDocs docs={COMMANDS} env={env} ac={AC} say={say} />
       <h3>Combining instructions</h3>
       <Ex
         label="You"
@@ -578,6 +597,79 @@ function Approach() {
   );
 }
 
+// ------------------------------------------------------------------ 6. tower
+
+const { landing: LAND, departure: DEP } = EHAM.config;
+const towerEnv = { ...env, wind: EHAM.wind };
+const GND = EHAM.frequencies.ground;
+const DEPF = EHAM.frequencies.departure;
+const EXITS = runwayById(EHAM, LAND).exits ?? [];
+const MID = EXITS[Math.floor(EXITS.length / 2)];
+const TOWER_COMMANDS: CommandDoc[] = [
+  {
+    title: 'Landing clearance',
+    cmds: [{ type: 'land', runway: LAND }],
+    note: 'Runway, surface wind, then “cleared to land”. Only when the runway will be free by the time it arrives; without it the pilot goes around at about half a mile.',
+  },
+  {
+    title: 'Not yet: continue approach',
+    cmds: [{ type: 'continueApproach' }],
+    note: 'The runway is still occupied but should be free in time. Clear it to land as soon as it is.',
+  },
+  {
+    title: 'Vacate and change to Ground',
+    cmds: [
+      MID
+        ? { type: 'vacate', exit: MID.name, side: MID.side === 'L' ? 'left' : 'right' }
+        : { type: 'vacate' },
+      { type: 'handoff', to: 'ground' },
+    ],
+    note: `Name the exit (${EXITS.map((e) => e.name).join(', ')} on ${LAND}) and pass the aircraft to ${GND?.name ?? 'Ground'} in the same call.`,
+  },
+  {
+    title: 'Line up and wait',
+    cmds: [{ type: 'lineUp', runway: DEP }],
+    note: 'The departure enters the runway and stops on the centreline, ready to go the moment the runway is yours.',
+  },
+  {
+    title: 'Take-off clearance',
+    cmds: [{ type: 'takeoff', runway: DEP }],
+    note: 'Runway, wind, “cleared for take-off”. This is the only phrase that uses the word “take-off”: everywhere else say “departure”.',
+  },
+  {
+    title: 'Hold position',
+    cmds: [{ type: 'cancelTakeoff' }],
+    note: 'Stops a departure that is lining up or waiting, for example when the runway is suddenly not safe. Give a new take-off clearance when it is.',
+  },
+  {
+    title: 'Hand off a departure',
+    cmds: [{ type: 'handoff', to: 'departure' }],
+    note: `Once airborne and before about 2000 ft, send it to ${DEPF?.name ?? 'Departure'}.`,
+  },
+  {
+    title: 'Go around',
+    cmds: [{ type: 'goAround' }],
+    note: 'When the runway will not be free in time. Keep it short so it cannot be misheard; Approach takes the aircraft back.',
+  },
+];
+
+function Tower({ say }: { say: Say }) {
+  return (
+    <>
+      <p>
+        As {TWR.name} you own the runways: {LAND} for landings (seen from Tower West) and {DEP} for departures
+        (from the centre cab). Only one aircraft may use a runway at a time, so every clearance is a promise
+        that the runway will be free.
+      </p>
+      <CommandDocs docs={TOWER_COMMANDS} env={towerEnv} say={say} />
+      <h3>Common mistakes the game points out</h3>
+      <ul>
+        <li>{RULE_TEXT['wind-missing']}</li>
+      </ul>
+    </>
+  );
+}
+
 // ------------------------------------------------------------------ dialog
 
 const SECTIONS = [
@@ -586,6 +678,7 @@ const SECTIONS = [
   { id: 'commands', title: 'Commands', Body: Commands },
   { id: 'levels', title: 'Levels and altimetry', Body: Levels },
   { id: 'approach', title: 'Approach concepts', Body: Approach },
+  { id: 'tower', title: 'Tower', Body: Tower },
 ] as const;
 
 export function Learn({ onClose, say }: { onClose: () => void; say: Say }) {

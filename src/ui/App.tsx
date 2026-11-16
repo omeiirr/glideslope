@@ -324,7 +324,7 @@ function Game(p: GameProps) {
             />
           )}
           {session.lesson && !session.finished && <TutorialCard session={session} onInsert={p.insert} />}
-          {!realistic && !tower && !session.lesson && session.mode === 'beginner' && (
+          {!realistic && !session.lesson && session.mode === 'beginner' && (
             <HelpCard session={session} onInsert={p.insert} />
           )}
           {session.paused && !session.finished && (

@@ -19,6 +19,8 @@
   --amber-text: #f5d59a;
   --red: #ff6b6b;
   --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  /* tower desk height (strip bays and ground radar) */
+  --desk-h: clamp(200px, 28vh, 260px);
 }
 * {
   box-sizing: border-box;
@@ -643,6 +645,10 @@ table.score td:last-child {
   gap: 8px;
   line-height: 1.5;
 }
+/* tower: the help card sits on the window, above the desk */
+.scope.tower-mode .help {
+  bottom: calc(var(--desk-h) + 34px);
+}
 /* tower: below the view toolbar */
 .scope.tower-mode .tutorial {
   top: 58px;
@@ -1003,7 +1009,7 @@ dl.defs dd {
   background: #c6d9ea;
 }
 .desk {
-  flex: 0 0 clamp(200px, 28vh, 260px);
+  flex: 0 0 var(--desk-h);
   display: flex;
   gap: 12px;
   padding: 10px 12px;

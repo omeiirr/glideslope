@@ -132,8 +132,8 @@ export function TopBar({ session, settings, onDisplay, onSettings, onLearn, onEn
         <button type="button" class="btn" onClick={onLearn} title="Phraseology and procedures reference">
           Learn
         </button>
-        <button type="button" class="btn" aria-label="Settings" onClick={onSettings}>
-          <Icon d="M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />
+        <button type="button" class="btn" onClick={onSettings}>
+          Settings
         </button>
         <button type="button" class="btn" onClick={onEnd}>
           End

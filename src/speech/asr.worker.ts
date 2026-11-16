@@ -8,7 +8,7 @@ export type AsrRequest =
   | { type: 'transcribe'; id: number; audio: Float32Array; final: boolean };
 export type AsrResponse =
   | { type: 'progress'; progress: number }
-  | { type: 'ready'; model: keyof typeof WHISPER }
+  | { type: 'ready'; model: keyof typeof WHISPER; ms: number }
   | { type: 'result'; id: number; text: string; final: boolean }
   | { type: 'error'; id?: number; message: string; fatal: boolean };
 
@@ -45,14 +45,18 @@ async function load(vendor: string, model: keyof typeof WHISPER) {
   } as Parameters<typeof pipeline>[2])) as AutomaticSpeechRecognitionPipeline;
   // Warm up so the first real transmission is fast (shader compilation on WebGPU).
   await asr(new Float32Array(16000));
+  // Time a warm run: Whisper pads every clip to 30 s, so this is what each transcription costs here.
+  const t0 = performance.now();
+  await asr(new Float32Array(16000));
+  return performance.now() - t0;
 }
 
 self.onmessage = async (e: MessageEvent<AsrRequest>) => {
   const msg = e.data;
   if (msg.type === 'load') {
     try {
-      await load(msg.vendor, msg.model);
-      post({ type: 'ready', model: msg.model });
+      const ms = await load(msg.vendor, msg.model);
+      post({ type: 'ready', model: msg.model, ms });
     } catch (err) {
       post({ type: 'error', message: String((err as Error)?.message ?? err), fatal: true });
     }

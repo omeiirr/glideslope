@@ -6,6 +6,8 @@ import { VOICE_OFF, type VoiceState } from './voice';
 const RATE = 16000;
 /** Whisper invents words for near-silent or very short audio, so those are dropped. */
 const MIN_SECONDS = 0.35;
+/** Live transcript only if one transcription takes less than this; partials run about once a second. */
+const LIVE_MAX_MS = 500;
 
 /** AudioWorklet that forwards microphone samples to the main thread. */
 const CAPTURE = `registerProcessor('capture', class extends AudioWorkletProcessor {
@@ -39,7 +41,7 @@ export class VoiceInput {
   private web: SpeechRecognitionLike | null = null;
   private webText = '';
   private backend: 'whisper' | 'webspeech' | null = null;
-  /** Live partials only on WebGPU: on one CPU thread they queue up and delay the final transcript. */
+  /** Live partials only when a transcription is fast: otherwise they queue up and delay the final transcript. */
   private livePartials = false;
 
   private set(patch: Partial<VoiceState>) {
@@ -112,8 +114,13 @@ export class VoiceInput {
       const m = e.data;
       if (m.type === 'progress') this.set({ progress: m.progress });
       else if (m.type === 'ready') {
-        this.livePartials = m.model === 'base';
-        this.set({ status: 'ready', progress: 1, message: `Whisper ${m.model}, on this machine` });
+        this.livePartials = m.ms < LIVE_MAX_MS;
+        this.set({
+          status: 'ready',
+          progress: 1,
+          fellBack,
+          message: `Whisper ${m.model}, on this machine${this.livePartials ? '' : ' (no live transcript: too slow here)'}`,
+        });
       } else if (m.type === 'result') {
         if (m.final && m.id === this.finalId) this.finish(m.text);
         else if (!m.final && this.recording) this.set({ partial: m.text });

@@ -16,15 +16,19 @@ export function asrPrompt(ctx: ParseContext): string {
     const tel = ap.airlines.find((a) => a.icao === callsign.slice(0, 3))?.telephony ?? callsign.slice(0, 3);
     return `${tel} ${callsign.slice(3)}`;
   });
+  const wind = `wind ${String(ctx.wind?.dir ?? ap.wind.dir).padStart(3, '0')} degrees ${ctx.wind?.speed ?? ap.wind.speed} knots`;
+  const exits = ap.runways.find((r) => r.id === landing)?.exits ?? [];
+  const exit = exits[Math.floor(exits.length / 2)];
   const phrases =
     ctx.role === 'tower'
       ? [
-          `cleared to land runway ${landing}`,
-          `wind ${String(ctx.wind?.dir ?? ap.wind.dir).padStart(3, '0')} degrees ${ctx.wind?.speed ?? ap.wind.speed} knots`,
-          `line up and wait runway ${departure}`,
-          `cleared for take-off runway ${departure}`,
+          // in the order controllers say them: with "cleared to land runway 18R" the only "runway …, cleared"
+          // in the prompt was the take-off clearance, and real speakers got "cleared for take-off" for "to land"
+          `${wind}, runway ${landing}, cleared to land`,
+          `runway ${departure}, line up and wait`,
+          `${wind}, runway ${departure}, cleared for take-off`,
           'continue approach',
-          'vacate',
+          exit ? `vacate ${exit.side === 'L' ? 'left' : 'right'} via ${exit.name}` : 'vacate',
           'go around',
           `contact Ground ${f.ground.mhz}`,
           `contact Departure ${f.departure.mhz}`,

@@ -21,8 +21,12 @@ test('prompt: station, every callsign on frequency, the role phrases', () => {
   expect(p).toContain('cleared ILS approach runway 18R');
 
   const t = asrPrompt({ airport: EHAM, qnh: 1013, aircraft, role: 'tower', wind: { dir: 90, speed: 7 } });
-  expect(t.startsWith('Schiphol Tower. KLM 1234, cleared to land runway 18R.')).toBe(true);
-  expect(t).toContain('wind 090 degrees 7 knots');
+  // ICAO order: "runway 18R, cleared to land" (the other order made Whisper hear "cleared for take-off")
+  expect(
+    t.startsWith('Schiphol Tower. KLM 1234, wind 090 degrees 7 knots, runway 18R, cleared to land.'),
+  ).toBe(true);
+  expect(t).toContain('runway 24, line up and wait');
+  expect(t).toContain('vacate left via V');
   expect(t).not.toContain('ILS');
 });
 

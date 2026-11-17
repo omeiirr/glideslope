@@ -290,7 +290,7 @@ export function TowerView({
         renderer.loadSurfaces(ground);
         const parked = renderer.loadApron(stands, buildings, ground);
         parkedRef.current = parked;
-        const rings = buildingRings(EHAM, buildings.buildings);
+        const rings = buildingRings(EHAM, buildings.buildings, stands);
         const oriented = orientStands(EHAM, stands, rings);
         const { graph, standNode, standEntry } = buildTaxiGraph(EHAM, ground.taxiways, oriented);
         groundTraffic.current = new GroundTraffic(

@@ -42,7 +42,7 @@ function offLine(g: ReturnType<typeof buildTaxiGraph>['graph'], p: P2): number {
 const RUNWAYS = [runwayById(EHAM, '18R')!, runwayById(EHAM, '24')!];
 
 function setup() {
-  const rings = buildingRings(EHAM, B);
+  const rings = buildingRings(EHAM, B, S);
   const oriented = orientStands(EHAM, S, rings);
   const { graph, standNode, standEntry } = buildTaxiGraph(EHAM, G.taxiways, oriented);
   const { parked } = parkAircraft(EHAM, S, B, G.taxiways);

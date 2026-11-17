@@ -159,10 +159,21 @@ export interface Stand {
 }
 
 /** Ground-standing building walls (tanks and open roofs left out), world metres. */
-export const buildingRings = (
+/** Building outlines near the stands (within NEAR_M of their box): those far away never matter and are slow. */
+export function buildingRings(
   ap: Pick<Airport, 'lat' | 'lon'>,
   buildings: BuildingData['buildings'],
-): P2[][] => buildings.filter((b) => !b.mh && b.s !== 'plain').map((b) => b.r.map((p) => llToGround(ap, p)));
+  stands: StandData,
+): P2[][] {
+  const pts = stands.stands.flatMap((s) => s.pts.map((p) => llToGround(ap, p)));
+  const [x0, x1] = [Math.min(...pts.map((p) => p.x)) - NEAR_M, Math.max(...pts.map((p) => p.x)) + NEAR_M];
+  const [z0, z1] = [Math.min(...pts.map((p) => p.z)) - NEAR_M, Math.max(...pts.map((p) => p.z)) + NEAR_M];
+  return buildings
+    .filter((b) => !b.mh && b.s !== 'plain')
+    .map((b) => b.r.map((p) => llToGround(ap, p)))
+    .filter((r) => r.some((p) => p.x > x0 && p.x < x1 && p.z > z0 && p.z < z1));
+}
+const NEAR_M = 300;
 
 /** Stand lines with their stop end found: the end nearer a building (OSM way direction is not reliable). */
 export function orientStands(ap: Pick<Airport, 'lat' | 'lon'>, data: StandData, rings: P2[][]): Stand[] {
@@ -209,7 +220,7 @@ export function parkAircraft(
   seed = 1931,
 ): { parked: Parked[]; bridges: Bridge[] } {
   const rng = new Rng(seed);
-  const rings = buildingRings(ap, buildings);
+  const rings = buildingRings(ap, buildings, data);
   const fit = standFitter(ap, rings, taxiways);
   const stands = orientStands(ap, data, rings);
   // shuffle so overlapping alternative stand lines are decided at random, not by OSM order

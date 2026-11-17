@@ -2,7 +2,13 @@ import { expect, test } from 'vitest';
 import ground from '../public/tower/ground.json';
 import { EHAM, runwayById } from '../src/core';
 import type { GroundData } from '../src/render/tower3d/ground';
-import { LIGHT, airportLights, taxiwayLights, type LightSet } from '../src/render/tower3d/lights';
+import {
+  LIGHT,
+  airportLights,
+  taxiwayEdgeLights,
+  taxiwayLights,
+  type LightSet,
+} from '../src/render/tower3d/lights';
 import { toWorld } from '../src/render/tower3d/math';
 
 const lights = (s: LightSet) =>
@@ -50,4 +56,24 @@ test('runway lights: only the runways in use; taxiway lights every 30 m', () => 
   const taxi = lights(taxiwayLights(EHAM, ground as unknown as GroundData));
   expect(taxi.length).toBeGreaterThan(500);
   expect(taxi.every((l) => l.c === is(LIGHT.taxi))).toBe(true);
+});
+
+test('taxiway edge lights: blue, beside the taxiways, never on a runway, apron or another taxiway', () => {
+  const G = ground as unknown as GroundData;
+  const edge = lights(taxiwayEdgeLights(EHAM, G));
+  expect(edge.length).toBeGreaterThan(1000);
+  expect(edge.every((l) => l.c === is(LIGHT.blue))).toBe(true);
+  // well clear of every runway centreline in use (18R and 24 are 60 m and 45 m wide)
+  for (const id of ['18R', '24']) {
+    const rw = runwayById(EHAM, id)!;
+    const t = toWorld(rw.pos);
+    const h = (rw.heading * Math.PI) / 180;
+    const len = rw.lengthFt * 0.3048;
+    const on = edge.filter((l) => {
+      const along = (l.x - t.x) * Math.sin(h) - (l.z - t.z) * Math.cos(h);
+      const across = (l.x - t.x) * Math.cos(h) + (l.z - t.z) * Math.sin(h);
+      return along > 0 && along < len && Math.abs(across) < 20;
+    });
+    expect(on).toEqual([]);
+  }
 });

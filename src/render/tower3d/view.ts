@@ -37,6 +37,7 @@ import {
   fogDensity,
   LIGHT_FOG,
   taxiwayLights,
+  taxiwayEdgeLights,
   type LightSet,
   type TimeOfDay,
 } from './lights';
@@ -174,6 +175,11 @@ const LAND: [string, string | string[]][] = [
   ['water', '#5d7f97'],
 ];
 const ROAD = '#6e7173';
+/** Ditch round each field: Dutch polder fields are bounded by water-filled ditches (seen darker from the cab). */
+const DITCH = '#4f6a63';
+const DITCH_W = 3;
+/** Field edges are drawn this far from a cab (m): beyond it they are too fine to see. */
+const DITCH_RANGE_M = 5000;
 /** Apron mast height when OSM has none (m): Schiphol's apron masts are roughly this tall (assumed). */
 const MAST_H = 30;
 /** Floodlight colour: warm white. */
@@ -462,6 +468,7 @@ export class TowerRenderer {
       this.disposables.push(m.geometry, m.material as THREE.Material);
     }
     this.addLights(taxiwayLights(ap, g));
+    this.addLights(taxiwayEdgeLights(ap, g));
   }
 
   /**
@@ -590,6 +597,23 @@ export class TowerRenderer {
       const m = o as THREE.InstancedMesh;
       this.disposables.push(m.geometry, m.material as THREE.Material);
     }
+    const flat = (xz: number[], color: string, order: number) => {
+      faceUp(xz);
+      const pos = new Float32Array((xz.length / 2) * 3);
+      for (let i = 0, j = 0; i < xz.length; i += 2, j += 3) [pos[j], pos[j + 2]] = [xz[i]!, xz[i + 1]!];
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
+      this.addFlat(geo, color, order);
+    };
+    const ditches: number[] = [];
+    for (const poly of l.land.farm ?? [])
+      for (const ring of poly) {
+        const pts = ring.map((p) => llToGround(this.ap, p));
+        if (pts.some((p) => cabs.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < DITCH_RANGE_M)))
+          ribbon(pts, DITCH_W, ditches);
+      }
+    flat(ditches, DITCH, -65);
     const roads: number[] = [];
     for (const r of l.roads)
       ribbon(
@@ -597,14 +621,7 @@ export class TowerRenderer {
         r.w,
         roads,
       );
-    faceUp(roads);
-    const pos = new Float32Array((roads.length / 2) * 3);
-    for (let i = 0, j = 0; i < roads.length; i += 2, j += 3)
-      [pos[j], pos[j + 2]] = [roads[i]!, roads[i + 1]!];
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
-    this.addFlat(geo, ROAD, -64);
+    flat(roads, ROAD, -64);
   }
 
   /** The airport buildings from OSM (public/tower/buildings.json). */

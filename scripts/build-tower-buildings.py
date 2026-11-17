@@ -14,8 +14,12 @@ Each building: {h, mh (min height, 0 on the ground), s (style), r (outer ring [l
            office    everything else with walls
            plain     storage tanks and open roofs
 
-Usage: python3 scripts/build-tower-buildings.py [cached-overpass.json]
-Without an argument it fetches from Overpass and saves the response to osm-buildings-cache.json (gitignored).
+Outside the fence: buildings in a box round the airport that are not on it, of 300 m2 or more and within
+OUTSIDE_KM of a cab (smaller or further ones are too small to see from the cab). Same heights and styles.
+
+Usage: python3 scripts/build-tower-buildings.py [cached-overpass.json [cached-outside.json]]
+Without arguments it fetches both from Overpass and saves the responses to osm-buildings-cache.json and
+osm-buildings-outside-cache.json (gitignored).
 """
 import json, math, re, sys, time, urllib.parse, urllib.request
 
@@ -25,12 +29,18 @@ rel["aeroway"="aerodrome"]["icao"="EHAM"];map_to_area->.a;
  way["building:part"](area.a);relation["building:part"](area.a);
  way["man_made"="storage_tank"](area.a););
 out geom;"""
+OUTSIDE_QUERY = """[out:json][timeout:180];
+(way["building"](52.27,4.68,52.38,4.84);relation["building"](52.27,4.68,52.38,4.84););
+out geom;"""
+OUTSIDE_KM = 4
+OUTSIDE_MIN_M2 = 300
 OUT = "public/tower/buildings.json"
 CACHE = "osm-buildings-cache.json"
+OUTSIDE_CACHE = "osm-buildings-outside-cache.json"
 K = 111320 * math.cos(math.radians(52.31))
 
-def fetch():
-    body = urllib.parse.urlencode({"data": QUERY}).encode()
+def fetch(query):
+    body = urllib.parse.urlencode({"data": query}).encode()
     wait = 5
     for _ in range(6):
         try:
@@ -45,13 +55,16 @@ def fetch():
         wait *= 2
     sys.exit("Overpass is not answering; try again later or pass a cached response.")
 
-if len(sys.argv) > 1:
-    els = json.load(open(sys.argv[1]))["elements"]
-else:
-    raw = fetch()
-    json.dump(raw, open(CACHE, "w"))
-    print("Overpass response saved to", CACHE)
-    els = raw["elements"]
+def load(i, query, cache):
+    if len(sys.argv) > i:
+        return json.load(open(sys.argv[i]))["elements"]
+    raw = fetch(query)
+    json.dump(raw, open(cache, "w"))
+    print("Overpass response saved to", cache)
+    return raw["elements"]
+
+els = load(1, QUERY, CACHE)
+outside_els = load(2, OUTSIDE_QUERY, OUTSIDE_CACHE)
 
 def pts(geom):
     return [[round(p["lat"], 6), round(p["lon"], 6)] for p in geom]
@@ -145,7 +158,7 @@ def style(t, kind, a):
     name = t.get("name", "").lower()
     if kind == "storage_tank" or kind == "roof": return "plain"
     if kind in ("airport_terminal", "terminal") or re.search(r"pier|terminal", name): return "terminal"
-    if kind in ("industrial", "warehouse", "hangar", "service") or re.search(r"hangar|vrachtgebouw|cargo", name): return "hangar"
+    if kind in ("industrial", "warehouse", "hangar", "service", "barn", "farm_auxiliary", "shed", "greenhouse") or re.search(r"hangar|vrachtgebouw|cargo", name): return "hangar"
     if kind == "yes" and a > 5000: return "hangar"
     return "office"
 
@@ -188,6 +201,25 @@ for o in outlines:
         emit(parts[i], s)
 for i, p in enumerate(parts):  # parts outside every outline (towers drawn as parts only)
     if i not in used: emit(p, style(p["t"], p["kind"], p["a"]))
+
+eham = json.load(open("data/airports/EHAM.json"))
+cabs = [(t["lat"], t["lon"]) for t in eham["towers"]]
+on_airport = {(e["type"], e["id"]) for e in els}
+n_outside = 0
+for e in outside_els:
+    t = e.get("tags", {})
+    if (e["type"], e["id"]) in on_airport or "building" not in t: continue
+    for r in outers(e):
+        a = area(r)
+        c = centroid(r)
+        near = min(math.hypot((c[1] - lo) * K, (c[0] - la) * 111320) for la, lo in cabs)
+        if a < OUTSIDE_MIN_M2 or near > OUTSIDE_KM * 1000: continue
+        h = height(t)
+        stats["tagged" if h is not None else "default"] += 1
+        b = {"r": r, "h": h or DEFAULT_H.get(t["building"], 9), "mh": min_height(t)}
+        emit(b, style(t, t["building"], a))
+        n_outside += 1
+print(n_outside, "outside the fence")
 
 json.dump(out, open(OUT, "w"), separators=(",", ":"))
 from collections import Counter

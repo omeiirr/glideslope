@@ -11,7 +11,8 @@
  * - Taxiways: green centreline lights every 30 m.
  */
 import { reciprocalRunway, runwayById, type Airport, type Runway } from '../../core';
-import { llToGround, type GroundData } from './ground';
+import { llToGround, type GroundData, type P2 } from './ground';
+import { insideRing } from './stands';
 import { M_PER_FT, toWorld } from './math';
 
 export type Rgb = [number, number, number];
@@ -21,6 +22,7 @@ export const LIGHT = {
   red: [1, 0.12, 0.08] as Rgb,
   green: [0.25, 1, 0.45] as Rgb,
   taxi: [0.2, 0.95, 0.5] as Rgb,
+  blue: [0.25, 0.4, 1] as Rgb,
 };
 
 /** Flat arrays, ready for a THREE.BufferGeometry: 3 per position and colour, 1 per size and blink. */
@@ -110,6 +112,65 @@ export function taxiwayLights(ap: Pick<Airport, 'lat' | 'lon'>, g: GroundData): 
       for (; d < seg; d += CL_STEP) {
         const f = d / seg;
         addLight(s, p.x + (q.x - p.x) * f, H, p.z + (q.z - p.z) * f, LIGHT.taxi, 2);
+      }
+      carry = d - seg;
+    }
+  }
+  return s;
+}
+
+/** Blue taxiway edge lights this far apart along each edge (m). */
+const TW_EDGE_STEP = 45;
+
+/**
+ * Blue edge lights both sides of every taxiway, just off the paved edge (simplified: real ones are mostly on
+ * curves and apron edges, see DECISIONS.md). None where the edge runs over other pavement: a crossing or
+ * joining taxiway, a runway or an apron.
+ */
+export function taxiwayEdgeLights(ap: Pick<Airport, 'lat' | 'lon'>, g: GroundData): LightSet {
+  const s = emptyLights();
+  const lines = g.taxiways.map((t) => ({ w: t.w, pts: t.pts.map((p) => llToGround(ap, p)) }));
+  const rings = [...g.runways, ...g.aprons].flatMap((poly) =>
+    poly.map((r) => r.map((p) => llToGround(ap, p))),
+  );
+  // segments in a 100 m grid, so each point only checks those nearby
+  const CELL = 100;
+  const grid = new Map<string, { a: P2; b: P2; half: number }[]>();
+  for (const { w, pts } of lines)
+    for (let i = 1; i < pts.length; i++) {
+      const [a, b] = [pts[i - 1]!, pts[i]!];
+      const seg = { a, b, half: w / 2 };
+      const [x0, x1] = [Math.min(a.x, b.x) - w, Math.max(a.x, b.x) + w].map((v) => Math.floor(v / CELL));
+      const [z0, z1] = [Math.min(a.z, b.z) - w, Math.max(a.z, b.z) + w].map((v) => Math.floor(v / CELL));
+      for (let x = x0!; x <= x1!; x++)
+        for (let z = z0!; z <= z1!; z++) {
+          const k = `${x},${z}`;
+          (grid.get(k) ?? grid.set(k, []).get(k)!).push(seg);
+        }
+    }
+  const onPavement = (p: P2) =>
+    (grid.get(`${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`) ?? []).some(({ a, b, half }) => {
+      const l2 = (b.x - a.x) ** 2 + (b.z - a.z) ** 2;
+      const t = l2
+        ? Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.z - a.z) * (b.z - a.z)) / l2))
+        : 0;
+      return Math.hypot(p.x - a.x - (b.x - a.x) * t, p.z - a.z - (b.z - a.z) * t) < half;
+    }) || rings.some((r) => insideRing(p, r));
+  for (const { w, pts } of lines) {
+    let carry = TW_EDGE_STEP / 2;
+    for (let i = 1; i < pts.length; i++) {
+      const [p, q] = [pts[i - 1]!, pts[i]!];
+      const seg = Math.hypot(q.x - p.x, q.z - p.z);
+      if (seg < 0.01) continue;
+      const n = { x: -(q.z - p.z) / seg, z: (q.x - p.x) / seg };
+      let d = carry;
+      for (; d < seg; d += TW_EDGE_STEP) {
+        const f = d / seg;
+        for (const side of [1, -1]) {
+          const off = side * (w / 2 + 1);
+          const e = { x: p.x + (q.x - p.x) * f + n.x * off, z: p.z + (q.z - p.z) * f + n.z * off };
+          if (!onPavement(e)) addLight(s, e.x, H, e.z, LIGHT.blue, 1.6);
+        }
       }
       carry = d - seg;
     }

@@ -7,4 +7,5 @@ public/vendor
 osm-ground-cache.json
 osm-stands-cache.json
 osm-buildings-cache.json
+osm-buildings-outside-cache.json
 __pycache__

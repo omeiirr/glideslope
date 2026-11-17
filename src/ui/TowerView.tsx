@@ -1,10 +1,11 @@
 import type { ComponentChild } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { DEG, EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
+import { DEG, EHAM, FT_PER_NM, TICK, dist, runwayById, type Aircraft } from '../core';
 import { CLEAR_VIS, visibilityText, type Session } from '../game/session';
-import { aimAt, aircraftPose, eyePosition } from '../render/tower3d/math';
+import { aimAt, aircraftPose, eyePosition, toWorld } from '../render/tower3d/math';
 import type { BuildingData, GroundData, LandData } from '../render/tower3d/ground';
-import type { StandData } from '../render/tower3d/stands';
+import { buildingRings, orientStands, standFitter, type StandData } from '../render/tower3d/stands';
+import { GroundTraffic, buildTaxiGraph } from '../render/tower3d/taxi';
 import type { TimeOfDay } from '../render/tower3d/lights';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 import { GroundRadar } from '../render/groundradar';
@@ -69,6 +70,7 @@ export function TowerView({
   const labelsRef = useRef<HTMLDivElement>(null);
   const radarCanvas = useRef<HTMLCanvasElement>(null);
   const radar = useRef<GroundRadar | null>(null);
+  const groundTraffic = useRef<GroundTraffic | null>(null);
   const [cabId, setCabId] = useState(
     () => (EHAM.towers.find((t) => t.runways.includes(EHAM.config.landing)) ?? EHAM.towers[0]!).id,
   );
@@ -132,10 +134,20 @@ export function TowerView({
       const eye = eyePosition(c);
       const list = s.sim.aircraft.map((ac) => ({
         id: ac.id,
+        kind: ac.kind,
         type: ac.type,
         airline: ac.airline,
         pose: aircraftPose(ac, EHAM, s.tickFraction, TICK),
       }));
+      // scenery taxiing to and from the stands (the sim never sees it); negative ids, no labels
+      const tail = s.sim.departureQueueTail();
+      const ghosts =
+        groundTraffic.current?.update(
+          s.sim.time + s.tickFraction * TICK,
+          list,
+          s.sim.plannedDepartures(),
+          tail && { pos: { x: toWorld(tail.pos).x, z: toWorld(tail.pos).z }, face: tail.face },
+        ) ?? [];
       let bearing = c.viewBearing + look.current.yaw;
       let depression = look.current.depression;
       // binoculars follow the selected aircraft
@@ -144,17 +156,33 @@ export function TowerView({
       look.current.bearing = bearing;
       const t0 = performance.now();
       const fov = zoom ? BINO_FOV : CAB_FOV;
-      anchors.current = renderer!.render(list, { eye, bearing, depression, fov });
+      anchors.current = renderer!.render([...list, ...ghosts], { eye, bearing, depression, fov });
       // fov is vertical: the radar's view cone needs the horizontal angle
       const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
       const hfov = (2 * Math.atan(Math.tan((fov / 2) * DEG) * aspect)) / DEG;
       radar.current?.setPalette(real ? 'realistic' : 'modern');
-      radar.current?.draw({ ap: EHAM, targets: radarTargets(s), cab: c.pos, bearing, fov: hfov });
+      // scenery taxiing shows on the ground radar too, as traffic on another frequency
+      const sceneryTargets = ghosts.map((g) => ({
+        id: g.id,
+        pos: { x: g.pose.pos.x / 1852, y: -g.pose.pos.z / 1852 },
+        label: '',
+        airborne: false,
+        style: 'pending' as const,
+      }));
+      radar.current?.draw({
+        ap: EHAM,
+        targets: [...radarTargets(s), ...sceneryTargets],
+        cab: c.pos,
+        bearing,
+        fov: hfov,
+      });
       if (import.meta.env.DEV)
         Object.assign(window, {
           __vectors: s,
           __towerMs: performance.now() - t0,
           __towerStats: renderer!.stats,
+          __ghosts: ghosts,
+          __look: look.current,
         });
       // Realistic: a bracket round the selected aircraft instead of its label
       const br = bracketRef.current;
@@ -233,7 +261,19 @@ export function TowerView({
         renderer.loadLand(land);
         renderer.loadBuildings(buildings);
         renderer.loadSurfaces(ground);
-        renderer.loadApron(stands, buildings, ground);
+        const parked = renderer.loadApron(stands, buildings, ground);
+        const rings = buildingRings(EHAM, buildings.buildings);
+        const oriented = orientStands(EHAM, stands, rings);
+        const { graph, standNode, standEntry } = buildTaxiGraph(EHAM, ground.taxiways, oriented);
+        groundTraffic.current = new GroundTraffic(
+          graph,
+          oriented,
+          standNode,
+          standEntry,
+          standFitter(EHAM, rings, ground.taxiways),
+          parked,
+          [EHAM.config.landing, EHAM.config.departure].map((id) => runwayById(EHAM, id)!),
+        );
         radar.current?.setGround(ground);
         setAttribution(`${ground.attribution}.`);
         setStatus({ kind: 'ready' });
@@ -307,6 +347,7 @@ export function TowerView({
     let best: number | null = null;
     let bestD = 30;
     for (const a of anchors.current) {
+      if (a.id < 0) continue; // scenery taxiing
       const dd = Math.hypot(a.x - x, a.y - y);
       if (a.visible && dd < bestD) [best, bestD] = [a.id, dd];
     }
@@ -530,7 +571,10 @@ export function TowerView({
       <TowerDesk
         session={session}
         radarRef={radarCanvas}
-        onRadarClick={(x, y) => session.select(radar.current?.pick(x, y) ?? null)}
+        onRadarClick={(x, y) => {
+          const id = radar.current?.pick(x, y) ?? null;
+          session.select(id !== null && id < 0 ? null : id); // scenery traffic can't be selected
+        }}
       />
     </div>
   );

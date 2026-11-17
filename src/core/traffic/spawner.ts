@@ -31,10 +31,41 @@ export interface SpawnSpec {
 
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
+/** A departure decided ahead of time: the tower view shows it taxiing out before it reaches the holding point. */
+export interface PlannedDeparture {
+  at: number;
+  callsign: string;
+  type: string;
+  airline: string;
+}
+
+/** Departures are planned this far ahead (s): longer than any taxi-out from a stand. */
+const PLAN_AHEAD_S = 600;
+
+/**
+ * Where the next departure joins the queue at the holding point: behind the last one, facing the runway
+ * (shortcut: the queue runs straight back from the holding point, not along the taxiway). Null without one.
+ */
+export function queueTail(
+  ap: Airport,
+  active: readonly Aircraft[],
+): { pos: { x: number; y: number }; face: number } | null {
+  const hp = ap.runways.find((r) => r.id === ap.config.departure)?.entry?.path;
+  if (!hp || hp.length < 2) return null;
+  const hold = hp[hp.length - 1]!;
+  const face = bearing(hold, hp[hp.length - 2]!);
+  const slots = active
+    .filter((a) => a.nav.mode === 'holding' || (a.nav.mode === 'taxi' && a.nav.then === 'hold'))
+    .map((a) => Math.round((dist(a.pos, hold) * 1852) / 70));
+  const back = headingVec(face + 180, ((slots.length ? Math.max(...slots) + 1 : 0) * 70) / 1852);
+  return { pos: { x: hold.x + back.x, y: hold.y + back.y }, face };
+}
+
 export class Spawner {
   private nextId = 1;
   private nextArrival: number;
-  private nextDeparture: number;
+  private firstDeparture: number;
+  private planned: PlannedDeparture[] = [];
   private lastOnStar: Record<string, number> = {};
 
   constructor(
@@ -43,7 +74,7 @@ export class Spawner {
     public config: TrafficConfig,
   ) {
     this.nextArrival = config.arrivalsPerHour > 0 ? rng.range(2, 15) : Infinity;
-    this.nextDeparture = config.departuresPerHour > 0 ? rng.range(40, 120) : Infinity;
+    this.firstDeparture = config.departuresPerHour > 0 ? rng.range(40, 120) : Infinity;
   }
 
   /** Random spawns that are due at `time`. `arrivals: false`: the caller feeds arrivals itself (tower mode). */
@@ -62,11 +93,39 @@ export class Spawner {
         this.nextArrival = time + this.gap(this.config.arrivalsPerHour, 50);
       }
     }
-    if (time >= this.nextDeparture) {
-      out.push(this.create({ kind: 'departure' }, time, [...active, ...out]));
-      this.nextDeparture = time + this.gap(this.config.departuresPerHour, 110);
+    this.plan(time, active);
+    if (this.planned.length && time >= this.planned[0]!.at) {
+      const p = this.planned.shift()!;
+      out.push(
+        this.create({ kind: 'departure', callsign: p.callsign, type: p.type }, time, [...active, ...out]),
+      );
     }
     return out;
+  }
+
+  /** Departures planned for the next few minutes, earliest first. */
+  plannedDepartures(): readonly PlannedDeparture[] {
+    return this.planned;
+  }
+
+  private plan(time: number, active: readonly Aircraft[]) {
+    const rate = this.config.departuresPerHour;
+    if (rate <= 0) {
+      this.planned = [];
+      return;
+    }
+    for (;;) {
+      const last = this.planned[this.planned.length - 1];
+      if (last && last.at >= time + PLAN_AHEAD_S) return;
+      // the first one keeps its random start; the gap counts from the planned time, as it did from the spawn
+      const at = last
+        ? last.at + this.gap(rate, 110)
+        : Number.isFinite(this.firstDeparture)
+          ? Math.max(this.firstDeparture, time)
+          : time + this.gap(rate, 110);
+      this.firstDeparture = Infinity;
+      this.planned.push({ at, ...this.callsign([...active, ...this.planned]) });
+    }
   }
 
   gap(perHour: number, min: number): number {
@@ -74,7 +133,11 @@ export class Spawner {
     return Math.max(min, Math.min(mean * 2.5, -Math.log(1 - this.rng.next()) * mean));
   }
 
-  private callsign(active: readonly Aircraft[]): { airline: string; callsign: string; type: string } {
+  private callsign(active: readonly { callsign: string }[]): {
+    airline: string;
+    callsign: string;
+    type: string;
+  } {
     for (;;) {
       const al = this.rng.weighted(this.ap.airlines);
       const types = al.types.filter((t) => !this.config.types || this.config.types.includes(t));
@@ -121,21 +184,13 @@ export class Spawner {
     if (spec.kind === 'departure') {
       const rwy = ap.runways.find((r) => r.id === ap.config.departure)!;
       const route = spec.route ?? this.rng.pick(ap.departures.exits);
-      const hp = rwy.entry?.path;
-      if (hp && hp.length > 1) {
-        // at the holding point facing the runway; later arrivals queue behind (shortcut: straight back, not along the taxiway)
-        const hold = hp[hp.length - 1]!;
-        const face = bearing(hold, hp[hp.length - 2]!);
-        // the slot behind the last one taken
-        const slots = active
-          .filter((a) => a.nav.mode === 'holding' || (a.nav.mode === 'taxi' && a.nav.then === 'hold'))
-          .map((a) => Math.round((dist(a.pos, hold) * 1852) / 70));
-        const queue = slots.length ? Math.max(...slots) + 1 : 0;
-        const back = headingVec(face + 180, (queue * 70) / 1852);
+      const slot = queueTail(ap, active);
+      if (slot) {
+        const { pos, face } = slot;
         return {
           ...base,
           kind: 'departure',
-          pos: { x: hold.x + back.x, y: hold.y + back.y },
+          pos,
           alt: rwy.elevationFt,
           hdg: face,
           track: face,

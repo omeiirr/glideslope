@@ -58,7 +58,7 @@ const FALLBACK = ['B789', 'A332', 'A321', 'B738', 'E190'];
 const OCCUPIED = 0.68;
 const WIDE_SHARE = 0.25;
 /** Wingtip clearance kept to other parked aircraft (m). */
-const CLEAR = 3;
+export const CLEAR = 3;
 /** A stand whose stop point is this close to a building is a contact stand and gets a jet bridge. */
 const CONTACT_M = 40;
 
@@ -150,6 +150,57 @@ export function quadsOverlap(a: P2[], b: P2[]): boolean {
  * Park aircraft on the OSM stands and connect the contact stands to the building with a jet bridge.
  * Seeded, so the apron looks the same every time.
  */
+/** A stand line oriented so its last point is the stop mark (nose gear), with the heading of the parked aircraft. */
+export interface Stand {
+  ref: string;
+  pts: P2[];
+  stop: P2;
+  headingDeg: number;
+}
+
+/** Ground-standing building walls (tanks and open roofs left out), world metres. */
+export const buildingRings = (
+  ap: Pick<Airport, 'lat' | 'lon'>,
+  buildings: BuildingData['buildings'],
+): P2[][] => buildings.filter((b) => !b.mh && b.s !== 'plain').map((b) => b.r.map((p) => llToGround(ap, p)));
+
+/** Stand lines with their stop end found: the end nearer a building (OSM way direction is not reliable). */
+export function orientStands(ap: Pick<Airport, 'lat' | 'lon'>, data: StandData, rings: P2[][]): Stand[] {
+  return data.stands
+    .map((s) => {
+      const pts = s.pts.map((p) => llToGround(ap, p));
+      if (nearestOnRings(pts[0]!, rings).d < nearestOnRings(pts[pts.length - 1]!, rings).d) pts.reverse();
+      const stop = pts[pts.length - 1]!;
+      const dir = sub(stop, pts[pts.length - 2]!);
+      return { ref: s.ref, pts, stop, headingDeg: ((Math.atan2(dir.x, -dir.z) * 180) / Math.PI + 360) % 360 };
+    })
+    .filter((s) => Number.isFinite(s.headingDeg));
+}
+
+/**
+ * Where an aircraft of a type would stand on a stand, or null when it doesn't fit: it would overlap one of
+ * `prints` (footprints already taken), reach into a building, or stand on a taxiway.
+ */
+export function standFitter(
+  ap: Pick<Airport, 'lat' | 'lon'>,
+  rings: P2[][],
+  taxiways: GroundData['taxiways'] = [],
+): (s: Stand, type: string, airline: string, prints: P2[][]) => Parked | null {
+  const taxi = taxiways.map((t) => ({ h: t.w / 2, pts: t.pts.map((p) => llToGround(ap, p)) }));
+  const onTaxiway = (c: P2) =>
+    taxi.some(({ h, pts }) => pts.slice(1).some((b, i) => len(sub(c, nearestOnSegment(c, pts[i]!, b))) < h));
+  const inBuilding = (p: P2) => rings.some((r) => insideRing(p, r));
+  return (s, type, airline, prints) => {
+    const { fwd } = axes(s.headingDeg);
+    // nose gear on the stop mark; the nose gear is 0.36 of the length ahead of the centre
+    const c = add(s.stop, fwd, -0.36 * airframe(type).len);
+    const p: Parked = { x: c.x, z: c.z, headingDeg: s.headingDeg, type, airline, ref: s.ref };
+    const fp = footprint(p, CLEAR / 2);
+    if (prints.some((q) => quadsOverlap(fp, q)) || outline(p).some(inBuilding) || onTaxiway(c)) return null;
+    return p;
+  };
+}
+
 export function parkAircraft(
   ap: Pick<Airport, 'lat' | 'lon'>,
   data: StandData,
@@ -158,25 +209,9 @@ export function parkAircraft(
   seed = 1931,
 ): { parked: Parked[]; bridges: Bridge[] } {
   const rng = new Rng(seed);
-  const taxi = taxiways.map((t) => ({ h: t.w / 2, pts: t.pts.map((p) => llToGround(ap, p)) }));
-  const onTaxiway = (c: P2) =>
-    taxi.some(({ h, pts }) => pts.slice(1).some((b, i) => len(sub(c, nearestOnSegment(c, pts[i]!, b))) < h));
-  // walls standing on the ground; tanks and open roofs left out
-  const rings = buildings
-    .filter((b) => !b.mh && b.s !== 'plain')
-    .map((b) => b.r.map((p) => llToGround(ap, p)));
-  const inBuilding = (p: P2) => rings.some((r) => insideRing(p, r));
-
-  // the stop end of a stand line is the end nearer a building (OSM way direction is not reliable)
-  const stands = data.stands
-    .map((s) => {
-      const pts = s.pts.map((p) => llToGround(ap, p));
-      if (nearestOnRings(pts[0]!, rings).d < nearestOnRings(pts[pts.length - 1]!, rings).d) pts.reverse();
-      const stop = pts[pts.length - 1]!;
-      const dir = sub(stop, pts[pts.length - 2]!);
-      return { ref: s.ref, stop, headingDeg: ((Math.atan2(dir.x, -dir.z) * 180) / Math.PI + 360) % 360 };
-    })
-    .filter((s) => Number.isFinite(s.headingDeg));
+  const rings = buildingRings(ap, buildings);
+  const fit = standFitter(ap, rings, taxiways);
+  const stands = orientStands(ap, data, rings);
   // shuffle so overlapping alternative stand lines are decided at random, not by OSM order
   for (let i = stands.length - 1; i > 0; i--) {
     const j = Math.floor(rng.next() * (i + 1));
@@ -192,14 +227,10 @@ export function parkAircraft(
     const span = airframe(want.type).span;
     const types = [want.type, ...FALLBACK.filter((t) => airframe(t).span < span)];
     for (const type of types) {
-      const { fwd } = axes(s.headingDeg);
-      // nose gear on the stop mark; the nose gear is 0.36 of the length ahead of the centre
-      const c = add(s.stop, fwd, -0.36 * airframe(type).len);
-      const p: Parked = { x: c.x, z: c.z, headingDeg: s.headingDeg, type, airline: want.airline, ref: s.ref };
-      const fp = footprint(p, CLEAR / 2);
-      if (prints.some((q) => quadsOverlap(fp, q)) || outline(p).some(inBuilding) || onTaxiway(c)) continue;
+      const p = fit(s, type, want.airline, prints);
+      if (!p) continue;
       parked.push(p);
-      prints.push(fp);
+      prints.push(footprint(p, CLEAR / 2));
       break;
     }
   }

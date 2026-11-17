@@ -17,7 +17,13 @@ import { bearing, dist, headingVec, unproject } from './geo';
 import { Rng } from './rng';
 import { detectConflicts, type Conflict } from './rules/separation';
 import { FEED_KT, FEED_NM, departureWakeS, feedGap } from './rules/tower';
-import { Spawner, type SpawnSpec, type TrafficConfig } from './traffic/spawner';
+import {
+  Spawner,
+  queueTail,
+  type PlannedDeparture,
+  type SpawnSpec,
+  type TrafficConfig,
+} from './traffic/spawner';
 
 /** Fixed simulation time step, seconds. */
 export const TICK = 0.5;
@@ -305,6 +311,14 @@ export class Sim {
   }
   get traffic(): TrafficConfig {
     return this.spawner.config;
+  }
+  /** Departures planned for the next few minutes (the tower view shows them taxiing out from a stand). */
+  plannedDepartures(): readonly PlannedDeparture[] {
+    return this.spawner.plannedDepartures();
+  }
+  /** Where the next departure will join the queue at the holding point. */
+  departureQueueTail() {
+    return queueTail(this.airport, this.list);
   }
   byId(id: number): Readonly<Aircraft> | undefined {
     return this.list.find((a) => a.id === id);

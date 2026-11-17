@@ -42,7 +42,7 @@ import {
 } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
-import { parkAircraft, serviceVehicles, type StandData } from './stands';
+import { parkAircraft, serviceVehicles, type Parked, type StandData } from './stands';
 
 export interface TowerAircraft {
   id: number;
@@ -376,7 +376,7 @@ export class TowerRenderer {
   }
 
   /** Stand lead-in lines, parked aircraft and jet bridges (scenery, not in the sim). */
-  loadApron(data: StandData, buildings: BuildingData, ground: GroundData) {
+  loadApron(data: StandData, buildings: BuildingData, ground: GroundData): Parked[] {
     const lines: number[] = [];
     const pads: number[] = [];
     for (const s of data.stands) {
@@ -399,6 +399,7 @@ export class TowerRenderer {
     this.addFloodlights(data.masts.map((m) => ({ ...llToGround(this.ap, m.p), h: m.h || MAST_H })));
     this.scene.add(...objects);
     this.disposables.push(...disposables);
+    return parked;
   }
 
   /**

@@ -77,12 +77,32 @@ export function pickTarget(f: RadarFrame, targets: readonly RadarTarget[], x: nu
   return best;
 }
 
-const COLOR: Record<TargetStyle, string> = {
-  plain: '#e6ebf2',
-  cleared: '#7ad7a8',
-  selected: '#5cc8ff',
-  pending: '#8b97ab',
-};
+/** Colours per display mode: Modern (navy, as the scope) or Realistic (black and green, as the Realistic scope). */
+const PALETTES = {
+  modern: {
+    target: { plain: '#e6ebf2', cleared: '#7ad7a8', selected: '#5cc8ff', pending: '#8b97ab' },
+    bg: '#0a0f1a',
+    apron: '#182131',
+    taxiArea: '#222c3d',
+    taxiway: '#2a3548',
+    runway: ['#5a6a84', '#3a4659'],
+    text: ['#c7d0de', '#8b97ab'],
+    coneFill: 'rgba(92, 200, 255, 0.08)',
+    coneLine: 'rgba(92, 200, 255, 0.35)',
+  },
+  realistic: {
+    target: { plain: '#3fd13f', cleared: '#3fd13f', selected: '#ffffff', pending: '#6a6a6a' },
+    bg: '#000000',
+    apron: '#141414',
+    taxiway: '#202020',
+    taxiArea: '#1c1c1c',
+    runway: ['#4a4a4a', '#2e2e2e'],
+    text: ['#a0a0a0', '#6a6a6a'],
+    coneFill: 'rgba(63, 209, 63, 0.06)',
+    coneLine: 'rgba(63, 209, 63, 0.3)',
+  },
+} satisfies Record<string, { target: Record<TargetStyle, string> } & Record<string, unknown>>;
+export type RadarPalette = keyof typeof PALETTES;
 
 export interface RadarScene {
   ap: Airport;
@@ -101,7 +121,15 @@ export class GroundRadar {
   private frame: RadarFrame | null = null;
   private targets: readonly RadarTarget[] = [];
 
+  private pal: (typeof PALETTES)[RadarPalette] = PALETTES.modern;
+
   constructor(private canvas: HTMLCanvasElement) {}
+
+  setPalette(p: RadarPalette) {
+    if (this.pal === PALETTES[p]) return;
+    this.pal = PALETTES[p];
+    this.bgKey = '';
+  }
 
   /** The target under a click on the canvas (CSS pixels), as last drawn. */
   pick(x: number, y: number): number | null {
@@ -146,8 +174,8 @@ export class GroundRadar {
     g.lineTo(o.x + Math.sin(a0) * reach, o.y - Math.cos(a0) * reach);
     g.lineTo(o.x + Math.sin(a1) * reach, o.y - Math.cos(a1) * reach);
     g.closePath();
-    g.fillStyle = 'rgba(92, 200, 255, 0.08)';
-    g.strokeStyle = 'rgba(92, 200, 255, 0.35)';
+    g.fillStyle = this.pal.coneFill;
+    g.strokeStyle = this.pal.coneLine;
     g.lineWidth = 0.8;
     g.fill();
     g.stroke();
@@ -159,7 +187,7 @@ export class GroundRadar {
       g.save();
       g.translate(p.x, p.y);
       g.rotate(Math.PI / 4);
-      g.fillStyle = active ? '#e6ebf2' : '#8b97ab';
+      g.fillStyle = active ? this.pal.target.plain : this.pal.target.pending;
       g.fillRect(-3, -3, 6, 6);
       g.restore();
     }
@@ -168,7 +196,7 @@ export class GroundRadar {
     g.textBaseline = 'middle';
     for (const t of s.targets) {
       const p = targetPx(f, t.pos);
-      const col = COLOR[t.style];
+      const col = this.pal.target[t.style];
       g.fillStyle = col;
       g.strokeStyle = col;
       g.lineWidth = 1.5;
@@ -206,7 +234,8 @@ export class GroundRadar {
     c.height = this.canvas.height;
     const g = c.getContext('2d')!;
     g.scale(dpr, dpr);
-    g.fillStyle = '#0a0f1a';
+    const pal = this.pal;
+    g.fillStyle = pal.bg;
     g.fillRect(0, 0, f.w, f.h);
     const px = (ll: LatLon) => radarPx(f, project(ll[0], ll[1], ap.lat, ap.lon));
     const fill = (list: Polygon[], color: string) => {
@@ -224,9 +253,9 @@ export class GroundRadar {
     };
     const gd = this.ground;
     if (gd) {
-      fill(gd.aprons, '#182131');
-      fill(gd.taxiwayAreas, '#222c3d');
-      g.strokeStyle = '#2a3548';
+      fill(gd.aprons, pal.apron);
+      fill(gd.taxiwayAreas, pal.taxiArea);
+      g.strokeStyle = pal.taxiway;
       g.lineCap = 'round';
       for (const t of gd.taxiways) {
         g.lineWidth = Math.max(1, (t.w / 1852) * f.scale);
@@ -256,7 +285,7 @@ export class GroundRadar {
       };
       const b = radarPx(f, end);
       const active = [r.id, opp?.id].some((id) => id === ap.config.landing || id === ap.config.departure);
-      g.strokeStyle = active ? '#5a6a84' : '#3a4659';
+      g.strokeStyle = pal.runway[active ? 0 : 1]!;
       g.lineWidth = Math.max(2.5, (r.widthFt / 6076) * f.scale);
       g.lineCap = 'butt';
       g.beginPath();
@@ -264,7 +293,7 @@ export class GroundRadar {
       g.lineTo(b.x, b.y);
       g.stroke();
       // designators just outside each threshold
-      g.fillStyle = active ? '#c7d0de' : '#8b97ab';
+      g.fillStyle = pal.text[active ? 0 : 1]!;
       for (const [rw, p, q] of [
         [r, a, b],
         [opp, b, a],

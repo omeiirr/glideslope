@@ -19,6 +19,19 @@ interface DcbProps {
   onEnd: () => void;
 }
 
+/** One DCB button: two short lines of text, green when on; no handler = a status box. */
+export const dcbButton = (label: string, onClick?: () => void, on = false, aria?: string) => (
+  <button
+    type="button"
+    class={on ? 'on' : ''}
+    onClick={onClick}
+    disabled={!onClick}
+    aria-label={aria ?? label.replace('\n', ' ')}
+  >
+    {label}
+  </button>
+);
+
 /** Display control bar across the top of the Realistic scope, like a STARS DCB. */
 export function RealisticDcb({
   session,
@@ -33,17 +46,7 @@ export function RealisticDcb({
   onEnd,
 }: DcbProps) {
   const speeds = [1, 2, 4, 8];
-  const B = (label: string, onClick?: () => void, on = false, aria?: string) => (
-    <button
-      type="button"
-      class={on ? 'on' : ''}
-      onClick={onClick}
-      disabled={!onClick}
-      aria-label={aria ?? label.replace('\n', ' ')}
-    >
-      {label}
-    </button>
-  );
+  const B = dcbButton;
   return (
     <nav class="dcb" aria-label="Display control bar">
       {B(`RANGE\n${range}`, onCycleRange, true)}
@@ -103,7 +106,6 @@ export function RealisticChrome({
   const arrivals = sim.aircraft
     .filter((a) => a.kind === 'arrival' && a.comms !== 'none' && onRadar(a))
     .slice(0, 12);
-  const lines = session.log.slice(-4);
   const w = sim.env.wind;
   return (
     <>
@@ -135,34 +137,50 @@ export function RealisticChrome({
           </span>
         ))}
       </div>
-      <div class="rt rt-bl" aria-label="Radio log" aria-live="polite">
-        {lines.map((e) => {
-          if (e.kind === 'system')
-            return (
-              <span style={{ color: e.tone === 'bad' ? '#FF4040' : '#3FD13F' }}>{e.text.toUpperCase()}</span>
-            );
-          if (e.kind === 'pilot')
-            return (
-              <span style={{ color: e.rb === 'caught' ? '#3FD13F' : '#E0E0E0' }}>
-                {e.rb === 'caught'
-                  ? `RDBK ERR ${e.callsign} ${e.detail?.toUpperCase()}`
-                  : `${e.callsign}: ${e.text}`}
-              </span>
-            );
-          const warn = settings.feedback !== 'off' && e.issues.find((i) => i.severity !== 'info');
+      <RealisticLog session={session} settings={settings} voice={voice} />
+    </>
+  );
+}
+
+/** The last radio lines and voice status, terse, bottom left of a Realistic display. */
+export function RealisticLog({
+  session,
+  settings,
+  voice,
+}: {
+  session: Session;
+  settings: Settings;
+  voice: VoiceState;
+}) {
+  const lines = session.log.slice(-4);
+  return (
+    <div class="rt rt-bl" aria-label="Radio log" aria-live="polite">
+      {lines.map((e) => {
+        if (e.kind === 'system')
           return (
-            <span style="color:#9A9A9A">
-              &gt; {e.understood ? `${e.callsign} ${e.chips.join(' ')}` : `${e.text} ??`}
-              {warn && e.expected ? `  [ICAO: ${e.expected}]` : ''}
+            <span style={{ color: e.tone === 'bad' ? '#FF4040' : '#3FD13F' }}>{e.text.toUpperCase()}</span>
+          );
+        if (e.kind === 'pilot')
+          return (
+            <span style={{ color: e.rb === 'caught' ? '#3FD13F' : '#E0E0E0' }}>
+              {e.rb === 'caught'
+                ? `RDBK ERR ${e.callsign} ${e.detail?.toUpperCase()}`
+                : `${e.callsign}: ${e.text}`}
             </span>
           );
-        })}
-        <span style="color:#828282;font-size:11px">
-          {voice.status === 'off' ? 'VOICE OFF' : `VOICE ${voice.status.toUpperCase()}`} · PTT{' '}
-          {settings.pttKey.toUpperCase()} · ENTER TO TYPE
-          {session.radio.current ? ` · ${session.radio.current.from} TRANSMITTING` : ''}
-        </span>
-      </div>
-    </>
+        const warn = settings.feedback !== 'off' && e.issues.find((i) => i.severity !== 'info');
+        return (
+          <span style="color:#9A9A9A">
+            &gt; {e.understood ? `${e.callsign} ${e.chips.join(' ')}` : `${e.text} ??`}
+            {warn && e.expected ? `  [ICAO: ${e.expected}]` : ''}
+          </span>
+        );
+      })}
+      <span style="color:#828282;font-size:11px">
+        {voice.status === 'off' ? 'VOICE OFF' : `VOICE ${voice.status.toUpperCase()}`} · PTT{' '}
+        {settings.pttKey.toUpperCase()} · ENTER TO TYPE
+        {session.radio.current ? ` · ${session.radio.current.from} TRANSMITTING` : ''}
+      </span>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import type { ComponentChild } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEG, EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
 import { CLEAR_VIS, visibilityText, type Session } from '../game/session';
@@ -9,6 +10,7 @@ import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 import { GroundRadar } from '../render/groundradar';
 import { TowerDesk, radarTargets } from './TowerDesk';
 import { layoutLabels } from '../render/tower3d/labels';
+import { dcbButton as B } from './realistic';
 
 const CAB_FOV = 26;
 const BINO_FOV = 2.6;
@@ -34,8 +36,35 @@ const isTyping = (e: KeyboardEvent) => {
   return !!t?.closest?.('input, textarea, select, [contenteditable], .overlay');
 };
 
-/** The out-of-the-window view from a tower cab. Owns its frame loop; draws from sim state only. */
-export function TowerView({ session }: { session: Session }) {
+const SPEEDS = [1, 2, 4, 8];
+const LBL_SHORT: Record<LabelMode, string> = { all: 'ALL', selected: 'SEL', off: 'OFF' };
+/** "Tower West" → "WEST", "Centre" → "CENTRE". */
+const cabShort = (name: string) => name.replace(/^Tower /, '').toUpperCase();
+
+/** Realistic display: the session buttons the top bar has in Modern. */
+export interface TowerDcbActions {
+  onModern: () => void;
+  onSettings: () => void;
+  onLearn: () => void;
+  onEnd: () => void;
+}
+
+/**
+ * The out-of-the-window view from a tower cab. Owns its frame loop; draws from sim state only.
+ * Realistic: a black DCB bar instead of the toolbar, labels off (a bracket on the selected aircraft),
+ * green status text and the terse radio log (`log`) in the window.
+ */
+export function TowerView({
+  session,
+  realistic = false,
+  dcb,
+  log,
+}: {
+  session: Session;
+  realistic?: boolean;
+  dcb?: TowerDcbActions;
+  log?: ComponentChild;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
   const radarCanvas = useRef<HTMLCanvasElement>(null);
@@ -45,7 +74,9 @@ export function TowerView({ session }: { session: Session }) {
   );
   const [bino, setBino] = useState(false);
   const [tod, setTod] = useState<TimeOfDay>(session.scenario.timeOfDay ?? 'day');
-  const [labels, setLabels] = useState<LabelMode>('all');
+  const [labels, setLabels] = useState<LabelMode>(realistic ? 'off' : 'all');
+  useEffect(() => setLabels(realistic ? 'off' : 'all'), [realistic]);
+  const bracketRef = useRef<HTMLDivElement>(null);
   const [lightStage, setLightStage] = useState(4);
   const stageRef = useRef(lightStage);
   stageRef.current = lightStage;
@@ -56,8 +87,8 @@ export function TowerView({ session }: { session: Session }) {
   const cab = EHAM.towers.find((t) => t.id === cabId)!;
   // view state read by the frame loop without re-rendering
   const look = useRef({ yaw: 0, depression: DEFAULT_DEPRESSION, bearing: cab.viewBearing });
-  const live = useRef({ session, cab, bino, labels });
-  live.current = { session, cab, bino, labels };
+  const live = useRef({ session, cab, bino, labels, realistic });
+  live.current = { session, cab, bino, labels, realistic };
   const todRef = useRef(tod);
   todRef.current = tod;
   useEffect(() => rendererRef.current?.setTimeOfDay(tod), [tod]);
@@ -96,7 +127,7 @@ export function TowerView({ session }: { session: Session }) {
     });
 
     const frame = (now: number) => {
-      const { session: s, cab: c, bino: zoom, labels: mode } = live.current;
+      const { session: s, cab: c, bino: zoom, labels: mode, realistic: real } = live.current;
       s.frame(now);
       const eye = eyePosition(c);
       const list = s.sim.aircraft.map((ac) => ({
@@ -117,6 +148,7 @@ export function TowerView({ session }: { session: Session }) {
       // fov is vertical: the radar's view cone needs the horizontal angle
       const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
       const hfov = (2 * Math.atan(Math.tan((fov / 2) * DEG) * aspect)) / DEG;
+      radar.current?.setPalette(real ? 'realistic' : 'modern');
       radar.current?.draw({ ap: EHAM, targets: radarTargets(s), cab: c.pos, bearing, fov: hfov });
       if (import.meta.env.DEV)
         Object.assign(window, {
@@ -124,6 +156,13 @@ export function TowerView({ session }: { session: Session }) {
           __towerMs: performance.now() - t0,
           __towerStats: renderer!.stats,
         });
+      // Realistic: a bracket round the selected aircraft instead of its label
+      const br = bracketRef.current;
+      if (br) {
+        const a = real && mode !== 'all' ? anchors.current.find((x) => x.id === s.selectedId) : undefined;
+        br.style.visibility = a?.visible ? '' : 'hidden';
+        if (a?.visible) br.style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px)`;
+      }
       // labels are HTML: place them next to their aircraft without overlaps (reads first, then writes)
       const box = labelsRef.current;
       if (box) {
@@ -136,7 +175,7 @@ export function TowerView({ session }: { session: Session }) {
             (mode === 'all' ? a.dist < LABEL_RANGE_NM * 1852 : mode === 'selected' && a.id === s.selectedId),
         );
         const tools = box.parentElement?.querySelector<HTMLElement>('.tower-tools');
-        const top = tools ? tools.offsetTop + tools.offsetHeight + 6 : 50;
+        const top = tools ? tools.offsetTop + tools.offsetHeight + 6 : 8;
         const placed = layoutLabels(
           wanted.map((a) => {
             const el = els.get(a.id)!;
@@ -282,8 +321,57 @@ export function TowerView({ session }: { session: Session }) {
   const count = session.sim.aircraft.length;
   const bearingText = String(Math.round(((look.current.bearing % 360) + 360) % 360)).padStart(3, '0');
 
+  const sel = session.selectedId === null ? undefined : session.sim.byId(session.selectedId);
+  const w = session.sim.env.wind;
+  const left = session.remainingSec;
+  const visAdjustable = session.scenario.visibilityM === undefined;
+  const realisticBar = realistic && (
+    <nav class="dcb" aria-label="Display control bar">
+      {EHAM.towers.map((t) =>
+        B(`CAB\n${cabShort(t.name)}`, () => pickCab(t.id), t.id === cabId, `${t.name} cab`),
+      )}
+      {B('BINO\nB', () => setBino(!bino), bino, 'Binoculars')}
+      {B('LOOK\nLEFT', () => turn(-10))}
+      {B('LOOK\nRIGHT', () => turn(10))}
+      {B('RESET\nVIEW', resetLook)}
+      {B(
+        `LBL\n${LBL_SHORT[labels]}`,
+        () => setLabels(NEXT_LABELS[labels]),
+        labels !== 'off',
+        `Labels: ${LABELS_TEXT[labels]}`,
+      )}
+      {B(`TIME\n${tod.toUpperCase()}`, () => setTod(NEXT_TOD[tod]), false, `Time of day: ${tod}`)}
+      {tod !== 'day' &&
+        B(
+          `RWY LT\n${lightStage}/5`,
+          () => setLightStage((lightStage % 5) + 1),
+          false,
+          `Runway light brightness ${lightStage} of 5`,
+        )}
+      {visAdjustable &&
+        B(
+          `VIS\n${visibilityText(vis).toUpperCase()}`,
+          () => session.setVisibility(nextVis(vis)),
+          false,
+          `Visibility: ${visibilityText(vis)}`,
+        )}
+      {B(session.paused ? 'RESUME' : 'PAUSE', () => session.setPaused(!session.paused), session.paused)}
+      {B(
+        `RATE\n${session.speed}X`,
+        () => session.setSpeed(SPEEDS[(SPEEDS.indexOf(session.speed) + 1) % SPEEDS.length]!),
+        false,
+        'Simulation speed',
+      )}
+      {dcb && B('DISP\nMODERN', dcb.onModern)}
+      {dcb && B('PREF', dcb.onSettings, false, 'Settings')}
+      {dcb && B('LEARN', dcb.onLearn, false, 'Learn: phraseology reference')}
+      {dcb && B('END', dcb.onEnd)}
+    </nav>
+  );
+
   return (
     <div class="tower-wrap">
+      {realisticBar}
       <div class="tower">
         <canvas
           ref={canvasRef}
@@ -323,7 +411,29 @@ export function TowerView({ session }: { session: Session }) {
           })}
         </div>
 
-        <div class="tower-tools">
+        {realistic && (
+          <>
+            <div ref={bracketRef} class="tower-bracket" aria-hidden="true" style="visibility:hidden" />
+            <div class="rt rt-tl" role="status">
+              <span>
+                {session.clock.replace(/:/, '').replace(':', '/')} {session.sim.qnh}
+              </span>
+              <span>
+                {EHAM.icao} {String(w.dir).padStart(3, '0')}/{w.speed} VIS {visibilityText(vis).toUpperCase()}
+              </span>
+              <span>
+                TWR {cabShort(cab.name)} {bearingText}° LBL {LBL_SHORT[labels]}
+                {sel ? ` SEL ${sel.callsign}` : ''}
+              </span>
+              <span>
+                SCORE {session.score} LND {session.stats.landed}
+                {left !== null ? ` T-${Math.ceil(left / 60)}` : ''}
+              </span>
+            </div>
+            {log}
+          </>
+        )}
+        <div class="tower-tools" hidden={realistic}>
           <span class="chipbtn mono">
             {cab.name.toUpperCase()} · {bearingText}° · {Math.round((cab.eyeHeightFt / FT_PER_NM) * 1852)} m
           </span>

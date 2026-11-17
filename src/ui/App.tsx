@@ -10,7 +10,7 @@ import { useSession } from './hooks';
 import { Learn } from './learn';
 import { Debrief, HelpCard, Menu, SettingsDialog, TutorialCard, type Progress } from './overlays';
 import { PttBar, RadioPanel, Strips, TopBar } from './panels';
-import { RealisticChrome, RealisticDcb } from './realistic';
+import { RealisticChrome, RealisticDcb, RealisticLog } from './realistic';
 import { ScopeView } from './ScopeView';
 import { TowerView } from './TowerView';
 import { asrPrompt } from '../speech/prompt';
@@ -253,6 +253,7 @@ function Game(p: GameProps) {
   useSession(session);
   const tower = session.scenario.view === 'tower';
   const realistic = settings.display === 'realistic' && !tower;
+  const realTower = settings.display === 'realistic' && tower;
   const replay =
     settings.tts === 'off'
       ? undefined
@@ -272,7 +273,7 @@ function Game(p: GameProps) {
     />
   );
   return (
-    <div class={`app ${realistic ? 'realistic' : ''}`}>
+    <div class={`app ${realistic || realTower ? 'realistic' : ''}`}>
       {realistic ? (
         <RealisticDcb
           session={session}
@@ -286,7 +287,7 @@ function Game(p: GameProps) {
           onLearn={p.onLearn}
           onEnd={() => session.finish()}
         />
-      ) : (
+      ) : realTower ? null : (
         <TopBar
           session={session}
           settings={settings}
@@ -303,7 +304,17 @@ function Game(p: GameProps) {
             {APP_NAME} · {session.scenario.name}
           </h1>
           {tower ? (
-            <TowerView session={session} />
+            <TowerView
+              session={session}
+              realistic={realTower}
+              dcb={{
+                onModern: () => p.patch({ display: 'modern' }),
+                onSettings: () => p.setShowSettings(true),
+                onLearn: p.onLearn,
+                onEnd: () => session.finish(),
+              }}
+              log={<RealisticLog session={session} settings={settings} voice={p.voice.state} />}
+            />
           ) : (
             <ScopeView
               session={session}
@@ -324,7 +335,7 @@ function Game(p: GameProps) {
             />
           )}
           {session.lesson && !session.finished && <TutorialCard session={session} onInsert={p.insert} />}
-          {!realistic && !session.lesson && session.mode === 'beginner' && (
+          {!realistic && !realTower && !session.lesson && session.mode === 'beginner' && (
             <HelpCard session={session} onInsert={p.insert} />
           )}
           {session.paused && !session.finished && (
@@ -344,7 +355,7 @@ function Game(p: GameProps) {
             </div>
           )}
         </main>
-        {!realistic && <RadioPanel session={session} settings={settings} onReplay={replay} />}
+        {!realistic && !realTower && <RadioPanel session={session} settings={settings} onReplay={replay} />}
       </div>
       {ptt}
       {session.finished && (

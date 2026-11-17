@@ -1191,3 +1191,73 @@ dl.defs dd {
   border-color: var(--amber-line);
   color: var(--amber-text);
 }
+/* Tower, Realistic display: black desk, buff (arrival) and blue (departure) electronic strips */
+.tower-tools[hidden] {
+  display: none;
+}
+.tower-bracket {
+  position: absolute;
+  left: -13px;
+  top: -9px;
+  width: 26px;
+  height: 18px;
+  border: 1px solid #fff;
+  pointer-events: none;
+}
+/* a dark box: the window behind can be bright sky */
+.app.realistic .tower-wrap .rt-tl,
+.app.realistic .tower-wrap .rt-bl {
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.72);
+}
+.app.realistic .tower-wrap .rt-bl {
+  bottom: 30px;
+}
+.app.realistic .desk {
+  background: #111;
+  border-top-color: #3a3a3a;
+  font-family: var(--mono);
+}
+.app.realistic .bay {
+  padding: 4px;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+}
+.app.realistic .bay .panel-title {
+  color: #a0a0a0;
+}
+.app.realistic .bay .strip {
+  border: 1px solid #000;
+  border-left: 6px solid #c9a227;
+  border-radius: 0;
+  background: #f2e6b8;
+  color: #111;
+  text-transform: uppercase;
+}
+.app.realistic .bay .strip.dep {
+  border-left-color: #2f6fb0;
+  background: #c8dcf0;
+}
+.app.realistic .bay .strip .dim,
+.app.realistic .bay .strip .sub {
+  color: #333;
+}
+.app.realistic .bay .strip.est .dim {
+  color: #111;
+  font-weight: 700;
+}
+.app.realistic .bay .strip.pending {
+  opacity: 0.6;
+}
+.app.realistic .bay .strip.selected {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+.app.realistic .ground-radar {
+  border-color: #3a3a3a;
+  border-radius: 0;
+}
+.app.realistic .bay .strip .cs {
+  color: #111;
+  font-weight: 700;
+}

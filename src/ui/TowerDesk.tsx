@@ -117,6 +117,7 @@ export function TowerDesk({
       'strip',
       session.selectedId === ac.id ? 'selected' : ac.landClear || ac.takeoffClear ? 'est' : '',
       ac.comms === 'none' ? 'pending' : '',
+      ac.kind === 'arrival' ? 'arr' : 'dep',
     ].join(' ');
     return (
       <button

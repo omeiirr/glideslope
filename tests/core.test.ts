@@ -5,6 +5,7 @@ import {
   TICK,
   angleDiff,
   dist,
+  holdEntry,
   pickExit,
   runwayById,
   runwayFrame,
@@ -124,6 +125,62 @@ describe('basic flight', () => {
     }
     expect(passes).toBeGreaterThanOrEqual(3);
     expect(max).toBeLessThan(9);
+  });
+
+  test('hold entries (ICAO, right-hand): parallel, teardrop or direct from the heading over the fix', () => {
+    // inbound 360, outbound 180
+    expect(holdEntry(250, 360)).toBe('parallel');
+    expect(holdEntry(180, 360)).toBe('parallel');
+    expect(holdEntry(145, 360)).toBe('teardrop');
+    expect(holdEntry(360, 360)).toBe('outbound');
+    expect(holdEntry(90, 360)).toBe('outbound');
+    expect(holdEntry(300, 360)).toBe('outbound');
+
+    const fix = EHAM.fixes.ARTIP!;
+    const inbound = EHAM.holds.ARTIP!.inbound;
+    // metres right of the inbound course through the fix (the holding side is to the right)
+    const side = (p: { x: number; y: number }) => {
+      const h = (inbound * Math.PI) / 180;
+      return (p.x - fix.x) * Math.cos(h) - (p.y - fix.y) * Math.sin(h);
+    };
+    for (const [entry, hdg] of [
+      ['parallel', inbound + 180 + 60],
+      ['teardrop', inbound + 180 - 40],
+      ['outbound', inbound],
+    ] as const) {
+      const sim = quietSim();
+      // 6 NM before the fix on that heading
+      const back = { x: -Math.sin((hdg * Math.PI) / 180) * 6, y: -Math.cos((hdg * Math.PI) / 180) * 6 };
+      const ac = arrival(sim, {
+        pos: { x: fix.x + back.x, y: fix.y + back.y },
+        hdg: hdg % 360,
+        alt: 7000,
+        ias: 220,
+      });
+      sim.command('KLM123', [{ type: 'hold', fix: 'ARTIP' }]);
+      const legs = new Set<string>();
+      let entrySide = 0;
+      let passes = 0;
+      let wasNear = false;
+      let max = 0;
+      for (let i = 0; i < 2400; i++) {
+        sim.step();
+        if (ac.nav.mode !== 'hold') break;
+        legs.add(ac.nav.leg);
+        if (ac.nav.leg === 'parallel' || ac.nav.leg === 'teardrop') entrySide += Math.sign(side(ac.pos));
+        const d = dist(ac.pos, fix);
+        if (i > 200) max = Math.max(max, d);
+        if (d < 0.6 && !wasNear) passes++;
+        wasNear = d < 0.6;
+      }
+      if (entry !== 'outbound') expect(legs.has(entry), entry).toBe(true);
+      else expect(legs.has('parallel') || legs.has('teardrop')).toBe(false);
+      // parallel: flown on the non-holding (left) side; teardrop: on the holding side
+      if (entry === 'parallel') expect(entrySide).toBeLessThan(0);
+      if (entry === 'teardrop') expect(entrySide).toBeGreaterThan(0);
+      expect(passes, entry).toBeGreaterThanOrEqual(3);
+      expect(max, entry).toBeLessThan(9);
+    }
   });
 
   test('rejects impossible instructions', () => {

@@ -18,7 +18,15 @@ export type NavMode =
   | { mode: 'heading' }
   /** Fly to `fix`, then each fix in `then`, then keep the heading flown at the last fix. */
   | { mode: 'direct'; fix: string; then: string[] }
-  | { mode: 'hold'; fix: string; inbound: number; leg: 'toFix' | 'outbound' | 'turnIn'; timer: number }
+  /** Right-hand hold. `entered` false until the first time over the fix, where the entry is chosen. */
+  | {
+      mode: 'hold';
+      fix: string;
+      inbound: number;
+      leg: 'toFix' | 'outbound' | 'turnIn' | 'parallel' | 'parallelBack' | 'teardrop';
+      timer: number;
+      entered?: boolean;
+    }
   /** Tracking the localizer of the armed runway. */
   | { mode: 'loc' }
   | { mode: 'takeoff' }
@@ -192,6 +200,17 @@ const tasOf = (ias: number, alt: number) => ias * (1 + (Math.max(alt, 0) / 1000)
 /** Standard rate, limited by a 25° bank at higher speeds. deg/s */
 export const turnRate = (tas: number) => Math.min(3, 509.5 / Math.max(tas, 60));
 
+/**
+ * ICAO entry to a right-hand hold from the heading over the fix, measured from the outbound heading:
+ * up to 110° to its right parallel, up to 70° to its left teardrop (offset), the rest direct.
+ */
+export function holdEntry(hdg: number, inbound: number): 'outbound' | 'parallel' | 'teardrop' {
+  const d = angleDiff(norm360(inbound + 180), hdg); // + = heading right of the outbound heading
+  if (d >= 0 && d <= 110) return 'parallel';
+  if (d < 0 && d >= -70) return 'teardrop';
+  return 'outbound';
+}
+
 /** Position relative to a runway: `along` = NM before the threshold, `xte` = NM right of the centreline. */
 export function runwayFrame(pos: Vec, rwy: Runway): { along: number; xte: number } {
   const dx = pos.x - rwy.pos.x;
@@ -282,14 +301,27 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
     case 'hold': {
       const h = ac.nav;
       const fix = ap.fixes[h.fix]!;
+      const out = norm360(h.inbound + 180);
       if (h.leg === 'toFix') {
         steer(ac, headingForTrack(bearing(ac.pos, fix), tas, env.wind), dt, tas);
         if (dist(ac.pos, fix) < 0.5) {
-          h.leg = 'outbound';
+          h.leg = h.entered === false ? holdEntry(ac.hdg, h.inbound) : 'outbound';
+          h.entered = true;
           h.timer = 0;
         }
+      } else if (h.leg === 'parallel' || h.leg === 'teardrop') {
+        // parallel: outbound on the non-holding side; teardrop: 30° into the holding side. One minute, then back.
+        const want = h.leg === 'parallel' ? out : norm360(out - 30);
+        steer(ac, want, dt, tas);
+        if (Math.abs(angleDiff(ac.hdg, want)) < 10 && (h.timer += dt) >= 60)
+          h.leg = h.leg === 'parallel' ? 'parallelBack' : 'turnIn';
+      } else if (h.leg === 'parallelBack') {
+        // turn left (through the holding side) back to the fix, then the normal pattern
+        const back = headingForTrack(bearing(ac.pos, fix), tas, env.wind);
+        const far = Math.abs(angleDiff(ac.hdg, back)) > 30;
+        steer(ac, back, dt, tas, far ? 'left' : undefined);
+        if (!far) h.leg = 'toFix';
       } else if (h.leg === 'outbound') {
-        const out = norm360(h.inbound + 180);
         const far = Math.abs(angleDiff(ac.hdg, out)) > 10;
         steer(ac, out, dt, tas, far ? 'right' : undefined);
         if (!far && (h.timer += dt) >= 60) h.leg = 'turnIn';

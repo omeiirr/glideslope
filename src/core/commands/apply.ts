@@ -157,6 +157,7 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
         inbound: env.airport.holds[cmd.fix]?.inbound ?? bearing(ac.pos, env.airport.fixes[cmd.fix]!),
         leg: 'toFix',
         timer: 0,
+        entered: false,
       };
       break;
     case 'ils':

@@ -41,7 +41,7 @@ import {
 } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
-import { insideRing, parkAircraft, serviceVehicles, type StandData } from './stands';
+import { parkAircraft, serviceVehicles, type StandData } from './stands';
 
 export interface TowerAircraft {
   id: number;
@@ -410,9 +410,9 @@ export class TowerRenderer {
 
     const concrete = photoTexture('concrete.jpg', 15);
     const asphalt = photoTexture('asphalt.jpg', 30);
-    this.macro = photoTexture('macro.jpg', 1, false);
-    this.pavement = new Set([concrete, asphalt]);
-    this.disposables.push(concrete, asphalt, this.macro);
+    this.macro ??= photoTexture('macro.jpg', 1, false);
+    this.pavement.add(concrete).add(asphalt);
+    this.disposables.push(concrete, asphalt);
     polygons(g.aprons, APRON, -45, concrete);
     polygons(g.taxiwayAreas, TAXIWAY, -44, asphalt);
     const taxi: number[] = [];
@@ -559,8 +559,19 @@ export class TowerRenderer {
   loadLand(l: LandData) {
     const fields = fieldTexture();
     const rough = roughGrassTexture();
-    this.disposables.push(fields, rough);
-    const maps: Record<string, THREE.Texture> = { farm: fields, park: rough };
+    // built-up land: asphalt photo with the macro variation, like the aprons (no slab grid to tile visibly)
+    const paved = photoTexture('asphalt.jpg', 30);
+    this.macro = photoTexture('macro.jpg', 1, false);
+    this.pavement.add(paved);
+    this.disposables.push(fields, rough, paved, this.macro);
+    const maps: Record<string, THREE.Texture> = {
+      farm: fields,
+      park: rough,
+      forest: rough,
+      residential: paved,
+      industrial: paved,
+      greenhouse: paved,
+    };
     LAND.forEach(([cls, color], i) => l.land[cls] && this.polygons(l.land[cls], color, -72 + i, maps[cls]));
     const cabs = this.ap.towers.map((t) => toWorld(t.pos));
     for (const o of trees(this.ap, l, cabs)) {
@@ -591,7 +602,7 @@ export class TowerRenderer {
   }
 
   /**
-   * Buildings as extruded footprints, one merged mesh per wall style plus the roofs and rooftop plant.
+   * Buildings as extruded footprints, one merged mesh per wall style plus the roofs and parapets.
    * Roofs are clearly darker than the walls and vary per building: from the cab they are most of what is seen.
    */
   private addBuildings(list: BuildingData['buildings']) {
@@ -602,7 +613,6 @@ export class TowerRenderer {
       plain: [],
     };
     const roofs: THREE.BufferGeometry[] = [];
-    const plant: THREE.BufferGeometry[] = [];
     const parapets: THREE.BufferGeometry[] = [];
     const rnd = seeded(31);
     const cabs = this.ap.towers.map((t) => toWorld(t.pos));
@@ -642,7 +652,6 @@ export class TowerRenderer {
       tint(wall, new THREE.Color(shades[Math.floor(rnd() * shades.length)]!));
       walls[b.s].push(wall);
       geo.dispose();
-      if (b.s !== 'plain' && base === 0 && b.h > 6) plant.push(...rooftopPlant(pts, b.h, rnd));
       if (b.s !== 'plain') parapets.push(parapet(pts, b.h));
     }
 
@@ -689,7 +698,6 @@ export class TowerRenderer {
     add(walls.office, { color: '#ffffff', map: tex.office }, tex.officeGlow);
     add(walls.hangar, { color: '#ffffff', map: tex.hangar, roughness: 0.7, metalness: 0.1 });
     add(walls.plain, { color: '#e6e4de' });
-    add(plant, { color: '#cfd2d4', roughness: 0.7 });
     // both faces: seen from outside as the top of the wall, from the roof as its rim
     add(parapets, { color: '#ffffff', roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide });
   }
@@ -1343,29 +1351,6 @@ function parapet(pts: { x: number; z: number }[], h: number): THREE.BufferGeomet
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.computeVertexNormals();
   return geo;
-}
-
-/** Air-handling boxes scattered on a big flat roof, seeded (none on roofs under 3000 m2). */
-function rooftopPlant(pts: { x: number; z: number }[], h: number, rnd: () => number): THREE.BufferGeometry[] {
-  let a = 0;
-  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++)
-    a += pts[j]!.x * pts[i]!.z - pts[i]!.x * pts[j]!.z;
-  const area = Math.abs(a) / 2;
-  if (area < 3000) return [];
-  const xs = pts.map((p) => p.x);
-  const zs = pts.map((p) => p.z);
-  const [x0, x1, z0, z1] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
-  const out: THREE.BufferGeometry[] = [];
-  const n = Math.min(14, Math.floor(area / 2500));
-  for (let tries = 0; out.length < n && tries < n * 40; tries++) {
-    const p = { x: x0 + rnd() * (x1 - x0), z: z0 + rnd() * (z1 - z0) };
-    if (!insideRing(p, pts)) continue;
-    const w = 3 + rnd() * 6;
-    const d = 3 + rnd() * 4;
-    const bh = 1.5 + rnd() * 1.8;
-    out.push(new THREE.BoxGeometry(w, bh, d).toNonIndexed().translate(p.x, h + bh / 2, p.z));
-  }
-  return out;
 }
 
 /** Emissive map for the window bands: warm light, some offices dark, same layout as windowTexture. */

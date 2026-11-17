@@ -85,7 +85,7 @@ test('tower: controller phrases with wind, readbacks without, chips and calls', 
   );
   expect(readback('TRA6015', [{ type: 'cancelTakeoff' }], env).text).toBe('Holding, TRA6015');
   expect(readback('KLM1234', [{ type: 'handoff', to: 'ground' }], env).text).toBe(
-    'Schiphol Ground 121.800, KLM1234',
+    'Schiphol Ground 121.560, KLM1234',
   );
   expect(chip({ type: 'vacate', exit: 'V2', side: 'left' })).toBe('VACATE L V2');
   expect(chip({ type: 'handoff', to: 'departure' })).toBe('DEP');

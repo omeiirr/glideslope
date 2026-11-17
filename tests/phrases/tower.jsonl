@@ -27,11 +27,11 @@
 {"input": "KLM1234, vacate via V2", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "vacate", "exit": "V2"}], "expectedIssues": ["vacate-wording"], "role": "tower"}
 {"input": "KLM1234, vacate left", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "vacate", "side": "left"}], "expectedIssues": ["vacate-wording"], "role": "tower"}
 {"input": "KLM1234, vacate the runway", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "vacate"}], "expectedIssues": ["vacate-wording"], "role": "tower"}
-{"input": "KLM1234, vacate left via V2, when vacated contact ground 121.800", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "vacate", "exit": "V2", "side": "left"}, {"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
-{"input": "KLM1234, contact Schiphol Ground 121.800", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
-{"input": "KLM1234, contact ground one two one decimal eight", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, vacate left via V2, when vacated contact ground 121.560", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "vacate", "exit": "V2", "side": "left"}, {"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, contact Schiphol Ground 121.560", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, contact ground one two one decimal five six", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
 {"input": "KLM1234, contact ground", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": ["handoff-frequency-missing"], "role": "tower"}
-{"input": "KLM1234, when vacated contact ground one two one eight zero zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, when vacated contact ground one two one five six zero", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": [], "role": "tower"}
 {"input": "Transavia six zero one five, runway 24, line up and wait", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "lineUp", "runway": "24"}], "expectedIssues": [], "role": "tower"}
 {"input": "Transavia six zero one five, runway two four, line up and wait", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "lineUp", "runway": "24"}], "expectedIssues": [], "role": "tower"}
 {"input": "TRA6015 line up and wait runway 24", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "lineUp", "runway": "24"}], "expectedIssues": [], "role": "tower"}
@@ -54,10 +54,10 @@
 {"input": "Transavia six zero one five, hold position, cancel take-off, I say again, cancel take-off", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "cancelTakeoff"}], "expectedIssues": [], "role": "tower"}
 {"input": "TRA6015 stop immediately", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "cancelTakeoff"}], "expectedIssues": [], "role": "tower"}
 {"input": "Transavia six zero one five, abort takeoff", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "cancelTakeoff"}], "expectedIssues": [], "role": "tower"}
-{"input": "Transavia six zero one five, contact Schiphol Departure 120.555", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
-{"input": "Transavia six zero one five, contact departure one two zero decimal five five five", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
-{"input": "Transavia six zero one five, when airborne contact departure 120.555", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
-{"input": "Transavia six zero one five, contact departure 119.050", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
+{"input": "Transavia six zero one five, contact Schiphol Departure 119.055", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
+{"input": "Transavia six zero one five, contact departure one one niner decimal zero five five", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
+{"input": "Transavia six zero one five, when airborne contact departure 119.055", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": [], "role": "tower"}
+{"input": "Transavia six zero one five, contact departure 119.050", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": ["handoff-frequency-wrong"], "role": "tower"}
 {"input": "Transavia six zero one five, contact Amsterdam Radar 125.750", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "radar"}], "expectedIssues": [], "role": "tower"}
 {"input": "Transavia six zero one five, runway two four, line up and wait, KLM1234 on short final", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "lineUp", "runway": "24"}], "expectedIssues": [], "role": "tower"}
 {"input": "KLM1234, go around, turn right heading 270", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "goAround"}, {"type": "heading", "heading": 270, "turn": "right"}], "expectedIssues": [], "role": "tower"}
@@ -65,3 +65,5 @@
 {"input": "Martinair one two three, cleared to land runway 18R", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"], "role": "tower"}
 {"input": "KLM one two four, cleared to land", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-ambiguous"], "role": "tower"}
 {"input": "KLM1234, Schiphol Tower, runway 18R, wind 200 degrees 12 knots, cleared to land", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "land", "runway": "18R"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, contact ground 121.800", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "handoff", "to": "ground"}], "expectedIssues": ["handoff-frequency-wrong"], "role": "tower"}
+{"input": "Transavia six zero one five, contact departure 121.205", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "handoff", "to": "departure"}], "expectedIssues": ["handoff-frequency-wrong"], "role": "tower"}

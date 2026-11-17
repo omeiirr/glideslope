@@ -192,7 +192,7 @@ export const LESSONS: Record<string, Lesson> = {
       },
       {
         text: 'Tell it where to leave the runway, and pass it to Ground in the same call so you need not talk to it again. Exits on 18R are V1 to V4; V3 on the left suits a 737.',
-        say: `${STUDENT}, vacate left via V3, when vacated contact Ground 121.800`,
+        say: `${STUDENT}, vacate left via V3, when vacated contact Ground 121.560`,
         done: (s) => !!ac(s)?.vacate,
       },
       {
@@ -207,7 +207,7 @@ export const LESSONS: Record<string, Lesson> = {
       },
       {
         text: 'Once it is airborne, hand it to Departure before it reaches 2000 ft, or it counts as a late handoff.',
-        say: `${LESSON_DEPARTURE}, contact Departure 120.555`,
+        say: `${LESSON_DEPARTURE}, contact Departure 119.055`,
         done: (s) => other(s, LESSON_DEPARTURE)?.comms === 'departure' || passedOn(s, LESSON_DEPARTURE),
       },
     ],

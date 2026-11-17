@@ -68,7 +68,7 @@ New commands, all through the existing command layer and parser:
 | Continue approach | "KLM66P, continue approach" (runway not yet free) | "Continue approach, KLM66P" |
 | Go around | "KLM66P, go around" (+ "I say again, go around" if no reaction) | "Going around, KLM66P" |
 | Vacate | "EZY81QK, vacate left via E5" | "Vacate left via E5, EZY81QK" |
-| Contact Ground | "EZY81QK, contact Ground 121.800" | "Ground 121.800, EZY81QK" |
+| Contact Ground | "EZY81QK, contact Ground 121.560" | "Ground 121.560, EZY81QK" |
 | Line up and wait | "TRA5422, runway 24, line up and wait" | "Runway 24, line up and wait, TRA5422" |
 | Take-off clearance | "TRA5422, wind 200 degrees 12 knots, runway 24, cleared for take-off" | "Runway 24, cleared for take-off, TRA5422" |
 | Cancel take-off | "TRA5422, hold position, cancel take-off, I say again, cancel take-off" | "Holding, TRA5422" |
@@ -85,7 +85,7 @@ New feedback rules (same mechanism as the existing ones):
 - the vacate instruction has no direction or exit;
 - wind is missing from a landing or take-off clearance (info only).
 
-**Data to verify against the eAIP before building:** the 18R exit names and positions, the 24 holding point names, the Ground and Departure frequencies (121.800 and 119.055 above are placeholders), and which frequency Tower West uses.
+**Data to verify against the eAIP before building:** the 18R exit names and positions, the 24 holding point names, and which frequency Tower West uses.
 
 ## 5. Sim changes (core)
 

@@ -125,9 +125,9 @@ out = {
         "approach": {"name": "Schiphol Approach", "mhz": "119.055"},
         "tower": {"name": "Schiphol Tower", "mhz": "118.280"},
         "radar": {"name": "Amsterdam Radar", "mhz": "125.750"},
-        # placeholders (eAIP not reachable to check, see DECISIONS.md); feedback never calls them wrong
-        "ground": {"name": "Schiphol Ground", "mhz": "121.800", "placeholder": True},
-        "departure": {"name": "Schiphol Departure", "mhz": "120.555", "placeholder": True},
+        # from the eAIP, checked by hand 2026-11-17: Ground for 18R (24 has 121.705), Departure primary
+        "ground": {"name": "Schiphol Ground", "mhz": "121.560"},
+        "departure": {"name": "Schiphol Departure", "mhz": "119.055"},
     },
     "airspace": {"floorFt": 0, "ceilingFt": 10000, "poly": [pt(p) for p in osc["airspace"][0]["poly"]]},
     "config": {"landing": "18R", "departure": "24"},

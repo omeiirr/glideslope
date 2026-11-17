@@ -40,13 +40,11 @@
   },
   "ground": {
    "name": "Schiphol Ground",
-   "mhz": "121.800",
-   "placeholder": true
+   "mhz": "121.560"
   },
   "departure": {
    "name": "Schiphol Departure",
-   "mhz": "120.555",
-   "placeholder": true
+   "mhz": "119.055"
   }
  },
  "airspace": {

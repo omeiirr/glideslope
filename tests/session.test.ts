@@ -130,15 +130,15 @@ test('tower: arrival calls, cleared to land, vacates via V3 to Ground; departure
   expect(said(s, /^Runway 18R, cleared to land, KLM1200$/)).toBe(true);
   expect(said(s, /^Runway 24, line up and wait, TRA6015$/)).toBe(true);
   // "when vacated contact Ground", given on final
-  await say(s, 'KLM1200, vacate left via V3, when vacated contact ground 121.800');
+  await say(s, 'KLM1200, vacate left via V3, when vacated contact ground 121.560');
   await settle(s);
-  expect(said(s, /^Vacate left via V3, Schiphol Ground 121.800, KLM1200$/)).toBe(true);
+  expect(said(s, /^Vacate left via V3, Schiphol Ground 121.560, KLM1200$/)).toBe(true);
 
   const dep = s.sim.byCallsign('TRA6015')!;
   await settleUntil(s, () => dep.nav.mode === 'lineup' && dep.nav.ready);
   await say(s, 'TRA6015, runway 24, wind 200 degrees 12 knots, cleared for take-off');
   await settleUntil(s, () => dep.alt > 400);
-  await say(s, 'TRA6015, contact departure 120.555');
+  await say(s, 'TRA6015, contact departure 119.055');
   await settle(s);
   expect(dep.comms).toBe('departure');
   await settleUntil(s, () => !s.sim.byCallsign('KLM1200'));

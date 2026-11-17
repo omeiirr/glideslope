@@ -10,4 +10,7 @@ const files = [
   'node_modules/@diffusionstudio/piper-wasm/build/piper_phonemize.data',
 ];
 for (const f of files) copyFileSync(f, `${out}/${f.split('/').pop()}`);
-console.log(`copied ${files.length} runtime files to ${out}/`);
+// espeak-ng inside the phonemizer is GPL-3.0: its licence and source links travel with it
+for (const f of ['licenses/GPL-3.0.txt', 'licenses/piper_phonemize.NOTICE.txt'])
+  copyFileSync(f, `${out}/${f.split('/').pop()}`);
+console.log(`copied ${files.length} runtime files and their licence notes to ${out}/`);

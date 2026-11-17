@@ -41,7 +41,6 @@
 - Scope draw time with 40 aircraft (headless Chromium, software rendering): ~0.5 ms average, 0.7 ms p95, in both display modes.
 
 ## Known issues
-- espeak-ng (inside the phonemizer WASM) is GPL-3.0: licence compatibility needs a decision before public release (see THIRD_PARTY.md).
 - Holds are direct-entry only.
 - Tower: queued departures stand in a straight line behind the holding point, not along the taxiway. Scenery taxiing has no collision avoidance (two can pass through each other), a departure appears at its stand when it is planned (up to 10 min ahead), at most 8 arrivals stay parked (the oldest vanishes), and a departure the sim plans less than its taxi time ahead (the first, or after a rate change) still just appears at the holding point.
 - Tower: "stop" alone, traffic information and conditional clearances are not parsed. The stand-in Approach has no speed control: compression on the final is absorbed by wider release gaps. Readback errors (Pro) only affect headings, levels and speeds, so tower clearances are always read back right.

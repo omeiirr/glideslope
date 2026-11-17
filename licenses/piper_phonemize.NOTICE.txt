@@ -1,0 +1,14 @@
+piper_phonemize.wasm and piper_phonemize.data
+
+These two files are the phonemizer used for the pilot voices. They are a WebAssembly
+build of piper-phonemize and espeak-ng, made by the piper-wasm project
+(@diffusionstudio/piper-wasm 1.0.0, MIT build scripts).
+
+espeak-ng is licensed under the GNU General Public License version 3 (GPL-3.0); the full
+text is in GPL-3.0.txt next to this file. They are served as separate files that the app
+loads at runtime; they are not compiled into the app's own code, which is MIT licensed.
+
+Source code:
+  espeak-ng       https://github.com/espeak-ng/espeak-ng
+  piper-phonemize https://github.com/rhasspy/piper-phonemize
+  the WASM build  https://github.com/diffusion-studio/piper-wasm

@@ -16,7 +16,7 @@ import type { Command, CommandResult } from './commands/commands';
 import { bearing, dist, headingVec, unproject } from './geo';
 import { Rng } from './rng';
 import { detectConflicts, type Conflict } from './rules/separation';
-import { FEED_KT, FEED_NM, departureWakeS, feedGap } from './rules/tower';
+import { FEED_KT, FEED_NM, SLOW_NM, departureWakeS, feedGap } from './rules/tower';
 import {
   Spawner,
   queueTail,
@@ -265,6 +265,9 @@ export class Sim {
     }
     if (last && FEED_NM - lastAlong < feedGap(last.perf, w.perf)) return;
     w.spawnTime = this.time;
+    // "160 knots until 4 miles final": the same speed for everyone keeps the spacing until then
+    w.tgtIas = FEED_KT;
+    w.speedUntilDme = SLOW_NM;
     this.add(w);
     events.push({ type: 'spawned', ac: w });
     this.waiting = null;

@@ -150,7 +150,7 @@ function foggy(L: Look, fog: string, k: number): Look {
 const SHADOW_MAX_AGL = 160;
 /** Surface colours: a modelled airport, no photo (see docs/design/tower3d.md). */
 const RUNWAY = '#74777a';
-const TAXIWAY = '#8a8d8e';
+const TAXIWAY = '#6e7173';
 const APRON = '#dedbd4';
 /** Land use colours; a list means each polygon picks one (fields in a patchwork, seeded). */
 const LAND: [string, string | string[]][] = [
@@ -666,9 +666,10 @@ export class TowerRenderer {
       terminal: terminalTexture(),
       terminalGlow: terminalGlowTexture(),
       hangar: claddingTexture(),
+      roof: roofTexture(),
     };
     this.disposables.push(...Object.values(tex));
-    add(roofs, { color: '#ffffff', roughness: 0.92 });
+    add(roofs, { color: '#ffffff', map: tex.roof, roughness: 0.92 });
     add(
       walls.terminal,
       { color: '#ffffff', map: tex.terminal, roughness: 0.55, metalness: 0.15 },
@@ -1201,6 +1202,56 @@ function claddingTexture(): THREE.CanvasTexture {
   g.fillStyle = 'rgba(0,0,0,0.08)';
   g.fillRect(0, 30, 64, 3);
   return wallTexture(c, 8, 8);
+}
+
+/**
+ * A flat roof seen from above, tiling every 80 m: membrane strips (2 m) and panel joints (16 m), weathering
+ * blotches, lighter repaired patches and drain stains. Multiplied over the roof tone; mean about 0.93.
+ */
+function roofTexture(): THREE.CanvasTexture {
+  const N = 512;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d')!;
+  let seed = 4242;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  g.fillStyle = '#f2f2f0';
+  g.fillRect(0, 0, N, N);
+  // draw wrapped so the tile repeats without seams
+  const wrapped = (draw: (dx: number, dy: number) => void) => {
+    for (const dx of [-N, 0, N]) for (const dy of [-N, 0, N]) draw(dx, dy);
+  };
+  const px = N / 80; // pixels per metre
+  for (let i = 0; i < 60; i++) {
+    const [x, y, r, a] = [rnd() * N, rnd() * N, (4 + rnd() * 18) * px, 0.03 + rnd() * 0.05];
+    wrapped((dx, dy) => {
+      const gr = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+      gr.addColorStop(0, `rgba(40,38,34,${a})`);
+      gr.addColorStop(1, 'rgba(40,38,34,0)');
+      g.fillStyle = gr;
+      g.fillRect(x + dx - r, y + dy - r, 2 * r, 2 * r);
+    });
+  }
+  for (let i = 0; i < 8; i++) {
+    const [x, y, w, h] = [rnd() * N, rnd() * N, (4 + rnd() * 10) * px, (2 + rnd() * 6) * px];
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    wrapped((dx, dy) => g.fillRect(x + dx, y + dy, w, h));
+  }
+  g.fillStyle = 'rgba(0,0,0,0.05)';
+  for (let x = 0; x < N; x += 2 * px) g.fillRect(Math.round(x), 0, 1, N);
+  g.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let v = 0; v < N; v += 16 * px) {
+    g.fillRect(Math.round(v), 0, 2, N);
+    g.fillRect(0, Math.round(v), N, 2);
+  }
+  for (let i = 0; i < 14; i++) {
+    const [x, y] = [rnd() * N, rnd() * N];
+    g.fillStyle = 'rgba(30,30,30,0.25)';
+    g.beginPath();
+    g.arc(x, y, 0.6 * px, 0, Math.PI * 2);
+    g.fill();
+  }
+  return wallTexture(c, 80, 80);
 }
 
 function wallTexture(c: HTMLCanvasElement, wide: number, tall: number): THREE.CanvasTexture {

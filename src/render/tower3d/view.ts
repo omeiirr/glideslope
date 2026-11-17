@@ -23,7 +23,7 @@ import {
 import { addLight, airportLights, emptyLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
-import { insideRing, parkAircraft, type StandData } from './stands';
+import { insideRing, parkAircraft, serviceVehicles, type StandData } from './stands';
 
 export interface TowerAircraft {
   id: number;
@@ -210,7 +210,7 @@ export class TowerRenderer {
     const sun = new THREE.DirectionalLight('#fff4e2', 6.5);
     // buildings cast shadows onto the ground layers within 3 km of the airport reference point
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     sun.position.set(s.x * 6000, s.y * 6000, s.z * 6000);
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);
@@ -224,6 +224,8 @@ export class TowerRenderer {
     });
     sun.shadow.camera.updateProjectionMatrix();
     sun.shadow.bias = -0.00005;
+    // about one shadow-map texel (1.5 m): no stair-step acne on walls lit at a grazing angle
+    sun.shadow.normalBias = 1.2;
     this.sun = sun;
     this.hemi = new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4);
     this.scene.add(sun, sun.target, this.hemi);
@@ -260,6 +262,7 @@ export class TowerRenderer {
     this.applyLightStage();
     this.poolMat.opacity = 0.8 * L.lights;
     this.poolMat.visible = L.lights > 0;
+    this.applyFloodlight();
     for (const p of this.lightPts) p.visible = L.lights > 0;
   }
 
@@ -271,6 +274,16 @@ export class TowerRenderer {
   }
 
   private lightStage = 4;
+  /** Apron objects (parked aircraft, bridges, vehicles) brightened by the floodlights at dusk and night. */
+  private floodlit: THREE.MeshStandardMaterial[] = [];
+  private applyFloodlight() {
+    for (const m of this.floodlit) {
+      // glow in the material's own colour (and livery), as if lit from the masts
+      m.emissive.copy(m.color).multiply(new THREE.Color('#ffe2bd'));
+      m.emissiveMap = m.map;
+      m.emissiveIntensity = 0.22 * this.look.lights;
+    }
+  }
   private applyLightStage() {
     const k = this.lightStage - 1;
     this.airfieldMat.uniforms.uIntensity!.value = this.look.lights * [0.3, 0.5, 0.75, 1, 1.3][k]!;
@@ -322,7 +335,14 @@ export class TowerRenderer {
       );
     this.layer(lines, YELLOW, -42);
     const { parked, bridges } = parkAircraft(this.ap, data, buildings.buildings, ground.taxiways);
-    const { objects, disposables } = apronObjects(parked, bridges, this.shadowTex);
+    const { objects, disposables, lit } = apronObjects(
+      parked,
+      bridges,
+      serviceVehicles(parked),
+      this.shadowTex,
+    );
+    this.floodlit = lit;
+    this.applyFloodlight();
     this.addFloodlights(data.masts.map((m) => ({ ...llToGround(this.ap, m.p), h: m.h || MAST_H })));
     this.scene.add(...objects);
     this.disposables.push(...disposables);

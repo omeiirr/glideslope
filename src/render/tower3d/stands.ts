@@ -216,3 +216,55 @@ export function parkAircraft(
   }
   return { parked, bridges };
 }
+
+/** A ground service vehicle parked by an aircraft: a box on the apron. */
+export interface Vehicle {
+  x: number;
+  z: number;
+  headingDeg: number;
+  /** Length, width, height (m). */
+  l: number;
+  w: number;
+  h: number;
+  color: string;
+}
+
+/** Tug, belt loader, catering truck, fuel truck: length, width, height (m), and the usual colours. */
+const VEHICLES = [
+  { l: 4.5, w: 2.3, h: 1.7, colors: ['#f2f2ee', '#e5c03a'] },
+  { l: 8, w: 2.2, h: 2.2, colors: ['#f2f2ee', '#d9dcdf'] },
+  { l: 9, w: 2.5, h: 4, colors: ['#f2f2ee'] },
+  { l: 10, w: 2.5, h: 3.2, colors: ['#f2f2ee', '#c9ccce'] },
+];
+
+/**
+ * Service vehicles around most parked aircraft (seeded): a tug at the nose, and on the right side (the bridge
+ * is on the left) a belt loader at the front hold and a truck at the rear, each only some of the time.
+ */
+export function serviceVehicles(parked: Parked[], seed = 77): Vehicle[] {
+  const rng = new Rng(seed);
+  const out: Vehicle[] = [];
+  for (const p of parked) {
+    if (rng.next() > 0.7) continue;
+    const T = airframe(p.type);
+    const { fwd, right } = axes(p.headingDeg);
+    const c = { x: p.x, z: p.z };
+    const r = T.d / 2;
+    const put = (along: number, side: number, kind: number, turn: number) => {
+      const v = VEHICLES[kind]!;
+      const at = add(add(c, fwd, along), right, side);
+      out.push({
+        ...at,
+        headingDeg: (p.headingDeg + turn + 360) % 360,
+        l: v.l,
+        w: v.w,
+        h: v.h,
+        color: rng.pick(v.colors),
+      });
+    };
+    if (rng.next() < 0.6) put(T.len / 2 + 4, 0, 0, 0);
+    if (rng.next() < 0.7) put(T.len * 0.2, r + 2.5, 1, 20);
+    if (rng.next() < 0.6) put(-T.len * 0.25, r + 3.5, rng.next() < 0.5 ? 2 : 3, 0);
+  }
+  return out;
+}

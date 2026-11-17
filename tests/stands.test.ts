@@ -10,6 +10,7 @@ import {
   outline,
   parkAircraft,
   quadsOverlap,
+  serviceVehicles,
   type StandData,
 } from '../src/render/tower3d/stands';
 
@@ -47,4 +48,17 @@ test('parked aircraft: most stands used, none overlapping, none in a building or
 
   // bridges are short and start at a wall
   for (const b of bridges) expect(Math.hypot(b.a.x - b.b.x, b.a.z - b.b.z)).toBeLessThan(41);
+});
+
+test('service vehicles: seeded, next to their aircraft, never inside a building', () => {
+  const { parked } = run();
+  const v = serviceVehicles(parked);
+  expect(v.length).toBeGreaterThan(parked.length * 0.6);
+  expect(serviceVehicles(parked)).toEqual(v);
+  const rings = B.filter((b) => !b.mh && b.s !== 'plain').map((b) => b.r.map((p) => llToGround(EHAM, p)));
+  const bad = v.filter((x) => rings.some((r) => insideRing(x, r)));
+  // a few may sit by an aircraft whose nose is close to a pier; none should be deep inside one
+  expect(bad.length).toBeLessThan(v.length * 0.03);
+  for (const x of v)
+    expect(Math.min(...parked.map((p) => Math.hypot(p.x - x.x, p.z - x.z)))).toBeLessThan(45);
 });

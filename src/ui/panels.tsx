@@ -440,6 +440,13 @@ export function RadioPanel({
             <span class="dim">Frequency clear{r.waiting ? ` · ${r.waiting} waiting` : ''}</span>
           )}
         </div>
+        <div class="handoffs" aria-label="Hand-off frequencies">
+          {session.handoffs.map((f) => (
+            <span key={f.mhz + f.short}>
+              <span class="dim">{f.short}</span> <b class="mono">{f.mhz}</b>
+            </span>
+          ))}
+        </div>
         {r.current && !r.playerKeyed && session.mode === 'pro' && (
           <div class="dim" style="font-size:11px">
             Frequency busy: you'll block {r.current.from} if you transmit now.

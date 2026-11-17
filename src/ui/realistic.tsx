@@ -177,6 +177,9 @@ export function RealisticLog({
         );
       })}
       <span style="color:#828282;font-size:11px">
+        {session.handoffs.map((f) => `${f.short.toUpperCase()} ${f.mhz}`).join(' · ')}
+      </span>
+      <span style="color:#828282;font-size:11px">
         {voice.status === 'off' ? 'VOICE OFF' : `VOICE ${voice.status.toUpperCase()}`} · PTT{' '}
         {settings.pttKey.toUpperCase()} · ENTER TO TYPE
         {session.radio.current ? ` · ${session.radio.current.from} TRANSMITTING` : ''}

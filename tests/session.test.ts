@@ -270,3 +270,11 @@ test('tower: go-around with the runway free is noted; Beginner warns before a cl
   expect(s.warning(s.hear('KLM1717, cleared for take-off runway 2'))).toBeNull();
   expect(s.warning(s.hear('KLM1200, cleared to land runway 1'))).toBeNull();
 });
+
+test('hand-off frequencies on the desk: Ground and Departure in the tower, Tower and Radar at Approach', () => {
+  expect(towerSession('beginner').handoffs.map((f) => `${f.short} ${f.mhz}`)).toEqual([
+    'Ground 121.560',
+    'Departure 119.055',
+  ]);
+  expect(pro().handoffs.map((f) => `${f.short} ${f.mhz}`)).toEqual(['Tower 118.280', 'Radar 125.750']);
+});

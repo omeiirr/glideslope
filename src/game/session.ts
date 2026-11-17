@@ -179,6 +179,14 @@ export class Session {
   get station() {
     return this.tower ? EHAM.frequencies.tower : EHAM.frequencies.approach;
   }
+  /** Where the player hands aircraft on to: Ground and Departure in the tower, Tower and Radar at Approach. */
+  get handoffs() {
+    const f = EHAM.frequencies;
+    return (this.tower ? [f.ground, f.departure] : [f.tower, f.radar]).map((x) => ({
+      ...x,
+      short: x.name.replace(/^\S+ /, ''), // "Schiphol Ground" → "Ground"
+    }));
+  }
   get selected(): Readonly<Aircraft> | undefined {
     return this.selectedId === null ? undefined : this.sim.byId(this.selectedId);
   }

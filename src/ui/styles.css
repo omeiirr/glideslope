@@ -340,6 +340,11 @@ button {
 .radio-head .panel-title {
   padding: 0;
 }
+.handoffs {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+}
 .tx {
   display: flex;
   align-items: center;

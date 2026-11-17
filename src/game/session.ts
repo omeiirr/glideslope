@@ -231,7 +231,10 @@ export class Session {
     while (this.acc >= TICK && steps++ < 64) {
       this.acc -= TICK;
       this.spawnDue();
-      for (const e of this.sim.step()) this.onEvent(e);
+      for (const e of this.sim.step()) {
+        this.onEvent(e);
+        for (const l of this.eventListeners) l(e);
+      }
       if (Math.round(this.sim.time / TICK) % 4 === 0) this.housekeeping();
     }
     if (steps) this.changed();
@@ -356,6 +359,13 @@ export class Session {
     this.changed();
   }
 
+  private eventListeners: ((e: SimEvent) => void)[] = [];
+  /** Hear every sim event after the session has handled it (sounds); returns the unsubscribe. */
+  listen(fn: (e: SimEvent) => void): () => void {
+    this.eventListeners.push(fn);
+    return () => (this.eventListeners = this.eventListeners.filter((l) => l !== fn));
+  }
+
   private spoken(cs: string) {
     return spokenCallsign(cs, EHAM.airlines);
   }
@@ -420,6 +430,11 @@ export class Session {
         break;
       case 'goAround':
         s.goArounds++;
+        // Approach: the Tower coordinates a missed approach on the landline before the pilot calls back
+        if (!this.tower && e.ac.kind === 'arrival')
+          this.system(
+            `Tower (landline): ${e.ac.callsign} going around, runway heading, ${EHAM.missedApproachAltFt} feet.`,
+          );
         this.pilotSays(
           e.ac.callsign,
           { text: `Going around, ${e.ac.callsign}`, speech: `Going around, ${this.spoken(e.ac.callsign)}` },

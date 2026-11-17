@@ -3,6 +3,7 @@ import { EHAM } from '../core';
 import type { Session } from '../game/session';
 import { fitRange, hitTest, type HitMap, type Scene, type View } from '../render/common';
 import { drawModern } from '../render/modern/scope';
+import { sounds } from '../sound/sounds';
 import { drawRealistic, type RealisticOptions } from '../render/realistic/scope';
 
 interface Props {
@@ -57,18 +58,24 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
         showConflicts: s.mode === 'beginner' || !real,
         isNew: (cs) => !s.wasContacted(cs),
       };
+      // conflict alert: predicted conflicts chime only where the scope shows them
+      sounds.room(
+        scene.showConflicts ? s.sim.conflicts : s.sim.conflicts.filter((c) => c.kind !== 'predicted'),
+      );
       const t0 = performance.now();
       hit.current = real
         ? drawRealistic(ctx, view.current, scene, EHAM, opts)
         : drawModern(ctx, view.current, scene, EHAM);
       // dev-only hooks for performance checks and debugging
-      if (import.meta.env.DEV) Object.assign(window, { __vectors: s, __drawMs: performance.now() - t0 });
+      if (import.meta.env.DEV)
+        Object.assign(window, { __vectors: s, __drawMs: performance.now() - t0, __sounds: sounds });
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      sounds.stop();
     };
   }, []);
 

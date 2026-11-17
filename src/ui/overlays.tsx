@@ -247,6 +247,25 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
         </label>
         {toggle('radioFx', 'Radio effect', 'Band-pass, light distortion, noise and squelch clicks.')}
 
+        <h2>Sounds</h2>
+        <label class="form-row">
+          <span>
+            Sound effects
+            <small>
+              Engines and the cab in the tower view; the room, conflict alerts and the landline at the radar.
+              0 is off.
+            </small>
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={s.sfxVolume}
+            onInput={(e) => onChange({ sfxVolume: +(e.target as HTMLInputElement).value })}
+          />
+        </label>
+
         <h2>Game</h2>
         {select('display', 'Display', [
           ['modern', 'Modern'],

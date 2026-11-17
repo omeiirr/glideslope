@@ -7,6 +7,8 @@ export interface Settings {
   tts: 'piper' | 'system' | 'off';
   ttsVolume: number;
   radioFx: boolean;
+  /** Sound effects (engines, cab and room, alerts), 0 = off. */
+  sfxVolume: number;
   feedback: 'off' | 'errors' | 'all';
   /** Pro mode: probability of a wrong readback, 0..0.3. */
   readbackErrorRate: number;
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tts: 'piper',
   ttsVolume: 0.8,
   radioFx: true,
+  sfxVolume: 0.6,
   feedback: 'all',
   readbackErrorRate: 0.05,
   freeRate: 12,

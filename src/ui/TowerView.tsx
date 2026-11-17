@@ -1,6 +1,8 @@
 import type { ComponentChild } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { DEG, EHAM, FT_PER_NM, TICK, dist, runwayById, type Aircraft } from '../core';
+import { DEG, EHAM, FT_PER_NM, TICK, dist, isOnGround, runwayById, type Aircraft } from '../core';
+import { thrustOf } from '../sound/model';
+import { sounds } from '../sound/sounds';
 import { CLEAR_VIS, visibilityText, type Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition, toWorld } from '../render/tower3d/math';
 import type { BuildingData, GroundData, LandData } from '../render/tower3d/ground';
@@ -71,6 +73,8 @@ export function TowerView({
   const radarCanvas = useRef<HTMLCanvasElement>(null);
   const radar = useRef<GroundRadar | null>(null);
   const groundTraffic = useRef<GroundTraffic | null>(null);
+  /** Parked scenery aircraft (world m): the nearest one's APU is heard in the cab. */
+  const parkedRef = useRef<{ x: number; z: number }[]>([]);
   const [cabId, setCabId] = useState(
     () => (EHAM.towers.find((t) => t.runways.includes(EHAM.config.landing)) ?? EHAM.towers[0]!).id,
   );
@@ -148,6 +152,22 @@ export function TowerView({
           s.sim.plannedDepartures(),
           tail && { pos: { x: toWorld(tail.pos).x, z: toWorld(tail.pos).z }, face: tail.face },
         ) ?? [];
+      sounds.cab({
+        eye,
+        emitters: [
+          ...s.sim.aircraft.map((ac, i) => ({
+            id: ac.id,
+            pos: list[i]!.pose.pos,
+            type: ac.type,
+            ...thrustOf({ phase: ac.phase, ias: ac.ias, onGround: isOnGround(ac) }),
+          })),
+          ...ghosts.map((g) => ({ id: g.id, pos: g.pose.pos, type: g.type, power: null })),
+        ],
+        windKt: s.sim.env.wind.speed,
+        visM: s.visibilityM,
+        apronM: Math.min(Infinity, ...parkedRef.current.map((p) => Math.hypot(p.x - eye.x, p.z - eye.z))),
+        paused: s.paused,
+      });
       let bearing = c.viewBearing + look.current.yaw;
       let depression = look.current.depression;
       // binoculars follow the selected aircraft
@@ -188,6 +208,7 @@ export function TowerView({
           __towerMs: performance.now() - t0,
           __towerStats: renderer!.stats,
           __ghosts: ghosts,
+          __sounds: sounds,
           __look: look.current,
         });
       // Realistic: a bracket round the selected aircraft instead of its label
@@ -268,6 +289,7 @@ export function TowerView({
         renderer.loadBuildings(buildings);
         renderer.loadSurfaces(ground);
         const parked = renderer.loadApron(stands, buildings, ground);
+        parkedRef.current = parked;
         const rings = buildingRings(EHAM, buildings.buildings);
         const oriented = orientStands(EHAM, stands, rings);
         const { graph, standNode, standEntry } = buildTaxiGraph(EHAM, ground.taxiways, oriented);
@@ -300,6 +322,20 @@ export function TowerView({
       rendererRef.current = null;
     };
   }, []);
+
+  // tyres at touchdown; the cab falls silent when the view closes
+  useEffect(() => {
+    const off = session.listen((e) => {
+      if (e.type !== 'landed') return;
+      const eye = eyePosition(live.current.cab);
+      const p = toWorld(e.ac.pos);
+      sounds.touchdown(Math.hypot(p.x - eye.x, p.z - eye.z, eye.y));
+    });
+    return () => {
+      off();
+      sounds.stop();
+    };
+  }, [session]);
 
   // keys: 1/2 cab, hold B binoculars, arrows look. Never while typing.
   useEffect(() => {

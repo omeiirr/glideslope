@@ -5,6 +5,7 @@ import { Session, type LogEntry } from '../game/session';
 import { DEFAULT_SETTINGS, load, save, type Settings } from '../game/settings';
 import { DEFAULT_DCB } from '../render/realistic/scope';
 import { Tts } from '../speech/tts';
+import { sounds } from '../sound/sounds';
 import { VoiceInput } from '../speech/voiceInput';
 import { useSession } from './hooks';
 import { Learn } from './learn';
@@ -54,6 +55,7 @@ export function App() {
       void voice.enable(next);
     } else if (p.voice === false) voice.disable();
     if (p.tts === 'piper') tts.unlock();
+    if (p.sfxVolume !== undefined) sounds.setVolume(p.sfxVolume);
   };
 
   const start = (sc: Scenario) => {
@@ -66,6 +68,8 @@ export function App() {
     s.radio.speak = tts.speak;
     s.radio.prepare = tts.prepare;
     tts.unlock(); // we are inside a click: audio may start now
+    sounds.setVolume(settings.sfxVolume);
+    sounds.unlock();
     if (settings.voice && voice.state.status === 'off') void voice.enable(settings);
     setDraft('');
     setSession(s);
@@ -114,6 +118,12 @@ export function App() {
       window.removeEventListener('blur', blur);
     };
   }, []);
+
+  // Approach: a go-around is coordinated by Tower on the landline (the log says what was said)
+  useEffect(() => {
+    if (!session || session.tower) return;
+    return session.listen((e) => e.type === 'goAround' && e.ac.kind === 'arrival' && sounds.landline());
+  }, [session]);
 
   // Record results when a session ends.
   useEffect(() => {

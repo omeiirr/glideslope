@@ -63,6 +63,7 @@ You work from either of the two real cabs: **Tower West** for 18R (key `1`) or t
 - **Light and weather:** switch between day, dusk and night, and lower the visibility for fog.
 - **On the desk:** strip bays (Arrivals, On runway, Departures) and a ground radar.
 - **The scenery:** the airport, the land around it and the buildings are drawn from OpenStreetMap. Parked aircraft fill the stands, and scenery traffic taxis between the stands and the runways.
+- **Sound:** engines, touchdowns and the cab itself are synthesised in the browser (no sound files). The radar room has its own sounds: a conflict chime and the landline from Tower. One volume control in Settings.
 - **Getting started:** four short lessons in the Tower menu group teach the basics. Free play and four Pro scenarios follow, including fog at dusk.
 
 The 3D view downloads about 2 MB of airport data the first time you open it. The radar game doesn't need it.

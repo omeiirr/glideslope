@@ -5,6 +5,7 @@ import type { Settings } from '../game/settings';
 import { RULE_TEXT, chip } from '../phraseology/phrases';
 import type { ParseResult } from '../phraseology/parser';
 import type { VoiceState } from '../speech/voice';
+import { sounds } from '../sound/sounds';
 import { hhmmss } from './hooks';
 
 const Icon = ({ d, size = 14 }: { d: string; size?: number }) => (
@@ -188,6 +189,7 @@ export function Strips({ session }: { session: Session }) {
     const ids = sorted.map((a) => a.id).filter((x) => x !== id);
     ids.splice(Math.max(0, Math.min(ids.length, toIndex)), 0, id);
     setOrder(ids);
+    sounds.click();
   };
 
   const strip = (ac: Readonly<Aircraft>, n: number | null) => {

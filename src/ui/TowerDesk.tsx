@@ -1,6 +1,8 @@
 import type { Ref } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { EHAM, dist, isOnGround, runwayById, type Aircraft } from '../core';
 import type { Session } from '../game/session';
+import { sounds } from '../sound/sounds';
 import { RADAR_RANGE_NM, type RadarTarget } from '../render/groundradar';
 
 type Ac = Readonly<Aircraft>;
@@ -109,6 +111,18 @@ export function TowerDesk({
 }) {
   const { arrivals, onRunway, departures, land, dep } = towerBays(session);
   const hold = dep.entry?.name;
+  // a strip moving to another bay clicks
+  const bayOf = new Map([
+    ...arrivals.map((a) => [a.id, 0] as const),
+    ...onRunway.map((a) => [a.id, 1] as const),
+    ...departures.map((a) => [a.id, 2] as const),
+  ]);
+  const lastBays = useRef(bayOf);
+  useEffect(() => {
+    if ([...bayOf].some(([id, b]) => lastBays.current.has(id) && lastBays.current.get(id) !== b))
+      sounds.click();
+    lastBays.current = bayOf;
+  });
 
   const strip = (ac: Ac) => {
     const state = stripState(ac, session);

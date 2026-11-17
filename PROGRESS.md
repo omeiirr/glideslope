@@ -36,10 +36,12 @@
 - **Hold entries (2026-11-17)**: holds now pick the ICAO entry from the heading over the fix: parallel (fly the outbound heading on the non-holding side for a minute, turn left back to the fix), teardrop (30° off the outbound heading into the holding side for a minute, turn right inbound) or direct. Test flies all three into ARTIP and checks the side of the entry leg.
 - **Taxiing and queue (2026-11-18)**: the departure queue at S7E runs along the taxiway (data: `entry.queue`). Scenery aircraft hold for traffic ahead, appear and vanish only out of view, departures reach the queue a minute early and move up with it, and a late-planned departure starts part-way along its route instead of appearing in the queue. Tests for the queue line, holding and placement out of view.
 - **Tower look (2026-11-18)**: ditch lines round the fields near the cabs, 1,681 OSM buildings outside the fence within 4 km of a cab, blue taxiway edge lights. README has a tower section with day and night screenshots.
+- **Sounds and voice (2026-11-18)**: synthesised sound effects (tower cab: engines, touchdown, reverse thrust, go-around power, APU, air conditioning, wind, rain; radar room: room tone, conflict chime, Tower landline on go-arounds; strip clicks), with a volume setting. Whisper's tower prompt now in ICAO order (runway, then the clearance), after "cleared to land" was heard as "cleared for take-off".
 ## Next
 0. **T5:** tower screen: ~~desk with strip bays and a ground radar~~ (done), ~~dusk and night~~ (done), ~~low visibility and the fog-at-dusk Pro scenario~~ (done), ~~Realistic variant~~ (done). (Smoothness on real hardware not yet reported: in dev builds `__towerMs` and `__towerStats` are on `window`.)
 0a. **Check against the eAIP** (eaip.lvnl.nl blocks automated access): exit names V1–V4 and S7E. (Frequencies: done, from the user 2026-11-17.)
 1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
+1a. **Try by voice:** "runway 18R, cleared to land" in the tower lessons (the prompt fix is only tested with synthetic voices); and listen to the sound levels.
 2. Voice on machines without fast WebGPU: Whisper tiny takes about 2 s per command on one CPU thread. Try Moonshine tiny (IDEAS.md) with a recorded test set.
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
 

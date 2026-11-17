@@ -3,6 +3,7 @@ import { scenarioById } from '../src/game/scenarios';
 import { Session } from '../src/game/session';
 import { DEFAULT_SETTINGS } from '../src/game/settings';
 import type { Scenario } from '../src/game/scenarios';
+import type { SimEvent } from '../src/core';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -28,6 +29,26 @@ test('typed command → readback → aircraft flies it', async () => {
   expect(ac.tgtHdg).toBe(180);
   expect(s.log.some((e) => e.kind === 'pilot' && e.text === 'Left heading 180, KLM1426')).toBe(true);
   expect(s.stats.phraseSum).toBe(100);
+});
+
+test('Approach: a go-around Tower starts comes with a landline call; listeners hear the sim events', async () => {
+  const t = towerSession('beginner');
+  const heard: string[] = [];
+  const off = t.listen((e) => heard.push(e.type));
+  await settle(t, 30000);
+  expect(heard).toContain('checkIn');
+  off();
+  const s = pro();
+  const ac = s.sim.byCallsign('KLM1426')!;
+  // the sim only starts go-arounds near the runway; hand the session the event directly
+  (s as unknown as { onEvent(e: SimEvent): void }).onEvent({
+    type: 'goAround',
+    ac,
+    reason: 'runwayOccupied',
+  });
+  expect(
+    s.log.some((e) => e.kind === 'system' && /^Tower \(landline\): KLM1426 going around/.test(e.text)),
+  ).toBe(true);
 });
 
 test('unknown callsign: no action, someone asks "say again"', async () => {

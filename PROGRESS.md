@@ -1,6 +1,6 @@
 # Progress
 
-## Current milestone: M9 Tower mode, step T4 done (M8 remaining items need a human)
+## Current milestone: M9 Tower mode done, T1–T6 (left: checks that need a human, see Next)
 
 ## Done
 - **M0 Scaffold** — Vite + TS strict + Preact + Vitest + ESLint/Prettier, CI + Pages workflows, app shell.
@@ -34,10 +34,11 @@
 - **Stand-in Approach speed control (2026-11-17)**: arrivals are released onto the final with "160 knots until 4 miles final" (Schiphol practice), so only the last 4 NM compress. The release gap is now worked out in time (follower reaches 0.2 NM no earlier than the leader's runway occupancy plus 25 s after its touchdown) instead of a distance estimate that only held at 180 kt. A Tower that only clears to land still never gets a go-around (all type mixes, wind, Pro rules); throughput unchanged (59-62 landings in 2 h at 40/h offered).
 - **Tower readback errors (2026-11-17)**: in Pro, landing, line-up and take-off readbacks can name the wrong runway (left/right swapped, or the number off by two: 18R → 18L, 24 → 22), and a vacate readback the next exit (V3 → V2 or V4), which the pilot then really takes. Caught the usual way ("negative", or repeating the clearance). Session test plays one caught and one missed.
 - **Hold entries (2026-11-17)**: holds now pick the ICAO entry from the heading over the fix: parallel (fly the outbound heading on the non-holding side for a minute, turn left back to the fix), teardrop (30° off the outbound heading into the holding side for a minute, turn right inbound) or direct. Test flies all three into ARTIP and checks the side of the entry leg.
+- **Taxiing and queue (2026-11-18)**: the departure queue at S7E runs along the taxiway (data: `entry.queue`). Scenery aircraft hold for traffic ahead, appear and vanish only out of view, departures reach the queue a minute early and move up with it, and a late-planned departure starts part-way along its route instead of appearing in the queue. Tests for the queue line, holding and placement out of view.
+- **Tower look (2026-11-18)**: ditch lines round the fields near the cabs, 1,681 OSM buildings outside the fence within 4 km of a cab, blue taxiway edge lights. README has a tower section with day and night screenshots.
 ## Next
 0. **T5:** tower screen: ~~desk with strip bays and a ground radar~~ (done), ~~dusk and night~~ (done), ~~low visibility and the fog-at-dusk Pro scenario~~ (done), ~~Realistic variant~~ (done). (Smoothness on real hardware not yet reported: in dev builds `__towerMs` and `__towerStats` are on `window`.)
 0a. **Check against the eAIP** (eaip.lvnl.nl blocks automated access): exit names V1–V4 and S7E. (Frequencies: done, from the user 2026-11-17.)
-0b. Tower look extras, any time: field edges near Tower West, buildings outside the fence, taxiway edge lights and apron masts.
 1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
 2. Voice on machines without fast WebGPU: Whisper tiny takes about 2 s per command on one CPU thread. Try Moonshine tiny (IDEAS.md) with a recorded test set.
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
@@ -46,6 +47,6 @@
 - Scope draw time with 40 aircraft (headless Chromium, software rendering): ~0.5 ms average, 0.7 ms p95, in both display modes.
 
 ## Known issues
-- Tower: queued departures stand in a straight line behind the holding point, not along the taxiway. Scenery taxiing has no collision avoidance (two can pass through each other), a departure appears at its stand when it is planned (up to 10 min ahead), at most 8 arrivals stay parked (the oldest vanishes), and a departure the sim plans less than its taxi time ahead (the first, or after a rate change) still just appears at the holding point.
+- Tower: scenery aircraft that block each other for over 2 minutes pass through each other. The out-of-view check is the view cone only (no buildings), so it is cautious: nothing appears inside the cone, even behind a building.
 - Tower: a misheard runway in a readback is not flown (the sim has no other runway); it only counts if uncaught.
 - Wake spacing between departures applies in tower mode only; the stand-in tower in Approach mode launches without it.

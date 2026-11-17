@@ -209,7 +209,8 @@ export function readback(
   cmds.forEach((cmd, i) => {
     if (cmd.type === 'identify' || cmd.type === 'sayAgain') return;
     const why = refusals[i];
-    parts.push(why ? both(why) : element(cmd, env, ac, true));
+    // refusals are written for the log ("runway 18R"): spell them for the voice ("runway one eight right")
+    parts.push(why ? both(why, spokenDesc(why)) : element(cmd, env, ac, true));
   });
   if (!parts.length) parts.push(both('roger'));
   const cs = both(callsign, spokenCallsign(callsign, env.airport.airlines));

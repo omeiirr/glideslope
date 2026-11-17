@@ -27,6 +27,13 @@ test('readback: refused element becomes "unable"', () => {
   const rb = readback('BAW432', [{ type: 'speed', speed: 100 }], env, ac, ['unable, minimum speed 140']);
   expect(rb.text).toBe('Unable, minimum speed 140, BAW432');
   expect(rb.speech).toContain('Speedbird four three two');
+  // spoken digit by digit, runways as "one eight right" (TTS read "18R" as "eighteen R")
+  expect(rb.speech).toContain('minimum speed one four zero');
+  const neg = readback('KLM1200', [{ type: 'takeoff', runway: '24' }], env, ac, [
+    'negative, approaching runway 18R',
+  ]);
+  expect(neg.text).toBe('Negative, approaching runway 18R, KLM1200');
+  expect(neg.speech).toMatch(/^Negative, approaching runway one eight right, /);
 });
 
 test('canonical controller phrases', () => {

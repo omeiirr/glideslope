@@ -26,8 +26,14 @@ export interface LandData {
   /** Land use by class: farm, residential, industrial, forest, park, greenhouse, water. */
   land: Record<string, Polygon[]>;
   roads: { w: number; pts: LatLon[] }[];
-  /** Height in metres, kind (OSM building value), outer ring. */
-  buildings: { h: number; k: string; r: LatLon[] }[];
+}
+
+/** How a building is drawn: glass-banded terminal and piers, clad hangars and sheds, offices, plain. */
+export type BuildingStyle = 'terminal' | 'hangar' | 'office' | 'plain';
+
+/** Airport buildings (public/tower/buildings.json): heights in metres, mh = base above the ground. */
+export interface BuildingData {
+  buildings: { h: number; mh?: number; s: BuildingStyle; r: LatLon[] }[];
 }
 
 export interface P2 {

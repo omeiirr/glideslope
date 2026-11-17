@@ -7,17 +7,12 @@ Contents (coordinates [lat, lon], 6 decimals, about 0.1 m):
   land       {class: [polygon, ...]}: farmland, residential, industrial, forest, park, greenhouse, water
              simplified to 6 m, polygons under 1500 m2 dropped
   roads      motorways and trunk roads: {w, pts}
-  buildings  inside the aerodrome: {h (m), k (kind), r (outer ring)}; height from height, else
-             building:levels x 3.5 m, else a default per kind
+The airport buildings are built separately by scripts/build-tower-buildings.py.
 
-Usage: python3 scripts/build-tower-land.py bld.json near-south.json near-north.json far.json
+Usage: python3 scripts/build-tower-land.py near-south.json near-north.json far.json
 The inputs are Overpass responses (POST to https://overpass-api.de/api/interpreter, one at a time;
-the server is often busy, so retry with backoff). Buildings are only taken from the first file.
+the server is often busy, so retry with backoff).
 
-  bld   [out:json][timeout:180];
-        rel["aeroway"="aerodrome"]["icao"="EHAM"];map_to_area->.a;
-        (way["building"](area.a);relation["building"](area.a);way["man_made"="storage_tank"](area.a););
-        out geom;
   near  [out:json][timeout:300];
         (way["landuse"~"^(farmland|residential|industrial|commercial|retail|forest|meadow|grass|
           greenhouse_horticulture|recreation_ground|allotments|construction|railway)$"](BB);
@@ -112,41 +107,15 @@ def land_class(t):
     if t.get("leisure") in ("park", "golf_course"): return "park"
     return LAND.get(t.get("landuse"))
 
-# default heights (m) when OSM has neither height nor levels
-DEFAULT_H = {"hangar": 22, "terminal": 18, "airport_terminal": 18, "office": 18, "commercial": 14, "industrial": 10, "warehouse": 10,
-             "transportation": 14, "parking": 12, "hotel": 30, "roof": 8, "storage_tank": 14}
-
-def height(t):
-    for key in ("height", "building:height"):
-        try: return float(t[key].split()[0])
-        except (KeyError, ValueError): pass
-    try: return float(t["building:levels"]) * 3.5 + float(t.get("roof:levels", 0)) * 2
-    except (KeyError, ValueError): pass
-    return None
-
 files = sys.argv[1:]
 if len(files) < 3: sys.exit(__doc__)
-out = {"source": "OpenStreetMap (Overpass API)", "licence": "ODbL 1.0", "land": {}, "roads": [], "buildings": []}
+out = {"source": "OpenStreetMap (Overpass API)", "licence": "ODbL 1.0", "land": {}, "roads": []}
 seen = set()
-stats = {"tagged": 0, "default": 0}
 for f in files:
     for e in json.load(open(f))["elements"]:
         if (e["type"], e["id"]) in seen: continue  # quadrant overlaps come back twice
         seen.add((e["type"], e["id"]))
         t = e.get("tags", {})
-        # buildings only from the first file (inside the fence); land-use ways can carry a building tag too
-        if f == files[0] and ("building" in t or t.get("man_made") == "storage_tank"):
-            rings = relation_polygons(e) if e["type"] == "relation" else [[pts(e.get("geometry", []))]]
-            h = height(t)
-            kind = "storage_tank" if t.get("man_made") == "storage_tank" else t["building"]
-            stats["tagged" if h else "default"] += 1
-            h = h or DEFAULT_H.get(kind, 9)
-            for poly in rings:
-                r = poly[0]
-                if not closed(r) or area(r) < 30: continue
-                r = simplify(r, 0.7)
-                if len(r) >= 4: out["buildings"].append({"h": round(h, 1), "k": kind, "r": r})
-            continue
         if t.get("highway") in ("motorway", "trunk"):
             g = simplify(pts(e["geometry"]), 3)
             w = 3.5 * int(t.get("lanes", "2").split(";")[0] or 2) + 4 if t.get("oneway") == "yes" else 30
@@ -161,5 +130,4 @@ for f in files:
             if len(rings[0]) >= 4: out["land"].setdefault(c, []).append([r for r in rings if len(r) >= 4])
 
 json.dump(out, open(OUT, "w"), separators=(",", ":"))
-print({k: len(v) for k, v in out["land"].items()}, "roads", len(out["roads"]), "buildings", len(out["buildings"]),
-      "heights from OSM/default", stats, "->", OUT)
+print({k: len(v) for k, v in out["land"].items()}, "roads", len(out["roads"]), "->", OUT)

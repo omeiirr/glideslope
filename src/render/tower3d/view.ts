@@ -13,6 +13,8 @@ import {
   softBand,
   runwayMarkings,
   runwaySurface,
+  type BuildingData,
+  type BuildingStyle,
   type Designator,
   type GroundData,
   type LandData,
@@ -21,7 +23,7 @@ import {
 import { airportLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
-import { parkAircraft, type StandData } from './stands';
+import { insideRing, parkAircraft, type StandData } from './stands';
 
 export interface TowerAircraft {
   id: number;
@@ -132,8 +134,20 @@ const LAND: [string, string | string[]][] = [
   ['water', '#5d7f97'],
 ];
 const ROAD = '#6e7173';
-/** Building kinds drawn without window bands. */
-const PLAIN = new Set(['hangar', 'storage_tank', 'industrial', 'warehouse', 'roof', 'service', 'shed']);
+/** Roof tone per building style (varied per building), well below the walls so roofs read from the cab. */
+const ROOF: Record<BuildingStyle, string> = {
+  terminal: '#b3b6b7',
+  hangar: '#a6aaad',
+  office: '#9f9e99',
+  plain: '#c4c3bf',
+};
+/** Wall tints per style, one picked per building (multiplied over the facade texture). */
+const WALL: Record<BuildingStyle, string[]> = {
+  terminal: ['#ffffff', '#f2f4f5', '#e9eef1'],
+  hangar: ['#ffffff', '#e4ebf1', '#dfe6ec', '#f1ece2', '#d7dfe5'],
+  office: ['#ffffff', '#f1efe9', '#e6e3dc'],
+  plain: ['#ffffff'],
+};
 const WHITE_PAINT = '#f4f4f0';
 const YELLOW = '#e8c23a';
 
@@ -154,7 +168,8 @@ export class TowerRenderer {
   private skyGeo!: THREE.SphereGeometry;
   private clouds: THREE.SpriteMaterial[] = [];
   private env: THREE.Texture | null = null;
-  private glazed: THREE.MeshStandardMaterial | null = null;
+  /** Wall materials with lit windows at dusk and night. */
+  private glazed: THREE.MeshStandardMaterial[] = [];
   private lightMat = lightMaterial();
   private lightPts: THREE.Points[] = [];
   private look: Look = LOOKS.day;
@@ -226,7 +241,7 @@ export class TowerRenderer {
       m.color.set(L.cloud[0]);
       m.opacity = L.cloud[1];
     }
-    if (this.glazed) this.glazed.emissiveIntensity = L.windows;
+    for (const m of this.glazed) m.emissiveIntensity = L.windows;
     this.lightMat.uniforms.uIntensity!.value = L.lights;
     for (const p of this.lightPts) p.visible = L.lights > 0;
   }
@@ -267,7 +282,7 @@ export class TowerRenderer {
   }
 
   /** Stand lead-in lines, parked aircraft and jet bridges (scenery, not in the sim). */
-  loadApron(data: StandData, land: LandData, ground: GroundData) {
+  loadApron(data: StandData, buildings: BuildingData, ground: GroundData) {
     const lines: number[] = [];
     for (const s of data.stands)
       ribbon(
@@ -276,7 +291,7 @@ export class TowerRenderer {
         lines,
       );
     this.layer(lines, YELLOW, -42);
-    const { parked, bridges } = parkAircraft(this.ap, data, land.buildings, ground.taxiways);
+    const { parked, bridges } = parkAircraft(this.ap, data, buildings.buildings, ground.taxiways);
     const { objects, disposables } = apronObjects(parked, bridges, this.shadowTex);
     this.scene.add(...objects);
     this.disposables.push(...disposables);
@@ -404,7 +419,7 @@ export class TowerRenderer {
     this.addFlat(geo, '#ffffff', order, map, true);
   }
 
-  /** The land around the airport (land use, water, motorways) and the airport buildings, all from OSM. */
+  /** The land around the airport (land use, water, motorways), from OSM. */
   loadLand(l: LandData) {
     const fields = fieldTexture();
     this.disposables.push(fields);
@@ -433,15 +448,33 @@ export class TowerRenderer {
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
     this.addFlat(geo, ROAD, -64);
-    this.addBuildings(l.buildings);
   }
 
-  /** Buildings as extruded footprints: roofs, glazed walls and plain walls, each one merged mesh. */
-  private addBuildings(list: LandData['buildings']) {
+  /** The airport buildings from OSM (public/tower/buildings.json). */
+  loadBuildings(data: BuildingData) {
+    this.addBuildings(data.buildings);
+  }
+
+  /**
+   * Buildings as extruded footprints, one merged mesh per wall style plus the roofs and rooftop plant.
+   * Roofs are clearly darker than the walls and vary per building: from the cab they are most of what is seen.
+   */
+  private addBuildings(list: BuildingData['buildings']) {
+    const walls: Record<BuildingStyle, THREE.BufferGeometry[]> = {
+      terminal: [],
+      hangar: [],
+      office: [],
+      plain: [],
+    };
     const roofs: THREE.BufferGeometry[] = [];
-    const glazed: THREE.BufferGeometry[] = [];
-    const plain: THREE.BufferGeometry[] = [];
+    const plant: THREE.BufferGeometry[] = [];
+    const rnd = seeded(31);
     const cabs = this.ap.towers.map((t) => toWorld(t.pos));
+    const tint = (geo: THREE.BufferGeometry, c: THREE.Color) => {
+      const col = geo.attributes.color as THREE.BufferAttribute;
+      for (let i = 0; i < col.count; i++)
+        col.setXYZ(i, col.getX(i) * c.r, col.getY(i) * c.g, col.getZ(i) * c.b);
+    };
     for (const b of list) {
       const pts = b.r.map((p) => llToGround(this.ap, p));
       const c = pts.reduce((m, q) => ({ x: m.x + q.x / pts.length, z: m.z + q.z / pts.length }), {
@@ -450,37 +483,48 @@ export class TowerRenderer {
       });
       // the cab's own tower would wall off the view
       if (cabs.some((k) => Math.hypot(k.x - c.x, k.z - c.z) < 80)) continue;
+      const base = b.mh ?? 0;
+      const tall = b.h - base;
       const shape = new THREE.Shape(pts.map((q) => new THREE.Vector2(q.x, -q.z)));
       // a ring every 4 m or less, so the darkened wall base fades over the bottom 4 m
-      const steps = Math.max(1, Math.ceil(b.h / 4));
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: b.h, bevelEnabled: false, steps });
+      const steps = base > 0 ? 1 : Math.max(1, Math.ceil(tall / 4));
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: tall, bevelEnabled: false, steps });
       geo.rotateX(-Math.PI / 2);
+      geo.translate(0, base, 0);
       // ExtrudeGeometry: group 0 = caps, group 1 = side walls
       const [caps, sides] = geo.groups as [THREE.GeometryGroup, THREE.GeometryGroup];
-      roofs.push(slice(geo, caps.start, caps.count));
-      const wall = slice(geo, sides.start, sides.count);
-      (PLAIN.has(b.k) ? plain : glazed).push(shadeWalls(wall));
+      const roof = slice(geo, caps.start, caps.count);
+      const tone = new THREE.Color(ROOF[b.s]).multiplyScalar(0.88 + rnd() * 0.18);
+      const rc = new Float32Array(roof.attributes.position!.count * 3);
+      for (let i = 0; i < rc.length; i += 3) rc.set([tone.r, tone.g, tone.b], i);
+      roof.setAttribute('color', new THREE.BufferAttribute(rc, 3));
+      roofs.push(roof);
+      const wall = shadeWalls(slice(geo, sides.start, sides.count));
+      const shades = WALL[b.s];
+      tint(wall, new THREE.Color(shades[Math.floor(rnd() * shades.length)]!));
+      walls[b.s].push(wall);
       geo.dispose();
+      if (b.s !== 'plain' && base === 0 && b.h > 6) plant.push(...rooftopPlant(pts, b.h, rnd));
     }
-    const windows = windowTexture();
-    const glow = windowGlowTexture();
-    this.disposables.push(windows, glow);
-    const add = (geos: THREE.BufferGeometry[], color: string, map?: THREE.Texture) => {
+
+    const add = (
+      geos: THREE.BufferGeometry[],
+      opts: THREE.MeshStandardMaterialParameters,
+      glow?: THREE.Texture,
+    ) => {
       if (!geos.length) return;
       const geo = mergeGeometries(geos)!;
       geos.forEach((g) => g.dispose());
-      const walls = !!geo.attributes.color;
       const mat = new THREE.MeshStandardMaterial({
-        color,
-        map: map ?? null,
-        vertexColors: walls,
         roughness: 0.82,
+        vertexColors: !!geo.attributes.color,
+        ...opts,
       });
-      if (map) {
+      if (glow) {
         // lit windows at dusk and night
         Object.assign(mat, { emissive: new THREE.Color('#ffd49a'), emissiveMap: glow });
         mat.emissiveIntensity = this.look.windows;
-        this.glazed = mat;
+        this.glazed.push(mat);
       }
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
@@ -488,9 +532,24 @@ export class TowerRenderer {
       this.scene.add(mesh);
       this.disposables.push(geo, mat);
     };
-    add(roofs, '#d4d3cf');
-    add(glazed, '#ffffff', windows);
-    add(plain, '#e6e4de');
+    const tex = {
+      office: windowTexture(),
+      officeGlow: windowGlowTexture(),
+      terminal: terminalTexture(),
+      terminalGlow: terminalGlowTexture(),
+      hangar: claddingTexture(),
+    };
+    this.disposables.push(...Object.values(tex));
+    add(roofs, { color: '#ffffff', roughness: 0.92 });
+    add(
+      walls.terminal,
+      { color: '#ffffff', map: tex.terminal, roughness: 0.55, metalness: 0.15 },
+      tex.terminalGlow,
+    );
+    add(walls.office, { color: '#ffffff', map: tex.office }, tex.officeGlow);
+    add(walls.hangar, { color: '#ffffff', map: tex.hangar, roughness: 0.7, metalness: 0.1 });
+    add(walls.plain, { color: '#e6e4de' });
+    add(plant, { color: '#cfd2d4', roughness: 0.7 });
   }
 
   private addFlat(
@@ -951,6 +1010,92 @@ function windowTexture(): THREE.CanvasTexture {
   t.repeat.set(1 / 4, 1 / 3.5);
   t.anisotropy = 4;
   return t;
+}
+
+/**
+ * Terminal and pier facade: a tall band of blue-grey glass between light metal spandrels, one storey (4.5 m)
+ * per tile, mullions every 1.5 m. From memory of the Schiphol piers, not from drawings.
+ */
+function terminalTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 48;
+  c.height = 36;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#dfe3e5';
+  g.fillRect(0, 0, 48, 36);
+  const glass = g.createLinearGradient(0, 6, 0, 31);
+  glass.addColorStop(0, '#7b91a2');
+  glass.addColorStop(1, '#4d6474');
+  g.fillStyle = glass;
+  g.fillRect(0, 6, 48, 25);
+  g.fillStyle = '#aab3ba';
+  for (let x = 0; x < 48; x += 12) g.fillRect(x, 6, 1, 25);
+  return wallTexture(c, 6, 4.5);
+}
+
+/** Emissive map for the terminal glass: most of it lit, as a terminal is open all night. */
+function terminalGlowTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 48 * 8;
+  c.height = 36;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, c.width, 36);
+  const rnd = seeded(8);
+  for (let k = 0; k < 8; k++) {
+    const v = rnd() < 0.15 ? 0.15 : 0.6 + rnd() * 0.4;
+    g.fillStyle = `rgb(${Math.round(255 * v)},${Math.round(240 * v)},${Math.round(215 * v)})`;
+    g.fillRect(k * 48, 6, 48, 25);
+  }
+  return wallTexture(c, 48, 4.5);
+}
+
+/** Hangar and cargo cladding: vertical profiled sheet with a seam every 2 m and a darker band at 4 m. */
+function claddingTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#e1e4e6';
+  g.fillRect(0, 0, 64, 64);
+  g.fillStyle = 'rgba(0,0,0,0.06)';
+  for (let x = 0; x < 64; x += 2) g.fillRect(x, 0, 1, 64);
+  g.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let x = 0; x < 64; x += 16) g.fillRect(x, 0, 1, 64);
+  g.fillStyle = 'rgba(0,0,0,0.08)';
+  g.fillRect(0, 30, 64, 3);
+  return wallTexture(c, 8, 8);
+}
+
+function wallTexture(c: HTMLCanvasElement, wide: number, tall: number): THREE.CanvasTexture {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / wide, 1 / tall);
+  t.anisotropy = 4;
+  return t;
+}
+
+/** Air-handling boxes scattered on a big flat roof, seeded (none on roofs under 3000 m2). */
+function rooftopPlant(pts: { x: number; z: number }[], h: number, rnd: () => number): THREE.BufferGeometry[] {
+  let a = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++)
+    a += pts[j]!.x * pts[i]!.z - pts[i]!.x * pts[j]!.z;
+  const area = Math.abs(a) / 2;
+  if (area < 3000) return [];
+  const xs = pts.map((p) => p.x);
+  const zs = pts.map((p) => p.z);
+  const [x0, x1, z0, z1] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
+  const out: THREE.BufferGeometry[] = [];
+  const n = Math.min(14, Math.floor(area / 2500));
+  for (let tries = 0; out.length < n && tries < n * 40; tries++) {
+    const p = { x: x0 + rnd() * (x1 - x0), z: z0 + rnd() * (z1 - z0) };
+    if (!insideRing(p, pts)) continue;
+    const w = 3 + rnd() * 6;
+    const d = 3 + rnd() * 4;
+    const bh = 1.5 + rnd() * 1.8;
+    out.push(new THREE.BoxGeometry(w, bh, d).toNonIndexed().translate(p.x, h + bh / 2, p.z));
+  }
+  return out;
 }
 
 /** Emissive map for the window bands: warm light, some offices dark, same layout as windowTexture. */

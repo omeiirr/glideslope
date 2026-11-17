@@ -93,6 +93,7 @@ test('tower scenario: the stand-in Approach puts arrivals on the ILS and hands t
 // ------------------------------------------------------------------ airport surfaces (OSM + drawn markings)
 import ground from '../public/tower/ground.json';
 import land from '../public/tower/land.json';
+import buildings from '../public/tower/buildings.json';
 import {
   llToGround,
   reciprocal,
@@ -100,6 +101,7 @@ import {
   runwayFrame,
   runwayMarkings,
   type GroundData,
+  type BuildingData,
   type LandData,
   type P2,
 } from '../src/render/tower3d/ground';
@@ -187,9 +189,12 @@ test('land data: surroundings and airport buildings are present and plausible', 
   for (const cls of ['farm', 'residential', 'industrial', 'forest', 'water'])
     expect(l.land[cls]?.length ?? 0).toBeGreaterThan(10);
   expect(l.roads.length).toBeGreaterThan(50);
-  expect(l.buildings.length).toBeGreaterThan(100);
-  for (const b of l.buildings) {
-    expect(b.h).toBeGreaterThan(0);
+  const list = (buildings as unknown as BuildingData).buildings;
+  expect(list.length).toBeGreaterThan(100);
+  for (const s of ['terminal', 'hangar', 'office'])
+    expect(list.filter((b) => b.s === s).length).toBeGreaterThan(20);
+  for (const b of list) {
+    expect(b.h).toBeGreaterThan(b.mh ?? 0);
     expect(b.h).toBeLessThan(150);
     expect(b.r.length).toBeGreaterThanOrEqual(4);
     // inside the airport fence, which reaches past the far end of the Polderbaan

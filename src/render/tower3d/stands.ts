@@ -3,7 +3,7 @@
  * where the jet bridges go. Scenery only: parked aircraft are not in the sim. No WebGL or DOM (runs in tests).
  */
 import { Rng, type Airport } from '../../core';
-import { llToGround, type GroundData, type LandData, type LatLon, type P2 } from './ground';
+import { llToGround, type BuildingData, type GroundData, type LatLon, type P2 } from './ground';
 import { airframe } from './math';
 
 /** public/tower/stands.json */
@@ -153,7 +153,7 @@ export function quadsOverlap(a: P2[], b: P2[]): boolean {
 export function parkAircraft(
   ap: Pick<Airport, 'lat' | 'lon'>,
   data: StandData,
-  buildings: LandData['buildings'],
+  buildings: BuildingData['buildings'],
   taxiways: GroundData['taxiways'] = [],
   seed = 1931,
 ): { parked: Parked[]; bridges: Bridge[] } {
@@ -161,7 +161,10 @@ export function parkAircraft(
   const taxi = taxiways.map((t) => ({ h: t.w / 2, pts: t.pts.map((p) => llToGround(ap, p)) }));
   const onTaxiway = (c: P2) =>
     taxi.some(({ h, pts }) => pts.slice(1).some((b, i) => len(sub(c, nearestOnSegment(c, pts[i]!, b))) < h));
-  const rings = buildings.filter((b) => b.k !== 'storage_tank').map((b) => b.r.map((p) => llToGround(ap, p)));
+  // walls standing on the ground; tanks and open roofs left out
+  const rings = buildings
+    .filter((b) => !b.mh && b.s !== 'plain')
+    .map((b) => b.r.map((p) => llToGround(ap, p)));
   const inBuilding = (p: P2) => rings.some((r) => insideRing(p, r));
 
   // the stop end of a stand line is the end nearer a building (OSM way direction is not reliable)

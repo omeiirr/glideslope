@@ -1,9 +1,9 @@
 import { expect, test } from 'vitest';
 import ground from '../public/tower/ground.json';
-import land from '../public/tower/land.json';
+import buildings from '../public/tower/buildings.json';
 import stands from '../public/tower/stands.json';
 import { EHAM } from '../src/core';
-import { llToGround, type GroundData, type LandData } from '../src/render/tower3d/ground';
+import { llToGround, type BuildingData, type GroundData } from '../src/render/tower3d/ground';
 import {
   footprint,
   insideRing,
@@ -13,9 +13,9 @@ import {
   type StandData,
 } from '../src/render/tower3d/stands';
 
-const L = land as unknown as LandData;
+const B = (buildings as unknown as BuildingData).buildings;
 const G = ground as unknown as GroundData;
-const run = () => parkAircraft(EHAM, stands as unknown as StandData, L.buildings, G.taxiways);
+const run = () => parkAircraft(EHAM, stands as unknown as StandData, B, G.taxiways);
 
 test('parked aircraft: most stands used, none overlapping, none in a building or on a taxiway, seeded', () => {
   const { parked, bridges } = run();
@@ -27,9 +27,7 @@ test('parked aircraft: most stands used, none overlapping, none in a building or
   for (let i = 0; i < prints.length; i++)
     for (let j = i + 1; j < prints.length; j++) expect(quadsOverlap(prints[i]!, prints[j]!)).toBe(false);
 
-  const rings = L.buildings
-    .filter((b) => b.k !== 'storage_tank')
-    .map((b) => b.r.map((p) => llToGround(EHAM, p)));
+  const rings = B.filter((b) => !b.mh && b.s !== 'plain').map((b) => b.r.map((p) => llToGround(EHAM, p)));
   for (const p of parked) expect(outline(p).some((q) => rings.some((r) => insideRing(q, r)))).toBe(false);
 
   // the fuselage centre is clear of every taxiway ribbon

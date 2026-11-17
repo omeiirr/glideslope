@@ -48,7 +48,6 @@ export class Sounds {
   private master: GainNode | null = null;
   private volume = 0.6;
   private noise: AudioBuffer | null = null;
-  private brown: AudioBuffer | null = null;
   /** Loops for the current place (cab or radar room), stopped when leaving it. */
   private loops: { stop(): void }[] = [];
   private place: 'cab' | 'room' | null = null;
@@ -70,14 +69,6 @@ export class Sounds {
         this.master.gain.value = this.volume;
         this.noise = this.buffer((d) => {
           for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-        });
-        // brown noise: the rumble of engines and air handling
-        this.brown = this.buffer((d) => {
-          let v = 0;
-          for (let i = 0; i < d.length; i++) {
-            v = (v + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-            d[i] = v * 3.5;
-          }
         });
       }
       void this.ctx.resume();
@@ -132,17 +123,18 @@ export class Sounds {
     this.place = place;
     const ctx = this.ctx;
     if (place === 'room') {
-      // air handling in an equipment room: a low, steady rumble
-      this.loop(this.brown!, 'lowpass', 260).gain.value = 0.05;
+      // air handling: a soft hiss (a rumble or a tone reads as a hum, and small speakers drop the lows)
+      this.loop(this.noise!, 'lowpass', 600).gain.value = 0.02;
       return;
     }
     this.cabGains = {
-      aircon: this.loop(this.brown!, 'lowpass', 200),
+      aircon: this.loop(this.noise!, 'lowpass', 700),
       wind: this.loop(this.noise!, 'bandpass', 450, 0.6),
       rain: this.rain(),
-      apu: this.loop(this.brown!, 'bandpass', 380, 4),
+      // broad, not tonal: a narrow band here was heard as a constant hum
+      apu: this.loop(this.noise!, 'bandpass', 300, 0.8),
     };
-    this.cabGains.aircon.gain.value = 0.035;
+    this.cabGains.aircon.gain.value = 0.015;
     // gusts: a slow wobble on the wind
     const lfo = ctx.createOscillator();
     lfo.frequency.value = 0.11;
@@ -174,14 +166,19 @@ export class Sounds {
 
   private voice(): Voice {
     const ctx = this.ctx!;
+    // the roar: noise low-passed by distance, lows cut (small speakers can't play them: a roar made of
+    // rumble went unheard)
     const roarLp = ctx.createBiquadFilter();
     roarLp.type = 'lowpass';
+    const roarHp = ctx.createBiquadFilter();
+    roarHp.type = 'highpass';
+    roarHp.frequency.value = 180;
     const roar = ctx.createGain();
     roar.gain.value = 0;
     const src = ctx.createBufferSource();
-    src.buffer = this.brown!;
+    src.buffer = this.noise!;
     src.loop = true;
-    src.connect(roarLp).connect(roar).connect(this.master!);
+    src.connect(roarLp).connect(roarHp).connect(roar).connect(this.master!);
     src.start(0, Math.random() * 3);
     // the fan whine: a tone that rises with power
     const whine = ctx.createOscillator();
@@ -200,10 +197,10 @@ export class Sounds {
     const g = this.cabGains!;
     const t = this.ctx.currentTime;
     const k = 0.25; // smoothing time constant (s)
-    // levels set with an analyser on the output: the cab at rest about 0.006 rms, a take-off 1.5 km away 0.06
+    // levels set with an analyser on the output, counting only what laptop speakers play (above 250 Hz)
     g.wind.gain.setTargetAtTime(Math.min(0.06, s.windKt * 0.003), t, 1);
     g.rain.gain.setTargetAtTime(s.visM < 5000 ? 0.1 : 0, t, 1.5);
-    g.apu.gain.setTargetAtTime(Math.min(0.06, 25 / Math.max(1, s.apronM)), t, 1);
+    g.apu.gain.setTargetAtTime(Math.min(0.012, 5 / Math.max(1, s.apronM)), t, 1);
 
     const now = performance.now() / 1000;
     const heard = s.emitters.map((e) => {
@@ -228,10 +225,10 @@ export class Sounds {
         v.id = p.e.id;
       }
       const reverse = p.e.reverse ? 1.4 : 1;
-      v.roar.gain.setTargetAtTime(Math.min(1, p.level * 4 * reverse), t, k);
+      v.roar.gain.setTargetAtTime(Math.min(1, p.level * 2.5 * reverse), t, k);
       v.roarLp.frequency.setTargetAtTime(cutoffHz(p.d, p.power) * (p.e.reverse ? 1.3 : 1), t, k);
       v.whine.frequency.setTargetAtTime((300 + 2400 * p.power) * doppler(p.closing), t, k);
-      v.whineGain.gain.setTargetAtTime(Math.min(0.04, p.level * 0.25) * Math.exp(-p.d / 3000), t, k);
+      v.whineGain.gain.setTargetAtTime(Math.min(0.05, p.level * 0.35) * Math.exp(-p.d / 4000), t, k);
     }
     for (const v of free) {
       v.id = null;

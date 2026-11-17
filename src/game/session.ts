@@ -70,7 +70,19 @@ interface PendingError {
   deadline: number;
 }
 
-const START_UTC = 14 * 3600;
+/** Clock at the start, by the scenario's time of day (an autumn evening at Schiphol for dusk and night). */
+const START_UTC = { day: 14 * 3600, dusk: 16.5 * 3600, night: 21 * 3600 };
+/** Visibility shown as "10 km+" (and no fog beyond the usual haze in the tower view). */
+export const CLEAR_VIS = 10000;
+/** As on a weather report: "10 km+", "3 km", "600 m". */
+export const visibilityText = (m: number) =>
+  m >= CLEAR_VIS
+    ? '10 km+'
+    : m >= 5000
+      ? `${Math.round(m / 1000)} km`
+      : m >= 1500
+        ? `${(m / 1000).toFixed(1).replace(/\.0$/, '')} km`
+        : `${m} m`;
 const LESSON_END_PAUSE_MS = 1500;
 
 /** One game: the sim, the radio, the log and the score. The UI reads it and calls its methods. */
@@ -95,6 +107,8 @@ export class Session {
   speed = 1;
   finished = false;
   lessonStep = 0;
+  /** Prevailing visibility (m); the scenario's, or the player's choice in scenarios without one. */
+  visibilityM: number;
   /** Bumps on every change the panels should re-render for. */
   version = 0;
   private acc = 0;
@@ -127,6 +141,7 @@ export class Session {
     });
     this.rng = new Rng(seed ^ 0x5eed);
     this.radio.blocking = this.mode === 'pro';
+    this.visibilityM = scenario.visibilityM ?? CLEAR_VIS;
     this.spawnsLeft = [...(scenario.spawns ?? [])].sort((a, b) => a.at - b.at);
     this.lesson = scenario.lesson ? LESSONS[scenario.lesson] : undefined;
     this.spawnDue();
@@ -139,12 +154,18 @@ export class Session {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
+  /** The player's visibility choice (tower view); only in scenarios that don't set their own weather. */
+  setVisibility(m: number) {
+    if (this.scenario.visibilityM !== undefined) return;
+    this.visibilityM = m;
+    this.changed();
+  }
   private changed() {
     this.version++;
     for (const fn of this.listeners) fn();
   }
   get clock(): string {
-    const t = Math.floor(START_UTC + this.sim.time);
+    const t = Math.floor(START_UTC[this.scenario.timeOfDay ?? 'day'] + this.sim.time);
     const p = (n: number) => String(n).padStart(2, '0');
     return `${p(Math.floor(t / 3600) % 24)}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}`;
   }

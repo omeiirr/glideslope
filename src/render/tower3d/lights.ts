@@ -119,3 +119,19 @@ export function taxiwayLights(ap: Pick<Airport, 'lat' | 'lon'>, g: GroundData): 
 
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 export const TIMES_OF_DAY: readonly TimeOfDay[] = ['day', 'dusk', 'night'];
+
+/** The haze on a clear day (FogExp2 density per metre, about 30 km visibility). */
+export const CLEAR_FOG = 0.00006;
+/**
+ * FogExp2 density for a visibility: at the visibility distance the contrast drops to 2 % (Koschmieder),
+ * so (density · V)² = −ln 0.02 = 3.912. 10 km or more ("10 km+") is the clear-day haze.
+ */
+export const fogDensity = (visM: number) =>
+  visM >= 10000 ? CLEAR_FOG : Math.max(CLEAR_FOG, 1.978 / Math.max(50, visM));
+/** How far into fog (0 = clear, 1 = 1.5 km or less): greys the sky and softens the sun. */
+export const fogAmount = (visM: number) => Math.min(1, Math.max(0, (8000 - visM) / (8000 - 1500)));
+/**
+ * Lights shine through fog further than unlit objects can be seen (Allard's law, simplified): their fog is
+ * 0.4 × the scene's, so at 600 m visibility the runway lights fade out at about 1.2–1.5 km.
+ */
+export const LIGHT_FOG = 0.4;

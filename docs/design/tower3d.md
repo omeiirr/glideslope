@@ -111,7 +111,7 @@ New feedback rules (same mechanism as the existing ones):
 - **Throughput and delay:** landings and departures per hour, and holding-point delay.
 - Phraseology score and uncaught readback errors work as in Approach mode.
 
-Scenarios: a tutorial of 4 short lessons (landing clearance, line up and take-off, vacate and handoffs, go-around), free play, and 3 Pro scenarios (light; mixed with a heavy; low visibility at dusk).
+Scenarios: a tutorial of 4 short lessons (landing clearance, line up and take-off, vacate and handoffs, go-around), free play, and 4 Pro scenarios (light; heavies; peak; fog at dusk, 600 m).
 
 ## 7. Renderer architecture
 

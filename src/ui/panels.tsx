@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EHAM, dist, isOnGround, runwayFrame, type Aircraft } from '../core';
-import type { LogEntry, Session } from '../game/session';
+import { visibilityText, type LogEntry, type Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT, chip } from '../phraseology/phrases';
 import type { ParseResult } from '../phraseology/parser';
@@ -94,6 +94,24 @@ export function TopBar({ session, settings, onDisplay, onSettings, onLearn, onEn
           <div>
             <span class="dim">Left </span>
             {Math.floor(left / 60)}:{String(Math.floor(left % 60)).padStart(2, '0')}
+          </div>
+        )}
+        <div title="Surface wind (degrees / knots)">
+          <span class="dim">Wind </span>
+          {session.sim.env.wind.speed === 0
+            ? 'Calm'
+            : `${String(session.sim.env.wind.dir).padStart(3, '0')}/${session.sim.env.wind.speed}`}
+        </div>
+        <div>
+          <span class="dim">QNH </span>
+          {session.sim.qnh}
+        </div>
+        {session.tower && (
+          <div title="Prevailing visibility">
+            <span class="dim">Vis </span>
+            <span style={session.visibilityM < 1500 ? { color: 'var(--amber)' } : undefined}>
+              {visibilityText(session.visibilityM)}
+            </span>
           </div>
         )}
         <div>

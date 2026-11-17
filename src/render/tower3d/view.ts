@@ -20,7 +20,17 @@ import {
   type LandData,
   type Polygon,
 } from './ground';
-import { addLight, airportLights, emptyLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
+import {
+  addLight,
+  airportLights,
+  emptyLights,
+  fogAmount,
+  fogDensity,
+  LIGHT_FOG,
+  taxiwayLights,
+  type LightSet,
+  type TimeOfDay,
+} from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
 import { insideRing, parkAircraft, serviceVehicles, type StandData } from './stands';
@@ -116,6 +126,25 @@ const LOOKS: Record<TimeOfDay, Look> = {
     lights: 1,
   },
 };
+
+/** The sky and haze in thick fog, per time of day: an even grey, lit by the airport and the city at night. */
+const FOG_LOOK: Record<TimeOfDay, string> = { day: '#b7bcc0', dusk: '#77767c', night: '#1f2229' };
+/** A look blended toward fog (`k` 0–1): sky and haze go grey, the sun weakens and the clouds disappear. */
+function foggy(L: Look, fog: string, k: number): Look {
+  if (k <= 0) return L;
+  const mix = (c: string) => '#' + new THREE.Color(c).lerp(new THREE.Color(fog), k).getHexString();
+  return {
+    ...L,
+    top: mix(L.top),
+    mid: mix(L.mid),
+    horizon: mix(L.horizon),
+    away: mix(L.away),
+    haze: mix(L.haze),
+    sun: { ...L.sun, i: L.sun.i * (1 - 0.8 * k) },
+    hemi: [L.hemi[0], L.hemi[1], L.hemi[2] * (1 + 0.3 * k)],
+    cloud: [L.cloud[0], L.cloud[1] * (1 - k)],
+  };
+}
 
 /** Shadows fade out as the aircraft climbs; above this they are not drawn. */
 const SHADOW_MAX_AGL = 160;
@@ -238,8 +267,10 @@ export class TowerRenderer {
 
   /** Day, dusk or night: sky, sun (or moon), haze, reflections, window glow and the lights. */
   setTimeOfDay(t: TimeOfDay) {
-    const L = (this.look = LOOKS[t]);
+    this.tod = t;
+    const L = (this.look = foggy(LOOKS[t], FOG_LOOK[t], fogAmount(this.visM)));
     this.paintSky(L);
+    (this.scene.fog as THREE.FogExp2).density = fogDensity(this.visM);
     (this.scene.fog as THREE.FogExp2).color.set(L.haze);
     const d = lookDirection(L.sun.az, -L.sun.el);
     this.sun.position.set(d.x * 6000, d.y * 6000, d.z * 6000);
@@ -266,7 +297,15 @@ export class TowerRenderer {
     for (const p of this.lightPts) p.visible = L.lights > 0;
   }
 
-  /** Point lights (airport or aircraft) as one draw call each. */
+  private tod: TimeOfDay = 'day';
+  private visM = 10000;
+  /** Prevailing visibility in metres: the fog, a greyer sky and a weaker sun. */
+  setVisibility(m: number) {
+    if (m === this.visM) return;
+    this.visM = m;
+    this.setTimeOfDay(this.tod);
+  }
+
   /** Runway light brightness, stage 1 (dim) to 5 (bright), as on a tower's lighting panel; 4 is the default. */
   setLightStage(stage: number) {
     this.lightStage = Math.max(1, Math.min(5, Math.round(stage)));
@@ -841,7 +880,7 @@ export class TowerRenderer {
     const u = this.lightMat.uniforms;
     u.uTime!.value = performance.now() / 1000;
     u.uPx!.value = this.renderer.getPixelRatio();
-    u.uFog!.value = (this.scene.fog as THREE.FogExp2).density;
+    u.uFog!.value = (this.scene.fog as THREE.FogExp2).density * LIGHT_FOG;
     const d = lookDirection(cam.bearing, cam.depression);
     this.camera.position.set(cam.eye.x, cam.eye.y, cam.eye.z);
     this.camera.lookAt(cam.eye.x + d.x, cam.eye.y + d.y, cam.eye.z + d.z);

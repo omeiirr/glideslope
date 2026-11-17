@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEG, EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
-import type { Session } from '../game/session';
+import { CLEAR_VIS, visibilityText, type Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition } from '../render/tower3d/math';
 import type { BuildingData, GroundData, LandData } from '../render/tower3d/ground';
 import type { StandData } from '../render/tower3d/stands';
@@ -25,6 +25,10 @@ type LabelMode = 'all' | 'selected' | 'off';
 const NEXT_LABELS: Record<LabelMode, LabelMode> = { all: 'selected', selected: 'off', off: 'all' };
 const LABELS_TEXT: Record<LabelMode, string> = { all: 'All', selected: 'Selected', off: 'Off' };
 
+/** Visibility steps for the toolbar button: clear, mist, fog, thick fog. */
+const VIS_STEPS = [CLEAR_VIS, 3000, 1000, 400];
+const nextVis = (v: number) => VIS_STEPS[(VIS_STEPS.indexOf(v) + 1) % VIS_STEPS.length]!;
+
 const isTyping = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null;
   return !!t?.closest?.('input, textarea, select, [contenteditable], .overlay');
@@ -40,7 +44,7 @@ export function TowerView({ session }: { session: Session }) {
     () => (EHAM.towers.find((t) => t.runways.includes(EHAM.config.landing)) ?? EHAM.towers[0]!).id,
   );
   const [bino, setBino] = useState(false);
-  const [tod, setTod] = useState<TimeOfDay>('day');
+  const [tod, setTod] = useState<TimeOfDay>(session.scenario.timeOfDay ?? 'day');
   const [labels, setLabels] = useState<LabelMode>('all');
   const [lightStage, setLightStage] = useState(4);
   const stageRef = useRef(lightStage);
@@ -57,6 +61,10 @@ export function TowerView({ session }: { session: Session }) {
   const todRef = useRef(tod);
   todRef.current = tod;
   useEffect(() => rendererRef.current?.setTimeOfDay(tod), [tod]);
+  const vis = session.visibilityM;
+  const visRef = useRef(vis);
+  visRef.current = vis;
+  useEffect(() => rendererRef.current?.setVisibility(vis), [vis]);
   const anchors = useRef<Anchor[]>([]);
 
   const resetLook = () => Object.assign(look.current, { yaw: 0, depression: DEFAULT_DEPRESSION });
@@ -162,6 +170,7 @@ export function TowerView({ session }: { session: Session }) {
         if (disposed) return;
         renderer = new TowerRenderer(canvas, EHAM);
         rendererRef.current = renderer;
+        renderer.setVisibility(visRef.current);
         renderer.setTimeOfDay(todRef.current);
         renderer.setLightStage(stageRef.current);
       } catch {
@@ -376,6 +385,16 @@ export function TowerView({ session }: { session: Session }) {
           >
             {TOD_LABEL[tod]}
           </button>
+          {session.scenario.visibilityM === undefined && (
+            <button
+              type="button"
+              class="chipbtn"
+              aria-label={`Visibility: ${visibilityText(vis)}. Change to ${visibilityText(nextVis(vis))}`}
+              onClick={() => session.setVisibility(nextVis(vis))}
+            >
+              Vis {visibilityText(vis)}
+            </button>
+          )}
         </div>
 
         {bino && (

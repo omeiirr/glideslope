@@ -18,6 +18,10 @@ export interface Scenario {
   lesson?: string;
   /** Main view. Default: the radar scope. */
   view?: 'tower';
+  /** Prevailing visibility in metres (tower view fog). Default: clear, and the player may change it. */
+  visibilityM?: number;
+  /** Tower view start: time of day. Default: day. */
+  timeOfDay?: 'day' | 'dusk' | 'night';
 }
 
 /** The tutorial aircraft. */
@@ -257,6 +261,23 @@ export const SCENARIOS: Scenario[] = [
     wind: { dir: 190, speed: 8 },
     traffic: { arrivalsPerHour: 28, departuresPerHour: 24, alnumCallsigns: 0.2 },
     spawns: [firstArrival('TRA5422', 'B738')],
+  },
+  {
+    id: 'tower-pro-fog',
+    view: 'tower',
+    name: 'Tower Pro · Fog at dusk',
+    blurb:
+      '20 minutes at dusk in fog, 600 m visibility: you will hear more than you see, so use the ground radar.',
+    mode: 'pro',
+    seed: 204,
+    durationMin: 20,
+    // radiation fog: high pressure, light wind
+    wind: { dir: 190, speed: 4 },
+    qnh: 1027,
+    visibilityM: 600,
+    timeOfDay: 'dusk',
+    traffic: { arrivalsPerHour: 14, departuresPerHour: 12, types: TOWER_EASY, alnumCallsigns: 0.15 },
+    spawns: [firstArrival('KLM1582', 'E190')],
   },
   {
     id: 'pro-light',

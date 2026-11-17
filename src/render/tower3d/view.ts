@@ -20,7 +20,7 @@ import {
   type LandData,
   type Polygon,
 } from './ground';
-import { airportLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
+import { addLight, airportLights, emptyLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
 import { insideRing, parkAircraft, type StandData } from './stands';
@@ -134,6 +134,10 @@ const LAND: [string, string | string[]][] = [
   ['water', '#5d7f97'],
 ];
 const ROAD = '#6e7173';
+/** Apron mast height when OSM has none (m): Schiphol's apron masts are roughly this tall (assumed). */
+const MAST_H = 30;
+/** Floodlight colour: warm white. */
+const FLOOD: [number, number, number] = [1, 0.86, 0.66];
 /** Roof tone per building style (varied per building), well below the walls so roofs read from the cab. */
 const ROOF: Record<BuildingStyle, string> = {
   terminal: '#b3b6b7',
@@ -172,6 +176,14 @@ export class TowerRenderer {
   private glazed: THREE.MeshStandardMaterial[] = [];
   private lightMat = lightMaterial();
   private lightPts: THREE.Points[] = [];
+  /** Pools of floodlight on the aprons, shown at dusk and night. */
+  private poolMat = new THREE.MeshBasicMaterial({
+    color: '#ffd9a8',
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    visible: false,
+  });
   private look: Look = LOOKS.day;
   private shadowTex: THREE.CanvasTexture;
   private w = 1;
@@ -243,6 +255,8 @@ export class TowerRenderer {
     }
     for (const m of this.glazed) m.emissiveIntensity = L.windows;
     this.lightMat.uniforms.uIntensity!.value = L.lights;
+    this.poolMat.opacity = 0.8 * L.lights;
+    this.poolMat.visible = L.lights > 0;
     for (const p of this.lightPts) p.visible = L.lights > 0;
   }
 
@@ -293,6 +307,7 @@ export class TowerRenderer {
     this.layer(lines, YELLOW, -42);
     const { parked, bridges } = parkAircraft(this.ap, data, buildings.buildings, ground.taxiways);
     const { objects, disposables } = apronObjects(parked, bridges, this.shadowTex);
+    this.addFloodlights(data.masts.map((m) => ({ ...llToGround(this.ap, m.p), h: m.h || MAST_H })));
     this.scene.add(...objects);
     this.disposables.push(...disposables);
   }
@@ -356,6 +371,44 @@ export class TowerRenderer {
       this.disposables.push(m.geometry, m.material as THREE.Material);
     }
     this.addLights(taxiwayLights(ap, g));
+  }
+
+  /**
+   * Apron floodlight masts (OSM tower:type=lighting): poles by day; at dusk and night a light on top and a
+   * soft pool of light on the ground (additive, depth-tested: the ground layers write no depth).
+   */
+  private addFloodlights(masts: { x: number; z: number; h: number }[]) {
+    const cabs = this.ap.towers.map((t) => toWorld(t.pos));
+    masts = masts.filter((m) => !cabs.some((k) => Math.hypot(k.x - m.x, k.z - m.z) < 80));
+    if (!masts.length) return;
+    const poles: THREE.BufferGeometry[] = [];
+    const lights = emptyLights();
+    for (const m of masts) {
+      poles.push(new THREE.BoxGeometry(0.7, m.h, 0.7).toNonIndexed().translate(m.x, m.h / 2, m.z));
+      poles.push(new THREE.BoxGeometry(3.2, 1, 1.4).toNonIndexed().translate(m.x, m.h + 0.5, m.z));
+      addLight(lights, m.x, m.h, m.z, FLOOD, 7);
+    }
+    const geo = mergeGeometries(poles)!;
+    poles.forEach((g) => g.dispose());
+    const mat = new THREE.MeshStandardMaterial({ color: '#9aa0a5', roughness: 0.6, metalness: 0.3 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    this.scene.add(mesh);
+    this.addLights(lights);
+
+    const tex = poolTexture();
+    this.poolMat.map = tex;
+    const plane = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    const pools = new THREE.InstancedMesh(plane, this.poolMat, masts.length);
+    const m4 = new THREE.Matrix4();
+    masts.forEach((m, i) => {
+      const r = m.h * 3.2; // a pool about three mast heights across each way
+      pools.setMatrixAt(i, m4.makeScale(r * 2, 1, r * 2).setPosition(m.x, 0.1, m.z));
+    });
+    pools.renderOrder = -9;
+    pools.frustumCulled = false;
+    this.scene.add(pools);
+    this.disposables.push(geo, mat, tex, plane, this.poolMat);
   }
 
   /** The dark worn band down the middle of each taxiway, soft-edged, under the centreline paint. */
@@ -1072,6 +1125,22 @@ function wallTexture(c: HTMLCanvasElement, wide: number, tall: number): THREE.Ca
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1 / wide, 1 / tall);
   t.anisotropy = 4;
+  return t;
+}
+
+/** A soft round pool of light, bright in the middle and gone at the edge. */
+function poolTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, 'rgba(255,255,255,1)');
+  r.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
 

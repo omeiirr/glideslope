@@ -1,7 +1,7 @@
 import type { Aircraft } from '../aircraft/aircraft';
 import { perfFor } from '../aircraft/perf';
-import type { Airport } from '../airport/types';
-import { bearing, dist, headingVec, norm360 } from '../geo';
+import type { Airport, RunwayExit } from '../airport/types';
+import { bearing, dist, headingVec, norm360, type Vec } from '../geo';
 import type { Rng } from '../rng';
 
 export interface TrafficConfig {
@@ -42,23 +42,44 @@ export interface PlannedDeparture {
 /** Departures are planned this far ahead (s): longer than any taxi-out from a stand. */
 const PLAN_AHEAD_S = 600;
 
+/** Queue spacing at the holding point (m). */
+export const QUEUE_M = 70;
+
 /**
- * Where the next departure joins the queue at the holding point: behind the last one, facing the runway
- * (shortcut: the queue runs straight back from the holding point, not along the taxiway). Null without one.
+ * Queue slot n (0 = at the holding point): along the entry's queue taxiway, or straight back from the
+ * holding point without one. `face` points up the queue, towards the runway.
  */
+export function queueSlot(entry: RunwayExit, n: number): { pos: Vec; face: number } {
+  const hp = entry.path;
+  const hold = hp[hp.length - 1]!;
+  const back = headingVec(bearing(hp[hp.length - 2]!, hold), 1);
+  const line = entry.queue ?? [hold, { x: hold.x + back.x, y: hold.y + back.y }];
+  let left = (n * QUEUE_M) / 1852;
+  for (let i = 1; i < line.length; i++) {
+    const [a, b] = [line[i - 1]!, line[i]!];
+    const l = dist(a, b);
+    if (left <= l || i === line.length - 1) {
+      const f = l ? left / l : 0;
+      return { pos: { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }, face: bearing(b, a) };
+    }
+    left -= l;
+  }
+  return { pos: hold, face: bearing(hold, hp[hp.length - 2]!) };
+}
+
+/** Where the next departure joins the queue at the holding point: behind the last one. Null without one. */
 export function queueTail(
   ap: Airport,
   active: readonly Aircraft[],
 ): { pos: { x: number; y: number }; face: number } | null {
-  const hp = ap.runways.find((r) => r.id === ap.config.departure)?.entry?.path;
-  if (!hp || hp.length < 2) return null;
-  const hold = hp[hp.length - 1]!;
-  const face = bearing(hold, hp[hp.length - 2]!);
-  const slots = active
+  const entry = ap.runways.find((r) => r.id === ap.config.departure)?.entry;
+  if (!entry || entry.path.length < 2) return null;
+  // behind the rearmost one, which may not have moved up yet (the slot nearest each aircraft)
+  const slots = Array.from({ length: 20 }, (_, n) => queueSlot(entry, n).pos);
+  const taken = active
     .filter((a) => a.nav.mode === 'holding' || (a.nav.mode === 'taxi' && a.nav.then === 'hold'))
-    .map((a) => Math.round((dist(a.pos, hold) * 1852) / 70));
-  const back = headingVec(face + 180, ((slots.length ? Math.max(...slots) + 1 : 0) * 70) / 1852);
-  return { pos: { x: hold.x + back.x, y: hold.y + back.y }, face };
+    .map((a) => slots.reduce((best, p, n) => (dist(a.pos, p) < dist(a.pos, slots[best]!) ? n : best), 0));
+  return queueSlot(entry, taken.length ? Math.max(...taken) + 1 : 0);
 }
 
 export class Spawner {

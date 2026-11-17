@@ -2,7 +2,7 @@ import { project } from '../geo';
 import type { Airport, Runway, RunwayExit, Tower } from './types';
 
 type LatLon = [number, number];
-type ExitJson = Omit<RunwayExit, 'path'> & { path: number[][] };
+type ExitJson = Omit<RunwayExit, 'path' | 'queue'> & { path: number[][]; queue?: number[][] };
 /** Shape of data/airports/*.json (positions as [lat, lon]). */
 export interface AirportJson extends Omit<Airport, 'airspace' | 'runways' | 'fixes' | 'towers'> {
   airspace: { floorFt: number; ceilingFt: number; poly: number[][] };
@@ -21,6 +21,7 @@ export function loadAirport(json: AirportJson): Airport {
         ...e,
         side: e.side as RunwayExit['side'],
         path: e.path.map(p),
+        queue: e.queue?.map(p),
       });
       return { ...r, pos: p([r.lat, r.lon]), exits: r.exits?.map(ex), entry: r.entry && ex(r.entry) };
     }),

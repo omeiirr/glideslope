@@ -13,13 +13,14 @@ import { reciprocalRunway, runwayById } from './airport/load';
 import type { Airport } from './airport/types';
 import { applyCommand, conditionMet, validateCommand } from './commands/apply';
 import type { Command, CommandResult } from './commands/commands';
-import { bearing, dist, headingVec, unproject } from './geo';
+import { dist, headingVec, unproject } from './geo';
 import { Rng } from './rng';
 import { detectConflicts, type Conflict } from './rules/separation';
 import { FEED_KT, FEED_NM, SLOW_NM, departureWakeS, feedGap } from './rules/tower';
 import {
   Spawner,
   queueTail,
+  queueSlot,
   type PlannedDeparture,
   type SpawnSpec,
   type TrafficConfig,
@@ -47,8 +48,6 @@ export interface SimOptions {
 const TOWER_HANDOVER_NM = 8;
 /** Departures wait this long at the holding point before calling Tower (seconds). */
 const READY_CALL_S = 5;
-/** Queue spacing at the holding point, metres (same as the spawner's). */
-const QUEUE_M = 70;
 
 /** Tower mode: a go-around comes back onto the final this long after the stand-in Approach takes it (seconds). */
 const REFEED_S = 240;
@@ -177,14 +176,11 @@ export class Sim {
 
   /** The queue moves up when the front aircraft lines up. */
   private moveQueue() {
-    const hp = this.env.departure.entry?.path;
-    if (!hp || hp.length < 2) return;
-    const hold = hp[hp.length - 1]!;
-    const back = bearing(hp[hp.length - 2]!, hold);
+    const entry = this.env.departure.entry;
+    if (!entry || entry.path.length < 2) return;
     this.queue().forEach((ac, slot) => {
       if (ac.nav.mode !== 'holding') return;
-      const v = headingVec(back, (slot * QUEUE_M) / 1852);
-      const target = { x: hold.x + v.x, y: hold.y + v.y };
+      const target = queueSlot(entry, slot).pos;
       if (dist(ac.pos, target) * 1852 > 20) ac.nav = { mode: 'taxi', path: [target], i: 0, then: 'hold' };
     });
   }

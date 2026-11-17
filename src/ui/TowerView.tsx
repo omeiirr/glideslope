@@ -160,6 +160,12 @@ export function TowerView({
       // fov is vertical: the radar's view cone needs the horizontal angle
       const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
       const hfov = (2 * Math.atan(Math.tan((fov / 2) * DEG) * aspect)) / DEG;
+      // scenery aircraft appear and vanish only outside this frame's view (shortcut: buildings don't hide)
+      if (groundTraffic.current)
+        groundTraffic.current.seen = (p) => {
+          const b = aimAt(eye, { x: p.x, y: 0, z: p.z }).bearing;
+          return Math.abs(((b - bearing + 540) % 360) - 180) < hfov / 2 + 10;
+        };
       radar.current?.setPalette(real ? 'realistic' : 'modern');
       // scenery taxiing shows on the ground radar too, as traffic on another frequency
       const sceneryTargets = ghosts.map((g) => ({

@@ -7,6 +7,8 @@ export interface RunwayExit {
   distM: number;
   side: 'L' | 'R';
   path: Vec[];
+  /** Entry only: the taxiway back from the holding point (first point), along which departures queue. */
+  queue?: Vec[];
 }
 
 export interface Runway {

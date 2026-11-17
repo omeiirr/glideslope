@@ -476,6 +476,27 @@ describe('runway (tower T2)', () => {
     expect(dist(b.pos, c.pos) * 1852).toBeCloseTo(70, 0);
   });
 
+  test('the queue follows the taxiway back from the holding point, each aircraft facing up it', () => {
+    const sim = quietSim({ autoTower: false });
+    const q = runwayById(EHAM, '24')!.entry!.queue!;
+    const line = (p: { x: number; y: number }) =>
+      Math.min(
+        ...q.slice(1).map((b, i) => {
+          const a = q[i]!;
+          const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+          const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2));
+          return dist(p, { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }) * 1852;
+        }),
+      );
+    const deps = Array.from({ length: 7 }, (_, i) =>
+      sim.spawn({ kind: 'departure', callsign: `TRA${600 + i}`, type: 'B738', route: 'LEKKO' }),
+    );
+    for (const d of deps) expect(line(d.pos)).toBeLessThan(1);
+    // the 7th is past the bend at about 200 m: well off the straight line back from the holding point
+    const last = deps[6]!;
+    expect(Math.abs(last.hdg - deps[0]!.hdg)).toBeGreaterThan(20);
+  });
+
   test('without the stand-in tower a departure stays at the holding point', () => {
     const sim = quietSim({ autoTower: false });
     const a = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });

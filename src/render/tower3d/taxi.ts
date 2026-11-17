@@ -314,10 +314,21 @@ export interface Ghost {
   pose: Pose;
 }
 
-/** At most this many arrivals stay parked at their stand; the oldest goes when another parks (draw calls). */
+/**
+ * At most this many arrivals stay parked at their stand (draw calls): when another parks, the oldest one out
+ * of view goes. Up to twice as many while all of them are in view.
+ */
 const MAX_PARKED = 8;
 /** A departure's engines start this long after the push (s). */
 const START_S = 30;
+/** Departures are timed to reach the queue this early (s): room for holding behind other traffic on the way. */
+const SLACK_S = 60;
+/** A taxiing aircraft holds for one this close ahead: half of both lengths plus this (m)... */
+const GAP_M = 10;
+/** ...within this distance either side of its path (m). */
+const LANE_M = 20;
+/** It gives up holding after this long in one movement (s): two that block each other can't lock up. */
+const MAX_HOLD_S = 120;
 
 interface Entry {
   id: number;
@@ -329,6 +340,10 @@ interface Entry {
   /** Departure: gone when the sim spawns it. */
   until?: number;
   key?: string;
+  /** Departure: where it waits in the queue. */
+  dest?: P2;
+  /** Seconds spent holding for traffic ahead in this movement. */
+  held: number;
 }
 
 const groundPose = (pos: P2, hdg: number): Pose => ({
@@ -354,6 +369,8 @@ export class GroundTraffic {
   private lastT = -Infinity;
   /** Footprints taken: scenery parked aircraft first, then ours. */
   private prints: P2[][];
+  /** Whether a ground point is in the camera's view: aircraft only appear and vanish out of it. */
+  seen: (p: P2) => boolean = () => false;
 
   constructor(
     private graph: TaxiGraph,
@@ -405,18 +422,27 @@ export class GroundTraffic {
     pts[pts.length - 1] = { x: pick.spot.x, z: pick.spot.z };
     const move = new Movement(t, from, a.pose.headingDeg).taxi(pts).turn(pick.spot.headingDeg);
     const parkedNow = this.entries.filter((e) => e.until === undefined && e.move.end <= t);
-    if (parkedNow.length >= MAX_PARKED) this.remove(parkedNow[0]!);
+    if (parkedNow.length >= MAX_PARKED) {
+      const gone = parkedNow.find((e) => !this.seen(e.move.pos));
+      if (gone) this.remove(gone);
+      else if (parkedNow.length >= 2 * MAX_PARKED) this.remove(parkedNow[0]!);
+    }
     this.entries.push({
       id: this.nextId--,
       type: a.type,
       airline: a.airline,
       move,
       print: this.claim(pick.spot),
+      held: 0,
     });
   }
 
-  /** Planned departure: a stand whose push and taxi to the queue fit before it is due, or none (it just appears). */
-  private plan(t: number, p: PlannedDeparture, tail: { pos: P2; face: number }) {
+  /**
+   * Planned departure: from a stand, timed to reach the queue SLACK_S before it is due. It appears where it
+   * is now on that movement (at the stand, or on the way when the sim planned it late), which must be out of
+   * view unless `anywhere`. None when no stand has a route: it just appears in the queue.
+   */
+  private plan(t: number, p: PlannedDeparture, tail: { pos: P2; face: number }, anywhere: boolean) {
     const end = nearestNode(this.graph, tail.pos);
     let move: Movement | null = null;
     const pick = this.pickStand(p.type, (s) => {
@@ -430,10 +456,10 @@ export class GroundTraffic {
         .wait(START_S)
         .taxi([...path.slice(1), tail.pos])
         .turn(tail.face);
-      if (m.end > p.at - t) return false;
-      // shift so it reaches the queue as the sim spawns it
-      const lead = p.at - m.end;
+      // shift so it reaches the queue just before the sim spawns it there
+      const lead = p.at - SLACK_S - m.end;
       for (const st of m.steps) [st.t0, st.t1] = [st.t0 + lead, st.t1 + lead];
+      if (!anywhere && this.seen(m.at(t).pos)) return false;
       move = m;
       return true;
     });
@@ -446,8 +472,69 @@ export class GroundTraffic {
       print: this.claim(pick.spot),
       until: p.at,
       key: p.callsign + p.at,
+      dest: tail.pos,
+      held: 0,
     });
     return true;
+  }
+
+  /** The queue moved up after it got there: taxi up to the new tail. */
+  private moveUp(t: number, e: Entry, tail: { pos: P2; face: number }) {
+    const f = { x: Math.sin((tail.face * Math.PI) / 180), z: -Math.cos((tail.face * Math.PI) / 180) };
+    const ahead = (tail.pos.x - e.dest!.x) * f.x + (tail.pos.z - e.dest!.z) * f.z;
+    if (ahead < 5) return;
+    const path = route(this.graph, nearestNode(this.graph, e.dest!), nearestNode(this.graph, tail.pos)) ?? [];
+    e.move = new Movement(t, e.move.pos, e.move.hdg).taxi([...path.slice(1, -1), tail.pos]).turn(tail.face);
+    e.dest = tail.pos;
+    e.held = 0;
+  }
+
+  /**
+   * Hold for traffic just ahead: push the rest of the movement back by the frame time. Of two that have each
+   * other ahead (head-on, or crossing), the one that started later holds.
+   */
+  private giveWay(t: number, dt: number, targets: readonly SimTarget[]) {
+    const now = this.entries.map((e) => {
+      const s = e.move.steps.find((x) => t >= x.t0 && t < x.t1);
+      const dir = s && { x: s.b.x - s.a.x, z: s.b.z - s.a.z };
+      const l = dir ? Math.hypot(dir.x, dir.z) : 0;
+      return {
+        e,
+        id: e.id,
+        pos: e.move.at(t).pos,
+        len: airframe(e.type).len,
+        dir: l > 0.1 ? { x: dir!.x / l, z: dir!.z / l } : null,
+      };
+    });
+    const others = [
+      ...now,
+      ...targets
+        .filter((a) => a.pose.onGround)
+        .map((a) => ({
+          e: null,
+          id: a.id,
+          pos: { x: a.pose.pos.x, z: a.pose.pos.z },
+          len: airframe(a.type).len,
+          dir: null,
+        })),
+    ];
+    type O = (typeof others)[number];
+    const ahead = (a: O, b: O) => {
+      if (!a.dir) return false;
+      const r = { x: b.pos.x - a.pos.x, z: b.pos.z - a.pos.z };
+      const along = r.x * a.dir.x + r.z * a.dir.z;
+      return (
+        along > 0 && along < (a.len + b.len) / 2 + GAP_M && Math.abs(r.x * a.dir.z - r.z * a.dir.x) < LANE_M
+      );
+    };
+    for (const a of now) {
+      if (!a.dir || a.e.held >= MAX_HOLD_S) continue;
+      // sim aircraft (positive ids) never hold for scenery; ghost ids count down, so later ones are smaller
+      const blocked = others.some((b) => b !== a && ahead(a, b) && !(b.e && ahead(b, a) && a.id > b.id));
+      if (!blocked) continue;
+      for (const st of a.e.move.steps) if (st.t1 > t - dt) [st.t0, st.t1] = [st.t0 + dt, st.t1 + dt];
+      a.e.held += dt;
+    }
   }
 
   private remove(e: Entry) {
@@ -466,6 +553,7 @@ export class GroundTraffic {
     tail: { pos: P2; face: number } | null,
   ): Ghost[] {
     if (t < this.lastT) this.reset();
+    const dt = Math.min(5, t - this.lastT);
     this.lastT = t;
     const now = new Set(targets.map((a) => a.id));
     for (const [id, a] of this.last)
@@ -478,8 +566,10 @@ export class GroundTraffic {
       for (const p of planned) {
         const key = p.callsign + p.at;
         if (this.skipped.has(key) || this.entries.some((e) => e.key === key)) continue;
-        if (!this.plan(t, p, tail)) this.skipped.add(key);
+        if (!this.plan(t, p, tail, false) && !this.plan(t, p, tail, true)) this.skipped.add(key);
       }
+    if (tail) for (const e of this.entries) if (e.dest && e.move.end <= t) this.moveUp(t, e, tail);
+    if (dt > 0) this.giveWay(t, dt, targets);
     return this.entries.map((e) => {
       const { pos, hdg } = e.move.at(t);
       return { id: e.id, type: e.type, airline: e.airline, pose: groundPose(pos, hdg) };

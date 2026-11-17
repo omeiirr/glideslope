@@ -42,6 +42,14 @@ def move(p, brg, m):
 THRESHOLD_FIX = {"24": 70}
 HOLD_M = 95  # holding positions about 90 m from the centreline (ICAO Annex 14, code 4 precision runway)
 ENTRY = {"24": "S7E"}  # departures line up from S7E, the entry nearest the start of 24 (OSM)
+# hand-set: the departure queue for 24, 700 m of OSM taxiway centreline back from the S7E holding position
+# (traced on public/tower/ground.json: from the hold, the straightest continuing line at each node)
+QUEUE = {"24": [[52.305245, 4.775807], [52.30545, 4.775635], [52.305511, 4.775581], [52.305857, 4.775294],
+    [52.306206, 4.774998], [52.306427, 4.774813], [52.306578, 4.774687], [52.306635, 4.774642],
+    [52.30668, 4.774604], [52.306718, 4.774577], [52.306775, 4.774551], [52.306843, 4.774536],
+    [52.307965, 4.774641], [52.308109, 4.774653], [52.308349, 4.774678], [52.308577, 4.774697],
+    [52.308739, 4.774711], [52.309822, 4.774812], [52.310314, 4.774857], [52.310534, 4.774879],
+    [52.310723, 4.774895], [52.311052, 4.774927]]}
 
 
 def exits(rw, opp):
@@ -107,7 +115,9 @@ for r in osc["runways"]:
 by_id = {r["id"]: r for r in runways}
 for rid, opp in (("18R", "36L"), ("24", "06")):
     by_id[rid]["exits"], entry = exits(by_id[rid], by_id[opp])
-    if entry: by_id[rid]["entry"] = entry
+    if entry:
+        if rid in QUEUE: entry["queue"] = [entry["path"][-1]] + QUEUE[rid]
+        by_id[rid]["entry"] = entry
 
 out = {
     "icao": "EHAM",

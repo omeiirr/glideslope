@@ -136,3 +136,36 @@ test('scenery taxiing: a vacated arrival taxis to a stand smoothly and parks; a 
   expect(still).toHaveLength(1);
   expect(still[0]!.pose.pos.x).toBeCloseTo(arrivalEnd!.x, 3);
 });
+
+test('scenery taxiing: aircraft hold for traffic ahead, and appear only out of view', () => {
+  const exit = runwayById(EHAM, '18R')!.exits![2]!;
+  const hold = w(exit.path[exit.path.length - 1]!);
+  const tail = { pos: w(runwayById(EHAM, '24')!.entry!.path.at(-1)!), face: 240 };
+  const dep: PlannedDeparture = { at: 900, callsign: 'EZY12', type: 'A319', airline: 'EZY' };
+  // the stand it gets when nothing is in view...
+  const free = setup().traffic.update(0, [], [dep], tail)[0]!.pose.pos;
+  // ...is skipped while the camera looks at it
+  const { traffic } = setup();
+  const near = (p: P2) => Math.hypot(p.x - free.x, p.z - free.z) < 100;
+  traffic.seen = near;
+  const first = traffic.update(0, [], [dep], tail);
+  expect(first).toHaveLength(1);
+  expect(near(first[0]!.pose.pos)).toBe(false);
+
+  // two arrivals vacate at the same exit 6 s apart (closer than real): once both move, the second keeps a length back
+  traffic.update(0.5, [target(7, hold, 270)], [dep], tail);
+  let closest = Infinity;
+  let ids: number[] = [];
+  for (let t = 1; t < 400; t += 0.5) {
+    const sim = t < 7 ? [target(8, hold, 270)] : [];
+    const ghosts = traffic.update(t, sim, [dep], tail).filter((g) => g.type === 'A320');
+    if (ghosts.length === 2) {
+      ids = ghosts.map((g) => g.id);
+      const [a, b] = ghosts.map((g) => g.pose.pos);
+      // until the first turns off towards its own stand
+      if (t > 20 && t < 120) closest = Math.min(closest, Math.hypot(a!.x - b!.x, a!.z - b!.z));
+    }
+  }
+  expect(ids).toHaveLength(2);
+  expect(closest).toBeGreaterThan(45);
+});

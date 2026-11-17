@@ -90,6 +90,32 @@ export function fieldTexture(): THREE.CanvasTexture {
   return t;
 }
 
+/** Rough grass for the land outside the fence and parks: fine blades and clumps, near white (multiplied with the land colour). 256 px = 24 m. */
+export function roughGrassTexture(): THREE.CanvasTexture {
+  return canvasTexture(
+    256,
+    (g, rnd) => {
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 40; i++) {
+        const [x, y, r] = [rnd() * 256, rnd() * 256, 6 + rnd() * 18];
+        g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,230,0.06)' : 'rgba(30,45,20,0.06)';
+        for (const dx of [-256, 0, 256])
+          for (const dy of [-256, 0, 256]) {
+            g.beginPath();
+            g.arc(x + dx, y + dy, r, 0, Math.PI * 2);
+            g.fill();
+          }
+      }
+      for (let i = 0; i < 7000; i++) {
+        g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,220,0.16)' : 'rgba(30,45,20,0.18)';
+        g.fillRect(rnd() * 256, rnd() * 256, 1, 2 + rnd() * 2);
+      }
+    },
+    24,
+  );
+}
+
 /** Airside grass mown in 12 m swaths (faintly lighter and darker), over the fine grass detail. 512 px = 96 m. */
 export function mownGrassTexture(): THREE.CanvasTexture {
   return canvasTexture(

@@ -2,7 +2,15 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Airport } from '../../core';
 import { buildAircraft, disposeAircraftAssets, type AircraftMesh } from './aircraftMesh';
-import { fieldTexture, mownGrassTexture, shadeWalls, skyEnvironment, trees, tyreMarks } from './enhance';
+import {
+  fieldTexture,
+  mownGrassTexture,
+  roughGrassTexture,
+  shadeWalls,
+  skyEnvironment,
+  trees,
+  tyreMarks,
+} from './enhance';
 import {
   holdingPosition,
   llToGround,
@@ -550,11 +558,10 @@ export class TowerRenderer {
   /** The land around the airport (land use, water, motorways), from OSM. */
   loadLand(l: LandData) {
     const fields = fieldTexture();
-    this.disposables.push(fields);
-    LAND.forEach(
-      ([cls, color], i) =>
-        l.land[cls] && this.polygons(l.land[cls], color, -72 + i, cls === 'farm' ? fields : undefined),
-    );
+    const rough = roughGrassTexture();
+    this.disposables.push(fields, rough);
+    const maps: Record<string, THREE.Texture> = { farm: fields, park: rough };
+    LAND.forEach(([cls, color], i) => l.land[cls] && this.polygons(l.land[cls], color, -72 + i, maps[cls]));
     const cabs = this.ap.towers.map((t) => toWorld(t.pos));
     for (const o of trees(this.ap, l, cabs)) {
       this.scene.add(o);
@@ -596,6 +603,7 @@ export class TowerRenderer {
     };
     const roofs: THREE.BufferGeometry[] = [];
     const plant: THREE.BufferGeometry[] = [];
+    const parapets: THREE.BufferGeometry[] = [];
     const rnd = seeded(31);
     const cabs = this.ap.towers.map((t) => toWorld(t.pos));
     const tint = (geo: THREE.BufferGeometry, c: THREE.Color) => {
@@ -622,7 +630,9 @@ export class TowerRenderer {
       // ExtrudeGeometry: group 0 = caps, group 1 = side walls
       const [caps, sides] = geo.groups as [THREE.GeometryGroup, THREE.GeometryGroup];
       const roof = slice(geo, caps.start, caps.count);
-      const tone = new THREE.Color(ROOF[b.s]).multiplyScalar(0.88 + rnd() * 0.18);
+      // higher roofs a little lighter (more sky, less soot), so stepped levels read apart
+      const lift = 1 + 0.12 * Math.min(1, Math.max(0, (b.h - 8) / 25));
+      const tone = new THREE.Color(ROOF[b.s]).multiplyScalar((0.88 + rnd() * 0.18) * lift);
       const rc = new Float32Array(roof.attributes.position!.count * 3);
       for (let i = 0; i < rc.length; i += 3) rc.set([tone.r, tone.g, tone.b], i);
       roof.setAttribute('color', new THREE.BufferAttribute(rc, 3));
@@ -633,6 +643,7 @@ export class TowerRenderer {
       walls[b.s].push(wall);
       geo.dispose();
       if (b.s !== 'plain' && base === 0 && b.h > 6) plant.push(...rooftopPlant(pts, b.h, rnd));
+      if (b.s !== 'plain') parapets.push(parapet(pts, b.h));
     }
 
     const add = (
@@ -679,6 +690,8 @@ export class TowerRenderer {
     add(walls.hangar, { color: '#ffffff', map: tex.hangar, roughness: 0.7, metalness: 0.1 });
     add(walls.plain, { color: '#e6e4de' });
     add(plant, { color: '#cfd2d4', roughness: 0.7 });
+    // both faces: seen from outside as the top of the wall, from the roof as its rim
+    add(parapets, { color: '#ffffff', roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide });
   }
 
   private addFlat(
@@ -753,12 +766,21 @@ export class TowerRenderer {
 
     // land beyond the OSM land use, so the horizon is never a hole
     const landGeo = new THREE.CircleGeometry(R, 48);
-    const landMat = new THREE.MeshLambertMaterial({ color: '#7d965a', depthTest: false, depthWrite: false });
+    // uv in metres, as the other ground layers, for the grass texture
+    const lp = landGeo.attributes.position!;
+    for (let i = 0; i < lp.count; i++) landGeo.attributes.uv!.setXY(i, lp.getX(i), lp.getY(i));
+    const rough = roughGrassTexture();
+    const landMat = new THREE.MeshLambertMaterial({
+      color: '#7d965a',
+      map: rough,
+      depthTest: false,
+      depthWrite: false,
+    });
     const land = new THREE.Mesh(landGeo, landMat);
     land.rotation.x = -Math.PI / 2;
     land.renderOrder = -90;
     this.scene.add(land);
-    this.disposables.push(geo, skyMat, landGeo, landMat);
+    this.disposables.push(geo, skyMat, landGeo, landMat, rough);
 
     // soft fair-weather clouds: billboards, always the same ones (seeded)
     let seed = 11;
@@ -1277,6 +1299,50 @@ function poolTexture(): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+/** Roof edges stand this much above the roof (m). */
+const PARAPET_H = 1;
+/**
+ * A parapet round a flat roof: a 1 m upstand along the outline with a light metal coping on top and a darker
+ * inner face, so each roof level has a bright rim and a shadow line where it meets the roof.
+ */
+function parapet(pts: { x: number; z: number }[], h: number): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const col: number[] = [];
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i]!;
+    const b = pts[(i + 1) % n]!;
+    if (a.x === b.x && a.z === b.z) continue;
+    pos.push(
+      a.x,
+      h,
+      a.z,
+      b.x,
+      h,
+      b.z,
+      b.x,
+      h + PARAPET_H,
+      b.z,
+      a.x,
+      h,
+      a.z,
+      b.x,
+      h + PARAPET_H,
+      b.z,
+      a.x,
+      h + PARAPET_H,
+      a.z,
+    );
+    // dark where it meets the roof, coping-bright at the top
+    for (const t of [0, 0, 1, 0, 1, 1]) col.push(...(t ? [0.95, 0.96, 0.97] : [0.55, 0.56, 0.58]));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  return geo;
 }
 
 /** Air-handling boxes scattered on a big flat roof, seeded (none on roofs under 3000 m2). */

@@ -184,6 +184,29 @@ test('tower: conditional line-up waits behind the departing traffic; wrong type 
   expect(s.stats.runwayIncursions).toBe(0);
 });
 
+test('tower Pro readback errors: a misheard runway is caught with "negative"; a misheard exit is flown', async () => {
+  const s = towerSession('pro');
+  s.settings.readbackErrorRate = 1;
+  await settle(s, 10000);
+  await say(s, 'KLM1200, runway 18R, wind 200 degrees 12 knots, cleared to land');
+  await settle(s);
+  expect(said(s, /^Runway 18L, cleared to land, KLM1200$/)).toBe(true);
+  expect(s.stats.readbackErrors).toBe(1);
+  await say(s, 'KLM1200, negative, runway 18R, wind 200 degrees 12 knots, cleared to land');
+  await settle(s);
+  expect(s.stats.readbackCaught).toBe(1);
+  const ac = s.sim.byCallsign('KLM1200')!;
+  expect(ac.landClear).toBe(true);
+  // the exit: nobody says "negative", so the pilot takes the one it read back
+  await say(s, 'KLM1200, vacate left via V3, when vacated contact ground 121.560');
+  await settle(s);
+  const rb = s.log.filter((e) => e.kind === 'pilot' && /^Vacate left via (V2|V4)/.test(e.text));
+  expect(rb).toHaveLength(1);
+  expect(ac.vacate?.exit).toBe(/V2|V4/.exec(rb[0]!.text)![0]);
+  await settle(s, 60000);
+  expect(rb[0]).toMatchObject({ rb: 'missed' });
+});
+
 test('tower Pro: no landing clearance means a go-around; missed handoffs to Ground and Departure', async () => {
   const s = towerSession('pro', [DEP]);
   await settleUntil(s, () => s.stats.goArounds > 0);

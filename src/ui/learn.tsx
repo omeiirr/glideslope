@@ -304,7 +304,7 @@ const COMMANDS: CommandDoc[] = [
   {
     title: 'Correct a wrong readback',
     cmds: [],
-    note: 'In Professional mode a pilot sometimes reads back a wrong value. Say “negative” and repeat the correct instruction.',
+    note: 'In Professional mode a pilot sometimes reads back a wrong value: a heading, level or speed, and in the tower a runway or exit. Say “negative” and repeat the correct instruction.',
     custom: {
       you: p(
         `${STUDENT}, negative, descend altitude 3000`,

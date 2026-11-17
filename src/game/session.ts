@@ -672,9 +672,10 @@ export class Session {
       !pending &&
       this.rng.next() < this.settings.readbackErrorRate
     ) {
-      error = corruptReadback(r.commands, EHAM.transitionAltitudeFt, () => this.rng.next());
-      if (error && error.commands.every((c) => this.sim.validate(cs, c).ok)) {
-        flown = error.commands;
+      const exits = (this.sim.env.landing.exits ?? []).map((e) => e.name);
+      error = corruptReadback(r.commands, EHAM.transitionAltitudeFt, () => this.rng.next(), exits);
+      if (error && error.flown.every((c) => this.sim.validate(cs, c).ok)) {
+        flown = error.flown;
         rbCmds = error.commands;
         s.readbackErrors++;
       } else error = null;
@@ -726,5 +727,8 @@ function sameValue(a: Command, b: Command): boolean {
   if (a.type === 'heading' && b.type === 'heading') return a.heading === b.heading;
   if (a.type === 'altitude' && b.type === 'altitude') return a.altitude === b.altitude;
   if (a.type === 'speed' && b.type === 'speed') return a.speed === b.speed;
+  if ((a.type === 'land' || a.type === 'lineUp' || a.type === 'takeoff') && a.type === b.type)
+    return a.runway === b.runway;
+  if (a.type === 'vacate' && b.type === 'vacate') return a.exit === b.exit;
   return false;
 }

@@ -1247,7 +1247,8 @@ dl.defs dd {
   font-weight: 700;
 }
 .app.realistic .bay .strip.pending {
-  opacity: 0.6;
+  /* faded, but its text keeps 4.5:1 (axe) */
+  opacity: 0.7;
 }
 .app.realistic .bay .strip.selected {
   outline: 2px solid #fff;

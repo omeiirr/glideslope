@@ -154,6 +154,36 @@ test('tower: arrival calls, cleared to land, vacates via V3 to Ground; departure
   expect(s.stats.phraseSum).toBe(100 * s.stats.transmissions);
 });
 
+test('tower: conditional line-up waits behind the departing traffic; wrong type is "not in sight"', async () => {
+  const DEP2 = { at: 5, kind: 'departure' as const, callsign: 'KLM1520', type: 'E190', route: 'LEKKO' };
+  const s = towerSession('beginner', [DEP, DEP2]);
+  await settle(s, 10000);
+  await say(s, 'TRA6015, runway 24, line up and wait');
+  const lead = s.sim.byCallsign('TRA6015')!;
+  const next = s.sim.byCallsign('KLM1520')!;
+  // the next one moves up and calls ready once the leader has left the queue
+  await settleUntil(s, () => said(s, /KLM1520, holding point S7E, ready for departure$/));
+  await say(s, 'KLM1520, behind the departing A320, runway 24, line up and wait, behind');
+  await settle(s);
+  expect(said(s, /^Unable, traffic not in sight, KLM1520$/)).toBe(true);
+  await say(s, 'KLM1520, behind the departing Boeing 737, runway 24, line up and wait, behind');
+  await settle(s);
+  expect(said(s, /^Behind the departing Boeing 737, runway 24, line up and wait, behind, KLM1520$/)).toBe(
+    true,
+  );
+  expect(next.lineUpBehind).toBe(lead.id);
+  await settleUntil(s, () => lead.nav.mode === 'lineup' && lead.nav.ready);
+  await settle(s, 20000);
+  // still waiting at the holding point while the leader sits on the runway
+  expect(['holding', 'taxi']).toContain(next.nav.mode);
+  expect(next.phase).not.toBe('lineup');
+  await say(s, 'TRA6015, runway 24, wind 200 degrees 12 knots, cleared for take-off');
+  await settleUntil(s, () => next.phase === 'lineup');
+  expect(lead.nav.mode === 'takeoff' || lead.alt > 100).toBe(true);
+  expect(next.lineUpBehind).toBeUndefined();
+  expect(s.stats.runwayIncursions).toBe(0);
+});
+
 test('tower Pro: no landing clearance means a go-around; missed handoffs to Ground and Departure', async () => {
   const s = towerSession('pro', [DEP]);
   await settleUntil(s, () => s.stats.goArounds > 0);

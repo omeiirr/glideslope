@@ -26,6 +26,12 @@ export function spokenAltitude(ft: number): string {
 const spokenFl = (fl: number) => (fl === 100 ? 'one hundred' : spell(pad3(fl).replace(/^0/, '')));
 const spokenRunway = (id: string) =>
   spell(id.slice(0, 2)) + ({ L: ' left', R: ' right', C: ' center' }[id.slice(2)] ?? '');
+/** Aircraft types in a description are read out letter by letter and digit by digit ("A320" → "A three two zero"). */
+const spokenDesc = (s: string) =>
+  s
+    .replace(/\brunway (\d{2}[LRC]?)\b/g, (_, r: string) => `runway ${spokenRunway(r)}`)
+    .replace(/\b([A-Z])(\d+)\b/g, (_, l: string, d: string) => `${l} ${spell(d)}`)
+    .replace(/\b(\d{3})\b/g, (_, d: string) => spell(d));
 const spokenFix = (fix: string) => (/\d/.test(fix) ? spell(fix) : fix[0] + fix.slice(1).toLowerCase());
 
 function level(cmd: Extract<Command, { type: 'altitude' }>): Phrase {
@@ -142,11 +148,23 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
         `vacate${side}${sVia || (side ? '' : ' runway')}`,
       );
     }
-    case 'lineUp':
-      return both(
+    case 'lineUp': {
+      const rw = both(
         `runway ${cmd.runway}, line up and wait`,
         `runway ${spokenRunway(cmd.runway)}, line up and wait`,
       );
+      if (!cmd.behind) return rw;
+      // ICAO: the condition first, the clearance, then the condition again ("behind")
+      const who = `behind the ${cmd.behind.traffic}${cmd.behind.desc ? ` ${cmd.behind.desc}` : ''}`;
+      return join([both(who, spokenDesc(who)), rw, both('behind')]);
+    }
+    case 'trafficInfo':
+      return readback
+        ? both('traffic in sight')
+        : both(
+            `traffic${cmd.desc ? `, ${cmd.desc}` : ''}`,
+            spokenDesc(`traffic${cmd.desc ? `, ${cmd.desc}` : ''}`),
+          );
     case 'takeoff':
       return clearance(cmd.runway, 'cleared for take-off', env, readback);
     case 'cancelTakeoff':
@@ -233,7 +251,9 @@ export function chip(cmd: Command): string {
     case 'vacate':
       return ['VACATE', cmd.side?.[0]!.toUpperCase(), cmd.exit].filter(Boolean).join(' ');
     case 'lineUp':
-      return `LUP ${cmd.runway}`;
+      return `LUP ${cmd.runway}${cmd.behind ? ' BHND' : ''}`;
+    case 'trafficInfo':
+      return 'TFC';
     case 'takeoff':
       return `T/O ${cmd.runway}`;
     case 'cancelTakeoff':
@@ -311,6 +331,11 @@ export const RULE_TEXT: Record<string, string> = {
   'wind-missing': 'Give the surface wind with a landing or take-off clearance.',
   'lineup-wording': 'Standard wording: "runway …, line up and wait".',
   'faa-position-and-hold': '"Position and hold" is FAA phraseology; ICAO says "line up and wait".',
+  'conditional-wording':
+    'A conditional clearance gives the traffic first and repeats the condition at the end: "behind the departing A320, runway 24, line up and wait, behind".',
+  'conditional-lineup-only': 'Only a line-up can be made conditional; the condition was ignored.',
+  'stop-wording':
+    'To stop a take-off roll say "stop immediately" (repeated); "hold position" before it starts.',
   'vacate-wording': 'Give the direction and the exit: "vacate left via V2".',
   'unknown-words': 'Some words were not understood and were ignored.',
   'callsign-unknown': 'Callsign not recognized.',

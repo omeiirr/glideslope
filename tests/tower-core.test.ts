@@ -272,3 +272,28 @@ describe('tower mode (T4 rules)', () => {
     expect(alongNm(back)).toBeCloseTo(12, 0);
   });
 });
+
+test('conditional clearances: type names and descriptions match the types they describe', async () => {
+  const { typeMatches, typeName } = await import('../src/core');
+  for (const t of [
+    'B738',
+    'B38M',
+    'A320',
+    'A20N',
+    'A321',
+    'E190',
+    'E195',
+    'A332',
+    'B77W',
+    'B789',
+    'A388',
+    'PC12',
+  ])
+    expect(typeMatches(typeName(t), t), t).toBe(true);
+  expect(typeName('B38M')).toBe('Boeing 737');
+  expect(typeName('A20N')).toBe('A320');
+  expect(typeMatches('A320', 'B738')).toBe(false);
+  expect(typeMatches('Boeing 737', 'B38M')).toBe(true);
+  expect(typeMatches('', 'E190')).toBe(true); // "behind departing traffic"
+  expect(typeMatches('a 320', 'A20N')).toBe(true);
+});

@@ -14,3 +14,4 @@ export * from './rules/separation';
 export type { TrafficConfig, SpawnSpec, PlannedDeparture } from './traffic/spawner';
 
 export const EHAM = loadAirport(ehamJson as unknown as AirportJson);
+export { typeName, typeMatches } from './commands/apply';

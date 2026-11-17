@@ -11,7 +11,7 @@ import {
 } from './aircraft/aircraft';
 import { reciprocalRunway, runwayById } from './airport/load';
 import type { Airport } from './airport/types';
-import { applyCommand, validateCommand } from './commands/apply';
+import { applyCommand, conditionMet, validateCommand } from './commands/apply';
 import type { Command, CommandResult } from './commands/commands';
 import { bearing, dist, headingVec, unproject } from './geo';
 import { Rng } from './rng';
@@ -111,6 +111,7 @@ export class Sim {
       strictIls: !!opts.strictIls,
       time: 0,
       tower: !!opts.tower,
+      traffic: () => this.list,
     };
     this.spawner = new Spawner(airport, this.rng, opts.traffic);
     this.tower = !!opts.tower;
@@ -191,6 +192,13 @@ export class Sim {
   /** Tower mode: the stand-in Approach and the pilots' calls to Tower. */
   private runTowerMode(events: SimEvent[]) {
     const landing = this.env.landing;
+    for (const ac of this.list) {
+      if (ac.lineUpBehind === undefined) continue;
+      if (!conditionMet(this.list.find((a) => a.id === ac.lineUpBehind))) continue;
+      ac.lineUpBehind = undefined;
+      if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
+        lineUp(ac, this.env.departure);
+    }
     for (const ac of this.list) {
       if (ac.kind !== 'arrival' || ac.comms === 'tower' || ac.comms === 'ground' || isOnGround(ac)) continue;
       if (ac.phase === 'goaround') continue;

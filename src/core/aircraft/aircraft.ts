@@ -97,6 +97,8 @@ export interface Aircraft {
   groundPending?: boolean;
   /** Sim time of the departure's ready call to Tower. */
   readyAt?: number;
+  /** Conditional line-up: lines up once this aircraft (a departure ahead) is rolling or airborne. */
+  lineUpBehind?: number;
 }
 
 export interface Env {
@@ -109,6 +111,8 @@ export interface Env {
   time: number;
   /** Tower mode: the player is Tower, so arrivals need a landing clearance. */
   tower?: boolean;
+  /** All aircraft in the sim (pilots look for the traffic a conditional clearance names). */
+  traffic?: () => readonly Aircraft[];
 }
 
 export type GoAroundReason = 'unstable' | 'commanded' | 'noClearance' | 'runwayOccupied';

@@ -9,11 +9,11 @@ import {
   type Env,
 } from '../aircraft/aircraft';
 import { bearing } from '../geo';
-import type { Command, CommandResult } from './commands';
+import type { Command, CommandResult, Condition } from './commands';
 
 const OK: CommandResult = { ok: true };
 /** Tower instructions a pilot on the ground (not rolling) accepts. */
-const GROUND_OK = new Set<Command['type']>(['lineUp', 'takeoff', 'cancelTakeoff', 'vacate']);
+const GROUND_OK = new Set<Command['type']>(['lineUp', 'takeoff', 'cancelTakeoff', 'vacate', 'trafficInfo']);
 const LATERAL = new Set<Command['type']>(['heading', 'presentHeading', 'direct', 'hold', 'ils']);
 /** Metres past the landing threshold. */
 const alongM = (ac: Aircraft, env: Env) => -runwayFrame(ac.pos, env.landing).along * 1852;
@@ -99,9 +99,11 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
     case 'lineUp':
     case 'takeoff':
       if (ac.kind !== 'departure' || !queued) return unable('unable, not at the holding point');
-      return cmd.runway === env.departure.id
-        ? OK
-        : unable(`negative, we are departing runway ${env.departure.id}`);
+      if (cmd.runway !== env.departure.id)
+        return unable(`negative, we are departing runway ${env.departure.id}`);
+      if (cmd.type === 'lineUp' && cmd.behind && !conditionTraffic(ac, cmd.behind, env))
+        return unable('unable, traffic not in sight');
+      return OK;
     case 'cancelTakeoff':
       if (ac.kind !== 'departure' || !(queued || m === 'takeoff')) return unable('unable, airborne');
       return OK;
@@ -182,17 +184,24 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
         ac.nav.exit = exitsFor(env.landing, cmd).find((e) => canMakeExit(env.landing, e, along, ac.ias))!;
       }
       break;
-    case 'lineUp':
-      if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
+    case 'lineUp': {
+      ac.lineUpBehind = undefined;
+      const leader = cmd.behind && conditionTraffic(ac, cmd.behind, env);
+      // conditional: wait at the holding point until the traffic is past (the sim lines it up then)
+      if (leader && !conditionMet(leader)) ac.lineUpBehind = leader.id;
+      else if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
         lineUp(ac, env.departure);
       break;
+    }
     case 'takeoff':
+      ac.lineUpBehind = undefined;
       ac.takeoffClear = true;
       if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
         lineUp(ac, env.departure);
       break;
     case 'cancelTakeoff':
       ac.takeoffClear = false;
+      ac.lineUpBehind = undefined;
       // rejected take-off: brake to a stop on the runway, lined up
       if (ac.nav.mode === 'takeoff') {
         ac.nav = { mode: 'lineup', ready: true, timer: 0 };
@@ -202,3 +211,65 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
   }
   return OK;
 }
+
+/** Rough type families as a controller describes them ("A320", "Boeing 737", "Embraer 190"). */
+const TYPE_WORDS: Record<string, string[]> = {
+  B738: ['737', '738', 'b737', 'b738'],
+  B38M: ['737', 'max', 'b38m', 'b737'],
+  A320: ['320', 'a320'],
+  A20N: ['320', 'a320', 'neo', 'a20n'],
+  A321: ['321', 'a321'],
+  E190: ['190', 'e190'],
+  E195: ['195', 'e195'],
+  A332: ['330', 'a330', 'a332'],
+  A333: ['330', 'a330', 'a333'],
+  B772: ['777', 'b777', 'b772'],
+  B77W: ['777', 'b777', 'b77w'],
+  B789: ['787', 'b787', 'b789', 'dreamliner'],
+  A388: ['380', 'a380', 'a388'],
+  PC12: ['pc12', 'pilatus'],
+};
+
+/** A type as a controller says it: "Boeing 737", "A320", "Embraer 190". */
+export function typeName(type: string): string {
+  const family = (TYPE_WORDS[type] ?? [])[0];
+  if (!family || !/^\d+$/.test(family)) return type;
+  return { B: `Boeing ${family}`, A: `A${family}`, E: `Embraer ${family}` }[type[0]!] ?? type;
+}
+
+/** Whether a spoken description fits a type: any type word in it matches; a description with none fits all. */
+export function typeMatches(desc: string, type: string): boolean {
+  const said = desc.toLowerCase().split(/\s+/).filter(Boolean);
+  // "a 320" and "b 738" are said as two words: join a lone letter to the number after it
+  const joined = said.flatMap((w, i) =>
+    /^[a-z]$/.test(w) && /^\d/.test(said[i + 1] ?? '') ? [w + said[i + 1]] : [w],
+  );
+  const all = new Set(Object.values(TYPE_WORDS).flat());
+  const typed = joined.filter((w) => all.has(w));
+  if (!typed.length) return true;
+  const mine = TYPE_WORDS[type] ?? [type.toLowerCase()];
+  return typed.some((w) => mine.includes(w));
+}
+
+/** The aircraft a conditional clearance names, if a pilot at the holding point can see one. */
+export function conditionTraffic(ac: Aircraft, c: Condition, env: Env): Aircraft | undefined {
+  const all = env.traffic?.() ?? [];
+  const runway = env.departure.id;
+  const cands = all.filter((o) => {
+    if (o === ac || !typeMatches(c.desc, o.type)) return false;
+    const m = o.nav.mode;
+    if (c.traffic === 'departing')
+      return (
+        o.kind === 'departure' &&
+        (m === 'lineup' || m === 'takeoff' || (m === 'taxi' && o.nav.then === 'lineup'))
+      );
+    // landing traffic only counts on the runway this departure uses
+    return o.kind === 'arrival' && env.landing.id === runway && (m === 'loc' || m === 'rollout');
+  });
+  // the one rolling first, then the one lined up
+  return cands.sort((a, b) => +(b.nav.mode === 'takeoff') - +(a.nav.mode === 'takeoff'))[0];
+}
+
+/** The traffic is past: rolling at speed, airborne or gone. */
+export const conditionMet = (leader: Aircraft | undefined) =>
+  !leader || !isOnGround(leader) || (leader.nav.mode === 'takeoff' && leader.ias >= 60);

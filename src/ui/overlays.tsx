@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks';
-import { EHAM, isOnGround, runwayById, type Aircraft, type Command } from '../core';
+import { EHAM, isOnGround, runwayById, typeName, type Aircraft, type Command } from '../core';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
 import { phraseologyPct, weightsFor } from '../game/scoring';
 import type { Session } from '../game/session';
@@ -530,8 +530,22 @@ export function towerTips(session: Session, ac: Readonly<Aircraft>): string[] {
       ];
     return [say(vacate, { type: 'handoff', to: 'ground' }), say({ type: 'goAround' })];
   }
-  if (n.mode === 'holding' || (n.mode === 'taxi' && n.then === 'hold'))
+  if (n.mode === 'holding' || (n.mode === 'taxi' && n.then === 'hold')) {
+    // another departure on the runway: line up behind it (conditional), not onto it
+    const ahead = session.sim.aircraft.find(
+      (o) => o !== ac && o.kind === 'departure' && (o.nav.mode === 'lineup' || o.nav.mode === 'takeoff'),
+    );
+    if (ahead)
+      return [
+        say({
+          type: 'lineUp',
+          runway: departure,
+          behind: { traffic: 'departing', desc: typeName(ahead.type) },
+        }),
+        say({ type: 'lineUp', runway: departure }),
+      ];
     return [say({ type: 'lineUp', runway: departure }), say({ type: 'takeoff', runway: departure })];
+  }
   if (n.mode === 'lineup' || n.mode === 'taxi')
     return [say({ type: 'takeoff', runway: departure }), say({ type: 'cancelTakeoff' })];
   if (n.mode === 'takeoff') return [say({ type: 'cancelTakeoff' })];

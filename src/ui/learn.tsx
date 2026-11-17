@@ -632,6 +632,16 @@ const TOWER_COMMANDS: CommandDoc[] = [
     note: 'The departure enters the runway and stops on the centreline, ready to go the moment the runway is yours.',
   },
   {
+    title: 'Conditional line-up',
+    cmds: [{ type: 'lineUp', runway: DEP, behind: { traffic: 'departing', desc: 'A320' } }],
+    note: 'Keeps the runway busy: the next departure lines up as soon as the one ahead is rolling. Name the traffic first and say “behind” again at the end; the pilot must see it, or answers “unable, traffic not in sight”.',
+  },
+  {
+    title: 'Traffic information',
+    cmds: [{ type: 'trafficInfo', desc: 'A321 on short final runway 18R' }],
+    note: 'Tells a pilot about other traffic; nothing changes. The pilot reports it in sight.',
+  },
+  {
     title: 'Take-off clearance',
     cmds: [{ type: 'takeoff', runway: DEP }],
     note: 'Runway, wind, “cleared for take-off”. This is the only phrase that uses the word “take-off”: everywhere else say “departure”.',
@@ -639,7 +649,7 @@ const TOWER_COMMANDS: CommandDoc[] = [
   {
     title: 'Hold position',
     cmds: [{ type: 'cancelTakeoff' }],
-    note: 'Stops a departure that is lining up or waiting, for example when the runway is suddenly not safe. Give a new take-off clearance when it is.',
+    note: 'Stops a departure that is lining up or waiting, for example when the runway is suddenly not safe. Give a new take-off clearance when it is. A departure already rolling: “stop immediately”, said twice.',
   },
   {
     title: 'Hand off a departure',

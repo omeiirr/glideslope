@@ -1,4 +1,4 @@
-import { runwayById, transitionLevel, type Airport, type Command } from '../core';
+import { runwayById, transitionLevel, type Airport, type Command, type Condition } from '../core';
 import { matchCallsign } from './callsign';
 import { PHONETIC, similarity, tokens, words, type Tok } from './normalize';
 import { canonical } from './phrases';
@@ -65,6 +65,10 @@ class Cursor {
   runway?: string;
   /** A surface wind was given in this transmission. */
   wind = false;
+  /** Conditional clearance: the traffic named, and where in the transmission. */
+  cond?: { condition: Condition; at: number };
+  /** The condition was repeated after the clearance ("…, line up and wait, behind"). */
+  condRepeated = false;
   w(i: number, ...alts: string[]): boolean {
     const k = this.t[i];
     return k?.t === 'w' && alts.includes(k.v);
@@ -523,7 +527,10 @@ const lineUp: Matcher = (c) => {
 const cancelTakeoff: Matcher = (c) => {
   const i = c.i;
   if (c.w(i, 'hold') && c.w(i + 1, 'position')) return { next: i + 2, cmd: { type: 'cancelTakeoff' } };
-  if (c.w(i, 'stop') && c.w(i + 1, 'immediately')) return { next: i + 2, cmd: { type: 'cancelTakeoff' } };
+  if (c.w(i, 'stop'))
+    return c.w(i + 1, 'immediately')
+      ? { next: i + 2, cmd: { type: 'cancelTakeoff' } }
+      : { next: i + 1, cmd: { type: 'cancelTakeoff' }, issues: [issue('info', 'stop-wording', 'stop')] };
   if (
     c.w(i, 'cancel', 'abort') &&
     (c.w(i + 1, 'takeoff') || (c.w(i + 1, 'take') && c.w(i + 2, 'off', 'of')))
@@ -573,11 +580,129 @@ const vacate: Matcher = (c) => {
   return { next: i, cmd, issues };
 };
 
+/** Words that start the next instruction: a traffic description ends before them. */
+const CLAUSE = new Set([
+  'line',
+  'lineup',
+  'cleared',
+  'taxi',
+  'hold',
+  'behind',
+  'cross',
+  'vacate',
+  'contact',
+  'wind',
+  'continue',
+  'go',
+  'stop',
+  'cancel',
+  'traffic',
+  'when',
+  'runway',
+]);
+/** Where the traffic is: said after its type, not part of it. */
+const WHERE = new Set([
+  'on',
+  'at',
+  'short',
+  'final',
+  'mile',
+  'miles',
+  'nm',
+  'out',
+  'passing',
+  'now',
+  'rolling',
+  'airborne',
+  'in',
+  'of',
+  'your',
+  'you',
+  'ahead',
+  'left',
+  'right',
+  'from',
+  'to',
+  'the',
+  'a',
+  'an',
+  'is',
+  'just',
+  'touching',
+  'down',
+]);
+const TRAFFIC_WORD: Record<string, Condition['traffic']> = {
+  departing: 'departing',
+  departure: 'departing',
+  landing: 'landing',
+  arriving: 'landing',
+  arrival: 'landing',
+  inbound: 'landing',
+};
+
+/**
+ * A traffic description at i: the type ("A320", "Boeing 737"), then where it is (skipped). Ends at the next
+ * instruction; "runway 18R" stays part of it unless a clearance follows ("…, runway 24, line up").
+ */
+function describe(c: Cursor, from: number): { type: string; text: string; next: number } {
+  const kind: string[] = [];
+  let where = false;
+  let i = from;
+  for (; i < c.t.length; i++) {
+    const k = c.t[i]!;
+    if (k.t === 'w' && k.v === 'runway') {
+      const r = runwayAt(c, i);
+      const after = c.t[r?.next ?? i];
+      if (!r || (after?.t === 'w' && CLAUSE.has(after.v))) break;
+      i = r.next - 1;
+      where = true;
+      continue;
+    }
+    if (k.t === 'w' && CLAUSE.has(k.v)) break;
+    // "A320" arrives as "a" "320": a lone letter before a number is part of the type, not an article
+    const letter = k.t === 'w' && k.v.length === 1 && !!c.n(i + 1);
+    if (!letter && k.t === 'w' && (WHERE.has(k.v) || k.v in TRAFFIC_WORD)) where ||= kind.length > 0;
+    else if (!where) kind.push(k.t === 'n' ? k.s : k.v.length === 1 ? k.v.toUpperCase() : k.v);
+  }
+  const tidy = (s: string) =>
+    s
+      .replace(/\b(\d{2}) ([lrc])\b/g, (_, n: string, l: string) => n + l.toUpperCase())
+      .replace(/\b([a-z]) (\d+)\b/gi, (_, l: string, d: string) => l.toUpperCase() + d)
+      .replace(/^(a|an|the) /, '')
+      .replace(/\b(boeing|airbus|embraer|pilatus)\b/g, (w) => w[0]!.toUpperCase() + w.slice(1));
+  return { type: tidy(kind.join(' ')), text: tidy(c.said(from, i)), next: i };
+}
+
+/** "behind the departing A320 [rolling]": the condition of a conditional line-up; "behind" alone repeats it. */
+const condition: Matcher = (c) => {
+  if (!c.w(c.i, 'behind')) return null;
+  const i = c.skip(c.i + 1, 'the', 'a');
+  const k = c.t[i];
+  const traffic = k?.t === 'w' ? TRAFFIC_WORD[k.v] : undefined;
+  if (!traffic) {
+    c.condRepeated = !!c.cond;
+    return { next: c.i + 1 };
+  }
+  // "behind departing traffic": no type given
+  const d = describe(c, c.skip(i + 1, 'traffic', 'aircraft'));
+  c.cond = { condition: { traffic, desc: d.type }, at: c.i };
+  return { next: d.next };
+};
+
+/** "traffic, A321 on short final": information; the pilot reports it in sight. */
+const trafficInfo: Matcher = (c) => {
+  if (!c.w(c.i, 'traffic')) return null;
+  const d = describe(c, c.skip(c.i + 1, 'information', 'is'));
+  return { next: d.next, cmd: { type: 'trafficInfo', desc: d.text } };
+};
+
 /** The player's own station name ("Schiphol" is filler): "KLM1200, Schiphol Tower, …". */
 const stationName: Matcher = (c) => (c.w(c.i, 'tower') ? { next: c.i + 1 } : null);
 
 const TOWER_MATCHERS: Matcher[] = [
   stationName,
+  condition,
+  trafficInfo,
   whenInfo,
   windInfo,
   land,
@@ -665,7 +790,7 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
   const ac = ctx.aircraft.find((a) => a.callsign === res.callsign);
   const c = new Cursor(tokens(rest), 0, ctx, ac);
   const matchers = ctx.role === 'tower' ? [sayAgain, ...TOWER_MATCHERS, ...MATCHERS] : MATCHERS;
-  const pending: { cmd: Command; issues: Omit<Issue, 'expected'>[] }[] = [];
+  const pending: { cmd: Command; issues: Omit<Issue, 'expected'>[]; at: number }[] = [];
   while (c.i < c.t.length) {
     const k = c.t[c.i]!;
     if (k.t === 'w' && NEGATIVE.has(k.v)) {
@@ -676,7 +801,7 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
     let hit: Hit | null = null;
     for (const match of matchers) if ((hit = match(c))) break;
     if (hit) {
-      if (hit.cmd) pending.push({ cmd: hit.cmd, issues: hit.issues ?? [] });
+      if (hit.cmd) pending.push({ cmd: hit.cmd, issues: hit.issues ?? [], at: c.i });
       c.i = hit.next;
     } else {
       if (!(k.t === 'w' && SOFT.has(k.v))) res.unknown.push(k.t === 'n' ? k.s : k.v);
@@ -689,6 +814,14 @@ export function parse(text: string, ctx: ParseContext): ParseResult {
     const key = pending[i]!.cmd.type;
     if (seen.has(key)) pending.splice(i, 1);
     seen.add(key);
+  }
+  if (c.cond) {
+    const all = c.said(0, c.t.length);
+    const lu = pending.find((p) => p.cmd.type === 'lineUp');
+    if (lu?.cmd.type === 'lineUp') {
+      lu.cmd.behind = c.cond.condition;
+      if (!(c.cond.at < lu.at && c.condRepeated)) lu.issues.push(issue('info', 'conditional-wording', all));
+    } else if (pending[0]) pending[0].issues.push(issue('warn', 'conditional-lineup-only', all));
   }
   for (const p of pending) {
     if ((p.cmd.type === 'land' || p.cmd.type === 'takeoff') && !c.wind)

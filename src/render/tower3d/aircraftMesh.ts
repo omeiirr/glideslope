@@ -85,7 +85,9 @@ function surface(pts: [number, number][], thick: number, mat: THREE.Material): T
 }
 
 /** Nose points to -z, wings along x, y up. Origin on the fuselage centreline at mid-length. */
-export function buildAircraft(type: string, airline: string): AircraftMesh {
+/** `lo`: about a quarter of the triangles, for parked aircraft seen from the cab. */
+export function buildAircraft(type: string, airline: string, lo = false): AircraftMesh {
+  const q = (n: number) => (lo ? Math.max(6, Math.round(n / 2.5)) : n);
   const T = airframe(type);
   const livery = liveryFor(airline);
   const r = T.d / 2;
@@ -95,7 +97,7 @@ export function buildAircraft(type: string, airline: string): AircraftMesh {
   const dark = paint('#23282f', 0.9);
 
   // fuselage: revolve a profile, then droop the nose and sweep the tail up
-  const N = 48;
+  const N = q(48);
   const prof: THREE.Vector2[] = [];
   for (let i = 0; i <= N; i++) {
     const s = i / N;
@@ -104,7 +106,7 @@ export function buildAircraft(type: string, airline: string): AircraftMesh {
     else if (s > 0.66) rad = r * Math.max(0.05, Math.cos(((s - 0.66) / 0.34) * Math.PI * 0.5) ** 0.75);
     prof.push(new THREE.Vector2(Math.max(rad, 0.02), (s - 0.5) * L));
   }
-  const fg = new THREE.LatheGeometry(prof, 28);
+  const fg = new THREE.LatheGeometry(prof, q(28));
   fg.rotateX(Math.PI / 2);
   const pos = fg.attributes.position!;
   for (let i = 0; i < pos.count; i++) {
@@ -218,19 +220,20 @@ export function buildAircraft(type: string, airline: string): AircraftMesh {
       const eR = T.engD / 2;
       const eL = T.engL;
       const ep: THREE.Vector2[] = [];
-      for (let i = 0; i <= 12; i++) {
-        const s = i / 12;
+      const EN = q(12);
+      for (let i = 0; i <= EN; i++) {
+        const s = i / EN;
         const lip = 0.86 + 0.14 * Math.sin(Math.min(1, s / 0.3) * Math.PI * 0.5);
         ep.push(new THREE.Vector2(eR * lip * (s > 0.6 ? 1 - (s - 0.6) * 0.75 : 1), (s - 0.5) * eL));
       }
-      const eg = new THREE.LatheGeometry(ep, 18);
+      const eg = new THREE.LatheGeometry(ep, q(18));
       eg.rotateX(Math.PI / 2);
       const ex = side * semi * st;
       const ey = wingY - eR * 0.95;
       const ez = wingZ + sweep * st - eL * 0.25;
       const eng = new THREE.Mesh(eg, paint(livery.cowl, 0.35));
       eng.position.set(ex, ey, ez);
-      const fan = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.84, 18), dark);
+      const fan = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.84, q(18)), dark);
       fan.position.set(ex, ey, ez - eL * 0.47);
       const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.35, eR * 0.9, eL * 0.6), grey);
       pylon.position.set(ex, ey + eR * 0.95, ez + eL * 0.1);
@@ -239,11 +242,11 @@ export function buildAircraft(type: string, airline: string): AircraftMesh {
 
     // main gear
     const wheelR = Math.max(0.25, r * 0.3);
-    const strut = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.28, wheelR * 0.28, T.gearH, 8), grey);
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.28, wheelR * 0.28, T.gearH, q(8)), grey);
     strut.position.set(side * r * 1.75, -r * 0.6 - T.gearH / 2, L * 0.03);
     gear.add(strut);
     for (const dz of T.prop ? [0] : [-wheelR * 1.3, wheelR * 1.3]) {
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, wheelR * 1.5, 14), dark);
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, wheelR * 1.5, q(14)), dark);
       wheel.rotation.z = Math.PI / 2;
       wheel.position.set(side * r * 1.75, -r * 0.6 - T.gearH + wheelR * 0.5, L * 0.03 + dz);
       gear.add(wheel);
@@ -253,9 +256,9 @@ export function buildAircraft(type: string, airline: string): AircraftMesh {
   // nose gear
   {
     const wheelR = Math.max(0.2, r * 0.22);
-    const strut = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.3, wheelR * 0.3, T.gearH, 8), grey);
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.3, wheelR * 0.3, T.gearH, q(8)), grey);
     strut.position.set(0, -r * 0.6 - T.gearH / 2, -L * 0.36);
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, wheelR * 1.6, 14), dark);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, wheelR * 1.6, q(14)), dark);
     wheel.rotation.z = Math.PI / 2;
     wheel.position.set(0, -r * 0.6 - T.gearH + wheelR * 0.35, -L * 0.36);
     gear.add(strut, wheel);

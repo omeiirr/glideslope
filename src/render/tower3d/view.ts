@@ -19,6 +19,8 @@ import {
 } from './ground';
 import { airportLights, taxiwayLights, type LightSet, type TimeOfDay } from './lights';
 import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
+import { apronObjects } from './parked';
+import { parkAircraft, type StandData } from './stands';
 
 export interface TowerAircraft {
   id: number;
@@ -245,25 +247,44 @@ export class TowerRenderer {
     this.disposables.push(p.geometry);
   }
 
+  /** Flat triangles on the ground ([x0, z0, x1, z1, ...]) as one layer, stacked by render order. */
+  private layer(tris: number[], color: string, order: number, map?: THREE.Texture) {
+    faceUp(tris);
+    const pos = new Float32Array((tris.length / 2) * 3);
+    for (let i = 0, j = 0; i < tris.length; i += 2, j += 3) {
+      pos[j] = tris[i]!;
+      pos[j + 2] = tris[i + 1]!;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(tris), 2));
+    this.addFlat(geo, color, order, map);
+  }
+
+  /** Stand lead-in lines, parked aircraft and jet bridges (scenery, not in the sim). */
+  loadApron(data: StandData, land: LandData, ground: GroundData) {
+    const lines: number[] = [];
+    for (const s of data.stands)
+      ribbon(
+        s.pts.map((p) => llToGround(this.ap, p)),
+        0.5,
+        lines,
+      );
+    this.layer(lines, YELLOW, -42);
+    const { parked, bridges } = parkAircraft(this.ap, data, land.buildings, ground.taxiways);
+    const { objects, disposables } = apronObjects(parked, bridges, this.shadowTex);
+    this.scene.add(...objects);
+    this.disposables.push(...disposables);
+  }
+
   /**
    * Draw the airport surfaces as graphics on top of the land: aprons, taxiways, runways and their markings.
    * Layers are stacked by render order (land -72..-64, these -46..-38, shadows -10), never by depth.
    */
   loadSurfaces(g: GroundData) {
     const ap = this.ap;
-    const layer = (tris: number[], color: string, order: number, map?: THREE.Texture) => {
-      faceUp(tris);
-      const pos = new Float32Array((tris.length / 2) * 3);
-      for (let i = 0, j = 0; i < tris.length; i += 2, j += 3) {
-        pos[j] = tris[i]!;
-        pos[j + 2] = tris[i + 1]!;
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      geo.setAttribute('normal', new THREE.BufferAttribute(normalsUp(pos.length / 3), 3));
-      geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(tris), 2));
-      this.addFlat(geo, color, order, map);
-    };
+    const layer = this.layer.bind(this);
     const polygons = this.polygons.bind(this);
 
     const grass = mownGrassTexture();
@@ -584,7 +605,7 @@ export class TowerRenderer {
           new THREE.MeshBasicMaterial({
             map: this.shadowTex,
             transparent: true,
-            depthTest: false,
+            // depth-tested so it stays under the aircraft; the ground layers write no depth
             depthWrite: false,
           }),
         );

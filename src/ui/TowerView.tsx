@@ -3,6 +3,7 @@ import { DEG, EHAM, FT_PER_NM, TICK, dist, type Aircraft } from '../core';
 import type { Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition } from '../render/tower3d/math';
 import type { GroundData, LandData } from '../render/tower3d/ground';
+import type { StandData } from '../render/tower3d/stands';
 import type { TimeOfDay } from '../render/tower3d/lights';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 import { GroundRadar } from '../render/groundradar';
@@ -129,13 +130,14 @@ export function TowerView({ session }: { session: Session }) {
       raf = requestAnimationFrame(frame);
       try {
         const base = new URL('./tower/', document.baseURI).href;
-        setStatus({ kind: 'loading', done: 0, total: 2 });
-        const [ground, land] = (await Promise.all(
-          ['ground.json', 'land.json'].map(async (f) => (await fetch(base + f)).json()),
-        )) as [GroundData, LandData];
+        setStatus({ kind: 'loading', done: 0, total: 3 });
+        const [ground, land, stands] = (await Promise.all(
+          ['ground.json', 'land.json', 'stands.json'].map(async (f) => (await fetch(base + f)).json()),
+        )) as [GroundData, LandData, StandData];
         if (disposed) return;
         renderer.loadLand(land);
         renderer.loadSurfaces(ground);
+        renderer.loadApron(stands, land, ground);
         radar.current?.setGround(ground);
         setAttribution(`${ground.attribution}.`);
         setStatus({ kind: 'ready' });

@@ -5,3 +5,4 @@ coverage
 .DS_Store
 public/vendor
 osm-ground-cache.json
+osm-stands-cache.json

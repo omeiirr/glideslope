@@ -8,6 +8,7 @@ import type { TimeOfDay } from '../render/tower3d/lights';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 import { GroundRadar } from '../render/groundradar';
 import { TowerDesk, radarTargets } from './TowerDesk';
+import { layoutLabels } from '../render/tower3d/labels';
 
 const CAB_FOV = 26;
 const BINO_FOV = 2.6;
@@ -20,6 +21,9 @@ type Status =
 
 const NEXT_TOD: Record<TimeOfDay, TimeOfDay> = { day: 'dusk', dusk: 'night', night: 'day' };
 const TOD_LABEL: Record<TimeOfDay, string> = { day: 'Day', dusk: 'Dusk', night: 'Night' };
+type LabelMode = 'all' | 'selected' | 'off';
+const NEXT_LABELS: Record<LabelMode, LabelMode> = { all: 'selected', selected: 'off', off: 'all' };
+const LABELS_TEXT: Record<LabelMode, string> = { all: 'All', selected: 'Selected', off: 'Off' };
 
 const isTyping = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null;
@@ -37,14 +41,19 @@ export function TowerView({ session }: { session: Session }) {
   );
   const [bino, setBino] = useState(false);
   const [tod, setTod] = useState<TimeOfDay>('day');
+  const [labels, setLabels] = useState<LabelMode>('all');
+  const [lightStage, setLightStage] = useState(4);
+  const stageRef = useRef(lightStage);
+  stageRef.current = lightStage;
+  useEffect(() => rendererRef.current?.setLightStage(lightStage), [lightStage]);
   const rendererRef = useRef<TowerRenderer | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'loading', done: 0, total: 0 });
   const [attribution, setAttribution] = useState('');
   const cab = EHAM.towers.find((t) => t.id === cabId)!;
   // view state read by the frame loop without re-rendering
   const look = useRef({ yaw: 0, depression: DEFAULT_DEPRESSION, bearing: cab.viewBearing });
-  const live = useRef({ session, cab, bino });
-  live.current = { session, cab, bino };
+  const live = useRef({ session, cab, bino, labels });
+  live.current = { session, cab, bino, labels };
   const todRef = useRef(tod);
   todRef.current = tod;
   useEffect(() => rendererRef.current?.setTimeOfDay(tod), [tod]);
@@ -52,6 +61,16 @@ export function TowerView({ session }: { session: Session }) {
 
   const resetLook = () => Object.assign(look.current, { yaw: 0, depression: DEFAULT_DEPRESSION });
   const turn = (deg: number) => (look.current.yaw += deg * (live.current.bino ? 0.1 : 1));
+  /** Binoculars: Tab / Shift+Tab steps through the aircraft in view range, nearest first. */
+  const cycle = (step: number) => {
+    const { session: s, cab: c } = live.current;
+    const list = s.sim.aircraft
+      .filter((a) => dist(c.pos, a.pos) < LABEL_RANGE_NM)
+      .sort((a, b) => dist(c.pos, a.pos) - dist(c.pos, b.pos));
+    if (!list.length) return;
+    const i = list.findIndex((a) => a.id === s.selectedId);
+    s.select(list[(i + step + list.length) % list.length]!.id);
+  };
   const pickCab = (id: string) => {
     resetLook();
     setCabId(id);
@@ -69,7 +88,7 @@ export function TowerView({ session }: { session: Session }) {
     });
 
     const frame = (now: number) => {
-      const { session: s, cab: c, bino: zoom } = live.current;
+      const { session: s, cab: c, bino: zoom, labels: mode } = live.current;
       s.frame(now);
       const eye = eyePosition(c);
       const list = s.sim.aircraft.map((ac) => ({
@@ -97,16 +116,41 @@ export function TowerView({ session }: { session: Session }) {
           __towerMs: performance.now() - t0,
           __towerStats: renderer!.stats,
         });
-      // labels are HTML: move them to follow their aircraft
+      // labels are HTML: place them next to their aircraft without overlaps (reads first, then writes)
       const box = labelsRef.current;
       if (box) {
-        for (const a of anchors.current) {
-          const el = box.querySelector<HTMLElement>(`[data-id="${a.id}"]`);
-          if (!el) continue;
-          const show = a.visible && a.dist < LABEL_RANGE_NM * 1852;
-          el.style.display = show ? '' : 'none';
-          if (show) el.style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px)`;
+        const els = new Map<number, HTMLElement>();
+        for (const el of box.querySelectorAll<HTMLElement>('[data-id]')) els.set(Number(el.dataset.id), el);
+        const wanted = anchors.current.filter(
+          (a) =>
+            a.visible &&
+            els.has(a.id) &&
+            (mode === 'all' ? a.dist < LABEL_RANGE_NM * 1852 : mode === 'selected' && a.id === s.selectedId),
+        );
+        const tools = box.parentElement?.querySelector<HTMLElement>('.tower-tools');
+        const top = tools ? tools.offsetTop + tools.offsetHeight + 6 : 50;
+        const placed = layoutLabels(
+          wanted.map((a) => {
+            const el = els.get(a.id)!;
+            return {
+              id: a.id,
+              x: a.x,
+              y: a.y,
+              w: el.offsetWidth,
+              h: el.offsetHeight,
+              priority: a.id === s.selectedId,
+              dist: a.dist,
+            };
+          }),
+          { left: 4, top, right: box.clientWidth - 4, bottom: box.clientHeight - 26 },
+        );
+        const shown = new Set<number>();
+        for (const p of placed) {
+          if (!p.show) continue;
+          shown.add(p.id);
+          els.get(p.id)!.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
         }
+        for (const [id, el] of els) el.style.visibility = shown.has(id) ? '' : 'hidden';
       }
       raf = requestAnimationFrame(frame);
     };
@@ -119,6 +163,7 @@ export function TowerView({ session }: { session: Session }) {
         renderer = new TowerRenderer(canvas, EHAM);
         rendererRef.current = renderer;
         renderer.setTimeOfDay(todRef.current);
+        renderer.setLightStage(stageRef.current);
       } catch {
         setStatus({
           kind: 'error',
@@ -168,6 +213,8 @@ export function TowerView({ session }: { session: Session }) {
       if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (k === 'b' && !e.repeat) setBino(true);
+      else if (k === 'l' && !e.repeat) setLabels((m) => NEXT_LABELS[m]);
+      else if (e.key === 'Tab' && live.current.bino) cycle(e.shiftKey ? -1 : 1);
       else if (k === 'arrowleft') turn(-5);
       else if (k === 'arrowright') turn(5);
       else if (k >= '1' && k <= '9' && EHAM.towers[+k - 1]) pickCab(EHAM.towers[+k - 1]!.id);
@@ -253,7 +300,7 @@ export function TowerView({ session }: { session: Session }) {
                 key={ac.id}
                 data-id={ac.id}
                 class={`tower-label ${kind}`}
-                style="display:none"
+                style="visibility:hidden"
                 onClick={() => session.select(ac.id)}
                 aria-label={`Select ${ac.callsign}, ${info(ac)}`}
               >
@@ -293,6 +340,37 @@ export function TowerView({ session }: { session: Session }) {
           <button
             type="button"
             class="chipbtn"
+            aria-label={`Labels: ${LABELS_TEXT[labels]}. Change to ${LABELS_TEXT[NEXT_LABELS[labels]]}`}
+            onClick={() => setLabels(NEXT_LABELS[labels])}
+          >
+            Labels: {LABELS_TEXT[labels]} <kbd>L</kbd>
+          </button>
+          {tod !== 'day' && (
+            <span role="group" aria-label="Runway light brightness" class="seg">
+              <button
+                type="button"
+                aria-label="Dim the runway lights"
+                disabled={lightStage <= 1}
+                onClick={() => setLightStage(lightStage - 1)}
+              >
+                −
+              </button>
+              <span class="seg-label" aria-live="polite">
+                Lights {lightStage}/5
+              </span>
+              <button
+                type="button"
+                aria-label="Brighten the runway lights"
+                disabled={lightStage >= 5}
+                onClick={() => setLightStage(lightStage + 1)}
+              >
+                +
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            class="chipbtn"
             aria-label={`Time of day: ${tod}. Change to ${NEXT_TOD[tod]}`}
             onClick={() => setTod(NEXT_TOD[tod])}
           >
@@ -304,8 +382,8 @@ export function TowerView({ session }: { session: Session }) {
           <div class="tower-note" role="status">
             Binoculars ×10
             {session.selectedId === null
-              ? ' · select an aircraft to follow it'
-              : ' · following the selected aircraft'}
+              ? ' · select an aircraft to follow it, or press Tab'
+              : ' · following the selected aircraft · Tab for the next'}
           </div>
         )}
         {status.kind === 'loading' && status.total > 0 && (

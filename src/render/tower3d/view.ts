@@ -175,6 +175,8 @@ export class TowerRenderer {
   /** Wall materials with lit windows at dusk and night. */
   private glazed: THREE.MeshStandardMaterial[] = [];
   private lightMat = lightMaterial();
+  /** Runway and taxiway lights: their own brightness (the tower's light panel); time, fog and pixel ratio shared. */
+  private airfieldMat = lightMaterial(this.lightMat);
   private lightPts: THREE.Points[] = [];
   /** Pools of floodlight on the aprons, shown at dusk and night. */
   private poolMat = new THREE.MeshBasicMaterial({
@@ -227,7 +229,7 @@ export class TowerRenderer {
     this.scene.add(sun, sun.target, this.hemi);
     this.addSky();
     this.shadowTex = shadowTexture();
-    this.disposables.push(this.lightMat);
+    this.disposables.push(this.lightMat, this.airfieldMat);
     this.addLights(airportLights(ap));
     this.setTimeOfDay('day');
   }
@@ -255,25 +257,39 @@ export class TowerRenderer {
     }
     for (const m of this.glazed) m.emissiveIntensity = L.windows;
     this.lightMat.uniforms.uIntensity!.value = L.lights;
+    this.applyLightStage();
     this.poolMat.opacity = 0.8 * L.lights;
     this.poolMat.visible = L.lights > 0;
     for (const p of this.lightPts) p.visible = L.lights > 0;
   }
 
   /** Point lights (airport or aircraft) as one draw call each. */
-  private points(s: LightSet): THREE.Points {
+  /** Runway light brightness, stage 1 (dim) to 5 (bright), as on a tower's lighting panel; 4 is the default. */
+  setLightStage(stage: number) {
+    this.lightStage = Math.max(1, Math.min(5, Math.round(stage)));
+    this.applyLightStage();
+  }
+
+  private lightStage = 4;
+  private applyLightStage() {
+    const k = this.lightStage - 1;
+    this.airfieldMat.uniforms.uIntensity!.value = this.look.lights * [0.3, 0.5, 0.75, 1, 1.3][k]!;
+    this.airfieldMat.uniforms.uSize!.value = [0.6, 0.72, 0.86, 1, 1.12][k]!;
+  }
+
+  private points(s: LightSet, mat = this.lightMat): THREE.Points {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(s.pos, 3));
     geo.setAttribute('lcolor', new THREE.Float32BufferAttribute(s.color, 3));
     geo.setAttribute('size', new THREE.Float32BufferAttribute(s.size, 1));
     geo.setAttribute('blink', new THREE.Float32BufferAttribute(s.blink, 1));
-    const p = new THREE.Points(geo, this.lightMat);
+    const p = new THREE.Points(geo, mat);
     p.renderOrder = 10;
     return p;
   }
 
-  private addLights(s: LightSet) {
-    const p = this.points(s);
+  private addLights(s: LightSet, airfield = true) {
+    const p = this.points(s, airfield ? this.airfieldMat : this.lightMat);
     p.visible = this.look.lights > 0;
     this.scene.add(p);
     this.lightPts.push(p);
@@ -394,7 +410,7 @@ export class TowerRenderer {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     this.scene.add(mesh);
-    this.addLights(lights);
+    this.addLights(lights, false);
 
     const tex = poolTexture();
     this.poolMat.map = tex;
@@ -850,9 +866,17 @@ export class TowerRenderer {
 }
 
 /** Glowing points with a fixed on-screen size (shrinking a little with distance), faded by the haze. */
-function lightMaterial(): THREE.ShaderMaterial {
+/** `share`: take time, pixel ratio and fog from another light material (updated once per frame). */
+function lightMaterial(share?: THREE.ShaderMaterial): THREE.ShaderMaterial {
+  const u = share?.uniforms;
   return new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uPx: { value: 1 }, uFog: { value: 0 }, uIntensity: { value: 1 } },
+    uniforms: {
+      uTime: u?.uTime ?? { value: 0 },
+      uPx: u?.uPx ?? { value: 1 },
+      uFog: u?.uFog ?? { value: 0 },
+      uIntensity: { value: 1 },
+      uSize: { value: 1 },
+    },
     vertexShader: /* glsl */ `
       attribute vec3 lcolor;
       attribute float size;
@@ -860,6 +884,7 @@ function lightMaterial(): THREE.ShaderMaterial {
       uniform float uTime;
       uniform float uPx;
       uniform float uFog;
+      uniform float uSize;
       varying vec3 vColor;
       varying float vA;
       void main() {
@@ -876,7 +901,7 @@ function lightMaterial(): THREE.ShaderMaterial {
         vColor = lcolor;
         // grow with the zoom (binoculars), by its square root so lights stay points; 4.33 = 1/tan(13°), the cab FOV
         float zoom = sqrt(max(1.0, projectionMatrix[1][1] / 4.33));
-        gl_PointSize = on > 0.0 ? size * uPx * zoom * clamp(1500.0 / d, 0.8, 2.4) : 0.0;
+        gl_PointSize = on > 0.0 ? size * uSize * uPx * zoom * clamp(1500.0 / d, 0.8, 2.4) : 0.0;
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */ `

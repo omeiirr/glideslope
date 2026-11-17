@@ -111,6 +111,17 @@ button {
   background: transparent;
   color: var(--dim);
 }
+.seg-label {
+  align-self: center;
+  padding: 0 4px;
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.seg button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .seg button[aria-pressed='true'] {
   background: #1e3350;
   color: var(--text);
@@ -1075,8 +1086,6 @@ dl.defs dd {
   position: absolute;
   left: 0;
   top: 0;
-  /* anchor sits under the label's lower-left corner */
-  margin: -46px 0 0 8px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

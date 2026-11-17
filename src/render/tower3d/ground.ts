@@ -74,6 +74,30 @@ export function ribbon(pts: P2[], w: number, out: number[] = []): number[] {
   return out;
 }
 
+/**
+ * A soft band along a polyline (the worn, rubber-dark middle of a taxiway): triangles [x, z, ...] and a
+ * weight per vertex, 1 on the line fading to 0 at h either side.
+ */
+export function softBand(pts: P2[], h: number): { tris: number[]; weight: number[] } {
+  const tris: number[] = [];
+  const weight: number[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len < 1e-6) continue;
+    const nx = (-(b.z - a.z) / len) * h;
+    const nz = ((b.x - a.x) / len) * h;
+    for (const s of [1, -1]) {
+      const ea = { x: a.x + nx * s, z: a.z + nz * s };
+      const eb = { x: b.x + nx * s, z: b.z + nz * s };
+      tris.push(a.x, a.z, b.x, b.z, eb.x, eb.z, a.x, a.z, eb.x, eb.z, ea.x, ea.z);
+      weight.push(1, 1, 0, 1, 0, 0);
+    }
+  }
+  return { tris, weight };
+}
+
 /** The runway rectangle between a threshold and the opposite one. */
 export interface RunwayFrame {
   /** Threshold, world metres. */

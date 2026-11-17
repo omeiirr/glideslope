@@ -94,7 +94,7 @@ The player is Schiphol Tower: landing, line-up and take-off clearances, vacating
 
 - The core must not assume radar-only views. Aircraft state includes position, altitude, heading, speed, vertical speed and phase; runway geometry is in true coordinates (lat/lon plus heading, length and width).
 - `render/tower3d/` reads core state only, like the scope renderers. Maths that doesn't need WebGL (projection, camera, aircraft pose) lives in a DOM-free module with tests.
-- Look: clean semi-realistic. The airport surfaces are drawn as graphics from OpenStreetMap data (ODbL): runways with their markings, taxiways, aprons, airside grass. The land around them is modelled from OSM too (land use, water, motorways), and the airport buildings are extruded from their OSM outlines; no photos, so everything is drawn in one style. Gradient sky and haze, smooth procedural aircraft. No third-party 3D models.
+- Look: clean semi-realistic. The airport surfaces are drawn as graphics from OpenStreetMap data (ODbL): runways with their markings, taxiways, aprons, airside grass. The land around them is modelled from OSM too (land use, water, motorways), and the airport buildings are extruded from their OSM outlines; no aerial photos, so everything is drawn in one style (pavement uses grey CC0 photo textures from Poly Haven, tinted by the drawn surface colours). Gradient sky and haze, smooth procedural aircraft. No third-party 3D models.
 - Everything that can be done in the 3D window must also be possible from the strips and the keyboard.
 
 ## 7. Commands, phraseology and feedback

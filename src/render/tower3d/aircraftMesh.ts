@@ -242,7 +242,10 @@ export function buildAircraft(type: string, airline: string, lo = false): Aircra
 
     // main gear
     const wheelR = Math.max(0.25, r * 0.3);
-    const strut = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.28, wheelR * 0.28, T.gearH, q(8)), grey);
+    const strut = new THREE.Mesh(
+      new THREE.CylinderGeometry(wheelR * 0.28, wheelR * 0.28, T.gearH, q(8)),
+      grey,
+    );
     strut.position.set(side * r * 1.75, -r * 0.6 - T.gearH / 2, L * 0.03);
     gear.add(strut);
     for (const dz of T.prop ? [0] : [-wheelR * 1.3, wheelR * 1.3]) {

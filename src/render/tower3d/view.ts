@@ -10,6 +10,7 @@ import {
   ribbon,
   runwayEdges,
   runwayFrame,
+  softBand,
   runwayMarkings,
   runwaySurface,
   type Designator,
@@ -117,9 +118,9 @@ const LOOKS: Record<TimeOfDay, Look> = {
 /** Shadows fade out as the aircraft climbs; above this they are not drawn. */
 const SHADOW_MAX_AGL = 160;
 /** Surface colours: a modelled airport, no photo (see docs/design/tower3d.md). */
-const RUNWAY = '#5a5d60';
-const TAXIWAY = '#66696b';
-const APRON = '#ffffff'; // the concrete texture carries the colour
+const RUNWAY = '#74777a';
+const TAXIWAY = '#8a8d8e';
+const APRON = '#dedbd4';
 /** Land use colours; a list means each polygon picks one (fields in a patchwork, seeded). */
 const LAND: [string, string | string[]][] = [
   ['farm', ['#86a05c', '#7d9a52', '#91a862', '#748f4c', '#9aab66', '#a59c6e', '#b3a57a', '#8c9f5a']],
@@ -161,6 +162,9 @@ export class TowerRenderer {
   private w = 1;
   private h = 1;
   private disposables: { dispose(): void }[] = [];
+  /** Pavement textures get the large-scale variation (macro) multiplied in. */
+  private pavement = new Set<THREE.Texture>();
+  private macro: THREE.Texture | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -291,9 +295,11 @@ export class TowerRenderer {
     this.disposables.push(grass);
     polygons(g.grass, '#ffffff', -46, grass);
 
-    const concrete = concreteTexture();
-    const asphalt = asphaltTexture();
-    this.disposables.push(concrete, asphalt);
+    const concrete = photoTexture('concrete.jpg', 15);
+    const asphalt = photoTexture('asphalt.jpg', 30);
+    this.macro = photoTexture('macro.jpg', 1, false);
+    this.pavement = new Set([concrete, asphalt]);
+    this.disposables.push(concrete, asphalt, this.macro);
     polygons(g.aprons, APRON, -45, concrete);
     polygons(g.taxiwayAreas, TAXIWAY, -44, asphalt);
     const taxi: number[] = [];
@@ -304,6 +310,7 @@ export class TowerRenderer {
       ribbon(pts, 0.5, taxiLine);
     }
     layer(taxi, TAXIWAY, -43, asphalt);
+    this.addWear(g.taxiways.map((t) => t.pts.map((p) => llToGround(ap, p))));
     layer(taxiLine, YELLOW, -42);
     const holds: number[] = [];
     for (const h of g.holds)
@@ -334,6 +341,41 @@ export class TowerRenderer {
       this.disposables.push(m.geometry, m.material as THREE.Material);
     }
     this.addLights(taxiwayLights(ap, g));
+  }
+
+  /** The dark worn band down the middle of each taxiway, soft-edged, under the centreline paint. */
+  private addWear(lines: { x: number; z: number }[][]) {
+    const tris: number[] = [];
+    const weight: number[] = [];
+    for (const pts of lines) {
+      const b = softBand(pts, 6);
+      tris.push(...b.tris);
+      weight.push(...b.weight);
+    }
+    const n = weight.length;
+    const pos = new Float32Array(n * 3);
+    const col = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) {
+      pos[i * 3] = tris[i * 2]!;
+      pos[i * 3 + 2] = tris[i * 2 + 1]!;
+      col[i * 4 + 3] = weight[i]! * 0.2;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 4));
+    // transparent, so it draws after the opaque scene: depth-tested to stay under aircraft and buildings
+    // (the ground layers write no depth)
+    const mat = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = -42.5;
+    mesh.frustumCulled = false;
+    this.scene.add(mesh);
+    this.disposables.push(geo, mat);
   }
 
   /** Filled polygons on the ground, uv in metres east / north so repeating textures keep their real size. */
@@ -466,6 +508,7 @@ export class TowerRenderer {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+    if (map && this.macro && this.pavement.has(map)) withMacro(mat, this.macro);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = order;
     mesh.frustumCulled = false;
@@ -859,45 +902,35 @@ function seeded(seed: number) {
   return () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 }
 
-/** Apron concrete: 5 m slabs with dark joints and a slight tone per slab; 128 px = 10 m. */
-function concreteTexture(): THREE.CanvasTexture {
-  const N = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = N;
-  const g = c.getContext('2d')!;
-  const rnd = seeded(5);
-  for (let i = 0; i < 2; i++)
-    for (let j = 0; j < 2; j++) {
-      const v = 184 + Math.round(rnd() * 12);
-      g.fillStyle = `rgb(${v},${v - 1},${v - 5})`;
-      g.fillRect(i * 64, j * 64, 64, 64);
-    }
-  for (let k = 0; k < 600; k++) {
-    g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-    g.fillRect(rnd() * N, rnd() * N, 2, 2);
-  }
-  g.fillStyle = 'rgba(70,70,68,0.55)';
-  for (const p of [0, 64]) {
-    g.fillRect(p, 0, 1, N);
-    g.fillRect(0, p, N, 1);
-  }
-  return tiling(c, 10);
+/** A pavement photo texture from public/tower/tex (scripts/build-tower-textures.py), `metres` per tile. */
+function photoTexture(file: string, metres: number, srgb = true): THREE.Texture {
+  const t = new THREE.TextureLoader().load(new URL(`./tower/tex/${file}`, document.baseURI).href);
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / metres, 1 / metres);
+  t.anisotropy = 8;
+  return t;
 }
 
-/** Asphalt: a faint grain so large dark areas aren't dead flat; 128 px = 16 m. */
-function asphaltTexture(): THREE.CanvasTexture {
-  const N = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = N;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#ffffff';
-  g.fillRect(0, 0, N, N);
-  const rnd = seeded(9);
-  for (let k = 0; k < 1500; k++) {
-    g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-    g.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 2, 1 + rnd() * 2);
-  }
-  return tiling(c, 16);
+/** Multiply a 1.2 km tile of soft variation over a ground material, so wide pavement is not one flat tone. */
+function withMacro(mat: THREE.Material, macro: THREE.Texture) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.macroMap = { value: macro };
+    sh.vertexShader =
+      'varying vec2 vMacroUv;\n' +
+      sh.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvMacroUv = (modelMatrix * vec4(transformed, 1.0)).xz / 1200.0;',
+      );
+    // macro.jpg has a mean of 200/255: scale so the average tone is unchanged
+    sh.fragmentShader =
+      'uniform sampler2D macroMap;\nvarying vec2 vMacroUv;\n' +
+      sh.fragmentShader.replace(
+        '#include <map_fragment>',
+        '#include <map_fragment>\ndiffuseColor.rgb *= texture2D(macroMap, vMacroUv).r * 1.275;',
+      );
+  };
+  mat.customProgramCacheKey = () => 'macro';
 }
 
 /** Wall with a glass band per 3.5 m storey and a mullion every 4 m (uv: metres along the wall, metres up). */
@@ -939,14 +972,5 @@ function windowGlowTexture(): THREE.CanvasTexture {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1 / 32, 1 / 3.5);
   t.anisotropy = 4;
-  return t;
-}
-
-function tiling(c: HTMLCanvasElement, metres: number): THREE.CanvasTexture {
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(1 / metres, 1 / metres);
-  t.anisotropy = 8;
   return t;
 }

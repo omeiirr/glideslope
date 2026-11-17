@@ -6,6 +6,7 @@ import {
   fieldTexture,
   mownGrassTexture,
   roughGrassTexture,
+  waterTexture,
   shadeWalls,
   skyEnvironment,
   trees,
@@ -160,6 +161,8 @@ const SHADOW_MAX_AGL = 160;
 const RUNWAY = '#74777a';
 const TAXIWAY = '#6e7173';
 const APRON = '#dedbd4';
+/** Width of the concrete laid under each stand line (m): about a narrow-body's span plus margin (assumed). */
+const STAND_PAD = 50;
 /** Land use colours; a list means each polygon picks one (fields in a patchwork, seeded). */
 const LAND: [string, string | string[]][] = [
   ['farm', ['#86a05c', '#7d9a52', '#91a862', '#748f4c', '#9aab66', '#a59c6e', '#b3a57a', '#8c9f5a']],
@@ -231,6 +234,7 @@ export class TowerRenderer {
   /** Pavement textures get the large-scale variation (macro) multiplied in. */
   private pavement = new Set<THREE.Texture>();
   private macro: THREE.Texture | null = null;
+  private apronTex: THREE.Texture | undefined;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -374,12 +378,14 @@ export class TowerRenderer {
   /** Stand lead-in lines, parked aircraft and jet bridges (scenery, not in the sim). */
   loadApron(data: StandData, buildings: BuildingData, ground: GroundData) {
     const lines: number[] = [];
-    for (const s of data.stands)
-      ribbon(
-        s.pts.map((p) => llToGround(this.ap, p)),
-        0.5,
-        lines,
-      );
+    const pads: number[] = [];
+    for (const s of data.stands) {
+      const pts = s.pts.map((p) => llToGround(this.ap, p));
+      ribbon(pts, 0.5, lines);
+      // OSM aprons stop short of many stands (lines run onto grass); real stands are paved throughout
+      ribbon(pts, STAND_PAD, pads);
+    }
+    this.layer(pads, APRON, -45, this.apronTex);
     this.layer(lines, YELLOW, -42);
     const { parked, bridges } = parkAircraft(this.ap, data, buildings.buildings, ground.taxiways);
     const { objects, disposables, lit } = apronObjects(
@@ -414,6 +420,7 @@ export class TowerRenderer {
     this.pavement.add(concrete).add(asphalt);
     this.disposables.push(concrete, asphalt);
     polygons(g.aprons, APRON, -45, concrete);
+    this.apronTex = concrete;
     polygons(g.taxiwayAreas, TAXIWAY, -44, asphalt);
     const taxi: number[] = [];
     const taxiLine: number[] = [];
@@ -564,7 +571,10 @@ export class TowerRenderer {
     this.macro = photoTexture('macro.jpg', 1, false);
     this.pavement.add(paved);
     this.disposables.push(fields, rough, paved, this.macro);
+    const water = waterTexture();
+    this.disposables.push(water);
     const maps: Record<string, THREE.Texture> = {
+      water,
       farm: fields,
       park: rough,
       forest: rough,

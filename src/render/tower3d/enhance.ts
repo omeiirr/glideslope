@@ -116,6 +116,23 @@ export function roughGrassTexture(): THREE.CanvasTexture {
   );
 }
 
+/** Water: short wind ripples, lighter and darker streaks, near white (multiplied with the water colour). 256 px = 40 m. */
+export function waterTexture(): THREE.CanvasTexture {
+  return canvasTexture(
+    256,
+    (g, rnd) => {
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 1400; i++) {
+        const [x, y, w] = [rnd() * 256, rnd() * 256, 4 + rnd() * 14];
+        g.fillStyle = rnd() < 0.55 ? 'rgba(20,35,50,0.16)' : 'rgba(255,255,255,0.22)';
+        for (const dx of [-256, 0, 256]) g.fillRect(x + dx, y, w, 1);
+      }
+    },
+    40,
+  );
+}
+
 /** Airside grass mown in 12 m swaths (faintly lighter and darker), over the fine grass detail. 512 px = 96 m. */
 export function mownGrassTexture(): THREE.CanvasTexture {
   return canvasTexture(

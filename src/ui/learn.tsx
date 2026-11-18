@@ -314,6 +314,11 @@ const COMMANDS: CommandDoc[] = [
     },
   },
   {
+    title: 'Priority: PAN PAN or minimum fuel',
+    cmds: [{ type: 'acknowledge', what: 'pan' }],
+    note: 'Now and then an arrival calls in with “PAN PAN” (a medical emergency on board) or ends its call with “minimum fuel” (it can accept no delay). Acknowledge it (“roger PAN”, “roger minimum fuel”), then take it the shortest way to the runway, ahead of the others. The strip and data block show PAN or MIN FUEL. In Professional mode its delay counts three times, and a go-around costs extra; in the tower, Approach tells you on the landline, and a go-around costs extra there too.',
+  },
+  {
     title: 'Ask for a repeat',
     cmds: [],
     note: 'If you missed what a pilot said, they repeat their last transmission.',

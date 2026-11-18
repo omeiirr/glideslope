@@ -1,4 +1,4 @@
-import { angleDiff, runwayById, transitionLevel, type Airport, type Command } from '../core';
+import { angleDiff, runwayById, transitionLevel, type Airport, type Command, type Priority } from '../core';
 import { spell, spokenCallsign } from './callsign';
 import type { AcContext, ParseContext } from './parser';
 
@@ -70,6 +70,8 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
   switch (cmd.type) {
     case 'identify':
       return both('identified');
+    case 'acknowledge':
+      return both(cmd.what === 'pan' ? 'roger PAN' : 'roger minimum fuel');
     case 'heading': {
       const dir = cmd.turn ?? (ac ? (angleDiff(ac.hdg, cmd.heading) < 0 ? 'left' : 'right') : undefined);
       const lead = readback ? (cmd.turn ? `${cmd.turn} ` : '') : dir ? `turn ${dir} ` : 'fly ';
@@ -216,7 +218,7 @@ export function readback(
 ): Phrase {
   const parts: Phrase[] = [];
   cmds.forEach((cmd, i) => {
-    if (cmd.type === 'identify' || cmd.type === 'sayAgain') return;
+    if (cmd.type === 'identify' || cmd.type === 'sayAgain' || cmd.type === 'acknowledge') return;
     const why = refusals[i];
     // refusals are written for the log ("runway 18R"): spell them for the voice ("runway one eight right")
     parts.push(why ? both(why, spokenDesc(why)) : element(cmd, env, ac, true));
@@ -232,6 +234,8 @@ export function chip(cmd: Command): string {
   switch (cmd.type) {
     case 'identify':
       return 'IDENT';
+    case 'acknowledge':
+      return cmd.what === 'pan' ? 'ROGER PAN' : 'ROGER MIN FUEL';
     case 'heading':
       return `${cmd.turn ? cmd.turn[0]!.toUpperCase() + ' ' : ''}HDG ${pad3(cmd.heading)}`;
     case 'presentHeading':
@@ -275,7 +279,7 @@ export function chip(cmd: Command): string {
 
 /** Pilot's initial call. */
 export function checkIn(
-  ac: { callsign: string; alt: number; tgtAlt: number; kind: string },
+  ac: { callsign: string; alt: number; tgtAlt: number; kind: string; priority?: Priority },
   env: PhraseEnv,
 ): Phrase {
   const ap = env.airport;
@@ -298,7 +302,20 @@ export function checkIn(
   const levelPart = moving
     ? both(`${now.text} descending ${to.text}`, `${now.speech} descending ${to.speech}`)
     : now;
-  return join([station, cs, levelPart, both(`information ${ap.atis}`, `information ${spell(ap.atis)}`)]);
+  const info = both(`information ${ap.atis}`, `information ${spell(ap.atis)}`);
+  // PAN: urgency signal three times, then station, callsign, the nature of it and intentions (CAP 413 ch. 8)
+  if (ac.priority === 'medical')
+    return join([
+      both('PAN PAN, PAN PAN, PAN PAN'),
+      station,
+      cs,
+      both('medical emergency on board, request priority landing'),
+      levelPart,
+      info,
+    ]);
+  // minimum fuel is a declaration, not an emergency: no delay can be accepted (ICAO Doc 4444 15.5.4)
+  if (ac.priority === 'fuel') return join([station, cs, levelPart, info, both('minimum fuel')]);
+  return join([station, cs, levelPart, info]);
 }
 
 /** Pilot's first call to Tower: arrivals on the ILS, departures from the holding point. */

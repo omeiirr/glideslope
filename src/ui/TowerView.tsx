@@ -1,6 +1,16 @@
 import type { ComponentChild } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { DEG, EHAM, FT_PER_NM, TICK, dist, isOnGround, runwayById, type Aircraft } from '../core';
+import {
+  DEG,
+  EHAM,
+  FT_PER_NM,
+  TICK,
+  dist,
+  isOnGround,
+  priorityTag,
+  runwayById,
+  type Aircraft,
+} from '../core';
 import { thrustOf } from '../sound/model';
 import { sounds } from '../sound/sounds';
 import { CLEAR_VIS, visibilityText, type Session } from '../game/session';
@@ -407,7 +417,8 @@ export function TowerView({
   const info = (ac: Readonly<Aircraft>) => {
     const nm = dist(cab.pos, ac.pos);
     const ft = Math.max(0, Math.round((ac.alt - EHAM.elevationFt) / 50) * 50);
-    return `${ac.type}/${ac.perf.wake} · ${nm.toFixed(1)} NM · ${ft} ft`;
+    const prio = ac.priority ? `${priorityTag(ac.priority)} · ` : '';
+    return `${prio}${ac.type}/${ac.perf.wake} · ${nm.toFixed(1)} NM · ${ft} ft`;
   };
   const count = session.sim.aircraft.length;
   const bearingText = String(Math.round(((look.current.bearing % 360) + 360) % 360)).padStart(3, '0');

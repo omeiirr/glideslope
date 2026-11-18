@@ -42,3 +42,7 @@
 {"input": "descend flight level 60", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": [], "defaultCallsign": "DLH9LK"}
 {"input": "BAW432 turn left heading 270", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": [], "defaultCallsign": "KLM1234"}
 {"input": "l 270", "expectedCallsign": null, "expectedCommands": [], "expectedIssues": ["callsign-unknown"]}
+{"input": "KLM1234, roger PAN", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "acknowledge", "what": "pan"}], "expectedIssues": []}
+{"input": "KLM1234, Schiphol Approach, identified, roger PAN PAN", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "identify"}, {"type": "acknowledge", "what": "pan"}], "expectedIssues": []}
+{"input": "KLM1234, roger minimum fuel, turn left heading 210", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "acknowledge", "what": "fuel"}, {"type": "heading", "heading": 210, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM1234, roger PAN, runway 18R, cleared to land", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "acknowledge", "what": "pan"}, {"type": "land", "runway": "18R"}], "expectedIssues": ["wind-missing"], "role": "tower"}

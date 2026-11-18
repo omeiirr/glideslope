@@ -240,7 +240,7 @@ export class Sim {
       if (i >= 0) {
         const { ac } = this.refeed.splice(i, 1)[0]!;
         this.waiting = this.spawner.create(
-          { ...spec, callsign: ac.callsign, type: ac.type },
+          { ...spec, callsign: ac.callsign, type: ac.type, priority: ac.priority ?? false },
           this.time,
           taken,
         );

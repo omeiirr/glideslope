@@ -278,3 +278,30 @@ test('hand-off frequencies on the desk: Ground and Departure in the tower, Tower
   ]);
   expect(pro().handoffs.map((f) => `${f.short} ${f.mhz}`)).toEqual(['Tower 118.280', 'Radar 125.750']);
 });
+
+test('priority: random arrivals ask for it; tower hears it on the landline; its go-around costs extra', async () => {
+  const sim = new Session(
+    { ...scenarioById('pro-light'), traffic: { arrivalsPerHour: 60, departuresPerHour: 0, priority: 1 } },
+    DEFAULT_SETTINGS,
+  ).sim;
+  for (let t = 0; t < 600; t += 0.5) sim.step();
+  expect(sim.aircraft.filter((a) => a.kind === 'arrival').length).toBeGreaterThan(3);
+  expect(sim.aircraft.every((a) => a.kind !== 'arrival' || a.priority)).toBe(true);
+
+  const base = scenarioById('tower-free');
+  const s = new Session(
+    {
+      ...base,
+      mode: 'pro',
+      seed: 5,
+      traffic: { arrivalsPerHour: 0, departuresPerHour: 0 },
+      spawns: [{ ...base.spawns![0]!, priority: 'medical' }],
+    },
+    DEFAULT_SETTINGS,
+  );
+  await settleUntil(s, () => s.stats.goArounds > 0);
+  expect(
+    s.log.some((e) => e.kind === 'system' && /^Approach \(landline\): KLM1200 is PAN PAN/.test(e.text)),
+  ).toBe(true);
+  expect(s.stats.priorityGoArounds).toBe(1);
+});

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { EHAM, dist, isOnGround, runwayFrame, type Aircraft } from '../core';
+import { EHAM, dist, isOnGround, priorityTag, runwayFrame, type Aircraft } from '../core';
 import { visibilityText, type LogEntry, type Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT, chip } from '../phraseology/phrases';
@@ -249,6 +249,7 @@ export function Strips({ session }: { session: Session }) {
         <span class="col">
           <span class="row">
             <span class="cs">{ac.callsign}</span>
+            {ac.priority && <span class="prio">{priorityTag(ac.priority)}</span>}
             <span class="dim">
               {status ??
                 (ac.kind === 'arrival' ? `+${etaMin(ac, session)}` : isOnGround(ac) ? '' : 'airborne')}

@@ -101,6 +101,18 @@ const identify: Matcher = (c) => {
   return null;
 };
 
+/** "Roger PAN [PAN]", "roger minimum fuel" ("roger" itself is filler and already dropped). */
+const acknowledge: Matcher = (c) => {
+  if (c.w(c.i, 'pan')) {
+    let i = c.i + 1;
+    while (c.w(i, 'pan')) i++;
+    return { next: i, cmd: { type: 'acknowledge', what: 'pan' } };
+  }
+  if (c.w(c.i, 'minimum') && c.w(c.i + 1, 'fuel'))
+    return { next: c.i + 2, cmd: { type: 'acknowledge', what: 'fuel' } };
+  return null;
+};
+
 const sayAgain: Matcher = (c) => {
   // the controller repeating themselves ("I say again") is not a request to the pilot
   if (c.ctx.role === 'tower' && c.w(c.i, 'i') && c.w(c.i + 1, 'say') && c.w(c.i + 2, 'again'))
@@ -615,6 +627,7 @@ const CLAUSE = new Set([
   'stop',
   'cancel',
   'expedite',
+  'pan',
   'traffic',
   'when',
   'runway',
@@ -720,6 +733,7 @@ const stationName: Matcher = (c) => (c.w(c.i, 'tower') ? { next: c.i + 1 } : nul
 
 const TOWER_MATCHERS: Matcher[] = [
   stationName,
+  acknowledge,
   condition,
   trafficInfo,
   whenInfo,
@@ -739,6 +753,7 @@ const qnhInfo: Matcher = (c) => (c.w(c.i, 'qnh') && c.n(c.i + 1) ? { next: c.i +
 
 const MATCHERS: Matcher[] = [
   identify,
+  acknowledge,
   sayAgain,
   goAround,
   expectInfo,

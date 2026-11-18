@@ -1,4 +1,4 @@
-import type { Aircraft } from '../aircraft/aircraft';
+import type { Aircraft, Priority } from '../aircraft/aircraft';
 import { perfFor } from '../aircraft/perf';
 import type { Airport, RunwayExit } from '../airport/types';
 import { bearing, dist, headingVec, norm360, type Vec } from '../geo';
@@ -12,6 +12,8 @@ export interface TrafficConfig {
   /** Restrict random spawns to these aircraft types / STARs (tutorials, easy scenarios). */
   types?: string[];
   stars?: string[];
+  /** Probability (0..1) that a random arrival asks for priority (PAN PAN medical or minimum fuel). */
+  priority?: number;
 }
 
 export interface SpawnSpec {
@@ -27,6 +29,8 @@ export interface SpawnSpec {
   ias?: number;
   /** Start already on frequency and identified (tutorials). */
   onFrequency?: boolean;
+  /** Arrival: asks for priority; `false`: never (default: random, by `TrafficConfig.priority`). */
+  priority?: Priority | false;
 }
 
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -250,6 +254,11 @@ export class Spawner {
     const hdg = spec.hdg ?? norm360(bearing(pos, iaf));
     const alt = spec.alt ?? this.rng.int(7, 10) * 1000;
     const ias = spec.ias ?? Math.min(250, perf.maxIas);
+    // no draw at a chance of 0, so seeded traffic without priorities stays as it was
+    const chance = this.config.priority ?? 0;
+    const priority =
+      spec.priority ??
+      (chance > 0 && this.rng.next() < chance ? this.rng.pick<Priority>(['medical', 'fuel']) : false);
     return {
       ...base,
       kind: 'arrival',
@@ -266,6 +275,7 @@ export class Spawner {
       phase: 'flight',
       route: star.id,
       checkInAt: spec.onFrequency ? null : time + this.rng.range(4, 12),
+      ...(priority && { priority }),
     };
   }
 }

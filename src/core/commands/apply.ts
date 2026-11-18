@@ -20,6 +20,7 @@ const GROUND_OK = new Set<Command['type']>([
   'vacate',
   'expediteVacate',
   'trafficInfo',
+  'acknowledge',
 ]);
 const LATERAL = new Set<Command['type']>(['heading', 'presentHeading', 'direct', 'hold', 'ils']);
 /** Metres past the landing threshold. */
@@ -130,6 +131,8 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
   switch (cmd.type) {
     case 'identify':
       ac.identified = true;
+      break;
+    case 'acknowledge':
       break;
     case 'heading':
       leaveApproach(ac);

@@ -1,6 +1,6 @@
 import type { Ref } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { EHAM, dist, isOnGround, runwayById, type Aircraft } from '../core';
+import { EHAM, dist, isOnGround, priorityTag, runwayById, type Aircraft } from '../core';
 import type { Session } from '../game/session';
 import { sounds } from '../sound/sounds';
 import { RADAR_RANGE_NM, type RadarTarget } from '../render/groundradar';
@@ -145,6 +145,7 @@ export function TowerDesk({
         <span class="col">
           <span class="row">
             <span class="cs">{ac.callsign}</span>
+            {ac.priority && <span class="prio">{priorityTag(ac.priority)}</span>}
             <span class="dim">{state}</span>
           </span>
           <span class="row sub">

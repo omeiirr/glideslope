@@ -1,6 +1,8 @@
 /** The only way to change aircraft state from outside the core. */
 export type Command =
   | { type: 'identify' }
+  /** "Roger PAN", "roger minimum fuel": acknowledges a priority call; nothing changes. */
+  | { type: 'acknowledge'; what: 'pan' | 'fuel' }
   | { type: 'heading'; heading: number; turn?: 'left' | 'right' }
   | { type: 'presentHeading' }
   /** `altitude` is always feet; `fl` records whether it was given as a flight level. */

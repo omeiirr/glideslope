@@ -56,6 +56,7 @@ const firstArrival = (callsign: string, type: string): SpawnSpec & { at: number 
     alt: 1900,
     ias: 170,
     onFrequency: true,
+    priority: false, // the opening arrival stays plain
   };
 };
 /** An arrival established on the 18R final, `nm` out, on the glideslope (about 318 ft per NM), calling Tower. */
@@ -157,7 +158,7 @@ export const SCENARIOS: Scenario[] = [
     mode: 'beginner',
     seed: 0,
     durationMin: 0,
-    traffic: { arrivalsPerHour: 12, departuresPerHour: 4, alnumCallsigns: 0 },
+    traffic: { arrivalsPerHour: 12, departuresPerHour: 4, alnumCallsigns: 0, priority: 0.08 },
   },
   {
     id: 'tw-land',
@@ -222,7 +223,7 @@ export const SCENARIOS: Scenario[] = [
     mode: 'beginner',
     seed: 0,
     durationMin: 0,
-    traffic: { arrivalsPerHour: 16, departuresPerHour: 14, types: TOWER_EASY },
+    traffic: { arrivalsPerHour: 16, departuresPerHour: 14, types: TOWER_EASY, priority: 0.08 },
     spawns: [firstArrival('KLM1200', 'B738')],
   },
   {
@@ -234,7 +235,13 @@ export const SCENARIOS: Scenario[] = [
     seed: 201,
     durationMin: 20,
     wind: { dir: 200, speed: 10 },
-    traffic: { arrivalsPerHour: 16, departuresPerHour: 14, types: TOWER_EASY, alnumCallsigns: 0.15 },
+    traffic: {
+      arrivalsPerHour: 16,
+      departuresPerHour: 14,
+      types: TOWER_EASY,
+      alnumCallsigns: 0.15,
+      priority: 0.08,
+    },
     spawns: [firstArrival('EZY45MP', 'A320')],
   },
   {
@@ -247,7 +254,7 @@ export const SCENARIOS: Scenario[] = [
     seed: 202,
     durationMin: 25,
     wind: { dir: 220, speed: 14 },
-    traffic: { arrivalsPerHour: 18, departuresPerHour: 18, alnumCallsigns: 0.15 },
+    traffic: { arrivalsPerHour: 18, departuresPerHour: 18, alnumCallsigns: 0.15, priority: 0.08 },
     spawns: [firstArrival('KLM642', 'B77W')],
   },
   {
@@ -259,7 +266,7 @@ export const SCENARIOS: Scenario[] = [
     seed: 203,
     durationMin: 25,
     wind: { dir: 190, speed: 8 },
-    traffic: { arrivalsPerHour: 28, departuresPerHour: 24, alnumCallsigns: 0.2 },
+    traffic: { arrivalsPerHour: 28, departuresPerHour: 24, alnumCallsigns: 0.2, priority: 0.08 },
     spawns: [firstArrival('TRA5422', 'B738')],
   },
   {
@@ -276,7 +283,13 @@ export const SCENARIOS: Scenario[] = [
     qnh: 1027,
     visibilityM: 600,
     timeOfDay: 'dusk',
-    traffic: { arrivalsPerHour: 14, departuresPerHour: 12, types: TOWER_EASY, alnumCallsigns: 0.15 },
+    traffic: {
+      arrivalsPerHour: 14,
+      departuresPerHour: 12,
+      types: TOWER_EASY,
+      alnumCallsigns: 0.15,
+      priority: 0.08,
+    },
     spawns: [firstArrival('KLM1582', 'E190')],
   },
   {
@@ -287,7 +300,7 @@ export const SCENARIOS: Scenario[] = [
     seed: 101,
     durationMin: 20,
     wind: { dir: 190, speed: 6 },
-    traffic: { arrivalsPerHour: 18, departuresPerHour: 8, alnumCallsigns: 0.15 },
+    traffic: { arrivalsPerHour: 18, departuresPerHour: 8, alnumCallsigns: 0.15, priority: 0.08 },
   },
   {
     id: 'pro-medium',
@@ -297,7 +310,7 @@ export const SCENARIOS: Scenario[] = [
     seed: 202,
     durationMin: 25,
     wind: { dir: 210, speed: 14 },
-    traffic: { arrivalsPerHour: 26, departuresPerHour: 12, alnumCallsigns: 0.3 },
+    traffic: { arrivalsPerHour: 26, departuresPerHour: 12, alnumCallsigns: 0.3, priority: 0.08 },
   },
   {
     id: 'pro-peak',
@@ -308,7 +321,7 @@ export const SCENARIOS: Scenario[] = [
     durationMin: 30,
     wind: { dir: 250, speed: 22 },
     qnh: 998,
-    traffic: { arrivalsPerHour: 36, departuresPerHour: 10, alnumCallsigns: 0.35 },
+    traffic: { arrivalsPerHour: 36, departuresPerHour: 10, alnumCallsigns: 0.35, priority: 0.08 },
   },
 ];
 

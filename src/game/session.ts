@@ -384,6 +384,12 @@ export class Session {
       case 'spawned':
         break;
       case 'checkIn':
+        // tower: Approach has already been told, and passes it on before the pilot calls
+        if (this.tower && e.ac.priority)
+          this.system(
+            `Approach (landline): ${e.ac.callsign} ${e.ac.priority === 'medical' ? 'is PAN PAN, medical emergency on board' : 'has declared minimum fuel'}, priority landing please.`,
+            'warn',
+          );
         this.pilotSays(e.ac.callsign, this.tower ? towerCheckIn(e.ac, this.sim) : checkIn(e.ac, this.sim), 0);
         break;
       case 'established':
@@ -393,7 +399,11 @@ export class Session {
       case 'landed': {
         s.landed++;
         // tower: arrival delay is the stand-in Approach's; holding-point delay is counted instead
-        if (!this.tower) s.delaySum += Math.max(0, this.sim.time - e.ac.spawnTime - this.nominalTime(e.ac));
+        if (!this.tower) {
+          const delay = Math.max(0, this.sim.time - e.ac.spawnTime - this.nominalTime(e.ac));
+          s.delaySum += delay;
+          if (e.ac.priority) s.priorityDelaySum += delay;
+        }
         if (!e.handedOff && this.mode === 'pro' && !this.tower) {
           s.missedHandoffs++;
           this.system(`${e.ac.callsign} landed without being handed to Tower.`, 'warn');
@@ -438,6 +448,10 @@ export class Session {
         break;
       case 'goAround':
         s.goArounds++;
+        if (e.ac.priority) {
+          s.priorityGoArounds++;
+          this.system(`${e.ac.callsign} had priority and went around.`, 'bad');
+        }
         // Approach: the Tower coordinates a missed approach on the landline before the pilot calls back
         if (!this.tower && e.ac.kind === 'arrival')
           this.system(

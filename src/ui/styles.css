@@ -297,6 +297,17 @@ button {
 .strip.pending {
   border-style: dashed;
 }
+/* PAN PAN or minimum fuel: a word, not just a colour */
+.prio {
+  border: 1px solid var(--red);
+  border-radius: 3px;
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 6px;
+  padding: 0 4px;
+}
 .strip .n {
   width: 20px;
   height: 20px;

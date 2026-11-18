@@ -14,6 +14,11 @@ import {
 } from '../geo';
 import type { Perf } from './perf';
 
+/** Why an arrival wants priority. */
+export type Priority = 'medical' | 'fuel';
+/** Short tag for strips and data blocks; '' for none. */
+export const priorityTag = (p?: Priority) => (p === 'medical' ? 'PAN' : p === 'fuel' ? 'MIN FUEL' : '');
+
 export type NavMode =
   | { mode: 'heading' }
   /** Fly to `fix`, then each fix in `then`, then keep the heading flown at the last fix. */
@@ -99,6 +104,8 @@ export interface Aircraft {
   checkInAt: number | null;
   /** Tower clearances (tower mode). */
   landClear: boolean;
+  /** Arrival that asked for priority: PAN PAN with a medical case on board, or minimum fuel. */
+  priority?: Priority;
   takeoffClear: boolean;
   vacate?: ExitPref;
   /** "Contact Ground" given before vacating: switches once it turns off the runway. */

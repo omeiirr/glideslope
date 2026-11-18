@@ -1,4 +1,4 @@
-import { TICK, headingVec, onRadar, type Aircraft, type Vec } from '../../core';
+import { TICK, headingVec, onRadar, priorityTag, type Aircraft, type Vec } from '../../core';
 import {
   conflictIds,
   finalPoint,
@@ -252,7 +252,10 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
     } else ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
 
     // data block
-    const line1 = ac.callsign + (mine && scene.isNew(ac.callsign) ? ' •' : '');
+    const line1 =
+      ac.callsign +
+      (ac.priority ? ` ${priorityTag(ac.priority)}` : '') +
+      (mine && scene.isNew(ac.callsign) ? ' •' : '');
     const line2 = dataLine(ac, mine);
     ctx.font = `700 12px ${MONO}`;
     const w1 = ctx.measureText(line1 + (selected ? `  ${ac.type}` : '')).width;

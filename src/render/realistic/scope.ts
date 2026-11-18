@@ -1,4 +1,4 @@
-import { onRadar, type Vec } from '../../core';
+import { onRadar, priorityTag, type Vec } from '../../core';
 import {
   conflictIds,
   finalPoint,
@@ -196,7 +196,10 @@ export function drawRealistic(
     ctx.lineTo(lx, ly);
     ctx.stroke();
     ctx.font = `${size}px ${MONO}`;
-    const l1 = ac.callsign + (scene.isNew(ac.callsign) && ac.comms === 'app' ? '*' : '');
+    const l1 =
+      ac.callsign +
+      (ac.priority ? ` ${priorityTag(ac.priority)}` : '') +
+      (scene.isNew(ac.callsign) && ac.comms === 'app' ? '*' : '');
     const l2 = `${fl3(s.alt)} ${String(Math.round(s.gs / 10)).padStart(2, '0')}${ac.nav.mode === 'loc' ? ' I' : ''}`;
     const w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width);
     const bx = lead[0]! < -0.1 ? lx - w - 2 : lx + 2;

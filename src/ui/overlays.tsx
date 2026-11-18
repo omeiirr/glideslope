@@ -374,6 +374,17 @@ export function Debrief({
     ['Wake turbulence infringements', s.wakeInfringements, s.wakeInfringements * w.wake],
     ['Missed handoffs', s.missedHandoffs, s.missedHandoffs * w.missedHandoff],
     ['Go-arounds', s.goArounds, s.goArounds * w.goAround],
+    s.priorityGoArounds > 0 && [
+      'Go-arounds of priority arrivals',
+      s.priorityGoArounds,
+      s.priorityGoArounds * w.priorityGoAround,
+    ],
+    !session.tower &&
+      s.priorityDelaySum > 0 && [
+        'Delay to priority arrivals',
+        `${(s.priorityDelaySum / 60).toFixed(1)} min`,
+        (s.priorityDelaySum / 10) * w.priorityDelayPer10s,
+      ],
     session.tower && [
       'Go-arounds with the runway free',
       s.unnecessaryGoArounds,

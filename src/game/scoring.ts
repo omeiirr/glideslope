@@ -24,6 +24,9 @@ export interface Stats {
   /** Departures that started their take-off roll, and their summed wait from ready call to roll (s). */
   departed: number;
   depDelaySum: number;
+  /** Arrivals with priority (PAN PAN, minimum fuel): their delay (s, also in delaySum) and go-arounds. */
+  priorityDelaySum: number;
+  priorityGoArounds: number;
 }
 
 export const emptyStats = (): Stats => ({
@@ -45,6 +48,8 @@ export const emptyStats = (): Stats => ({
   unnecessaryGoArounds: 0,
   departed: 0,
   depDelaySum: 0,
+  priorityDelaySum: 0,
+  priorityGoArounds: 0,
 });
 
 /** 100 = textbook ICAO. Warnings cost 20, style notes 5; not understood = 0. */
@@ -75,6 +80,9 @@ interface Weights {
   incursion: number;
   unnecessaryGoAround: number;
   depDelayPer10s: number;
+  /** On top of the normal delay and go-around weights. */
+  priorityDelayPer10s: number;
+  priorityGoAround: number;
 }
 
 /** Same events, different weights: Beginner only rewards, Pro also punishes. */
@@ -94,6 +102,8 @@ export const WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     incursion: 0,
     unnecessaryGoAround: 0,
     depDelayPer10s: 0,
+    priorityDelayPer10s: 0,
+    priorityGoAround: -20,
   },
   pro: {
     landed: 100,
@@ -110,6 +120,8 @@ export const WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     incursion: 0,
     unnecessaryGoAround: 0,
     depDelayPer10s: 0,
+    priorityDelayPer10s: -2,
+    priorityGoAround: -100,
   },
 };
 
@@ -125,6 +137,7 @@ export const TOWER_WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     incursion: -300,
     unnecessaryGoAround: -25,
     depDelayPer10s: -1,
+    priorityDelayPer10s: 0,
   },
 };
 
@@ -147,6 +160,8 @@ export function totalScore(s: Stats, mode: 'beginner' | 'pro', tower = false): n
       (s.phraseSum / 100) * w.phraseBonus +
       s.runwayIncursions * w.incursion +
       s.unnecessaryGoArounds * w.unnecessaryGoAround +
-      (s.depDelaySum / 10) * w.depDelayPer10s,
+      (s.depDelaySum / 10) * w.depDelayPer10s +
+      (s.priorityDelaySum / 10) * w.priorityDelayPer10s +
+      s.priorityGoArounds * w.priorityGoAround,
   );
 }

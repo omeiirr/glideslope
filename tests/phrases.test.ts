@@ -58,6 +58,14 @@ test('chips and check-in', () => {
   const ci = checkIn({ callsign: 'KLM1234', alt: 7000, tgtAlt: 7000, kind: 'arrival' }, env);
   expect(ci.text).toBe('Schiphol Approach, KLM1234, flight level 70, information B');
   expect(ci.speech).toContain('information Bravo');
+  const arr = { callsign: 'KLM1234', alt: 7000, tgtAlt: 7000, kind: 'arrival' } as const;
+  expect(checkIn({ ...arr, priority: 'medical' }, env).text).toBe(
+    'PAN PAN, PAN PAN, PAN PAN, Schiphol Approach, KLM1234, medical emergency on board, request priority landing, flight level 70, information B',
+  );
+  expect(checkIn({ ...arr, priority: 'fuel' }, env).text).toBe(
+    'Schiphol Approach, KLM1234, flight level 70, information B, minimum fuel',
+  );
+  expect(readback('KLM1234', [{ type: 'acknowledge', what: 'pan' }], env).text).toBe('Roger, KLM1234');
   expect(spokenCallsign('EZY45MP', EHAM.airlines)).toBe('Easy four five Mike Papa');
 });
 

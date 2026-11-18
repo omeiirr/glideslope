@@ -5,7 +5,7 @@ import { phraseologyPct, weightsFor } from '../game/scoring';
 import type { Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT, canonicalTransmission } from '../phraseology/phrases';
-import type { VoiceState } from '../speech/voice';
+import { webGpuHint, type VoiceState } from '../speech/voice';
 
 /** Modal behaviour: focus moves into the dialog, Tab stays inside, Escape closes, focus returns afterwards. */
 export function useDialog(onClose?: () => void) {
@@ -202,7 +202,7 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
           s.asr === 'webspeech'
             ? 'Warning: in some browsers this sends your audio to a cloud service.'
             : s.asr === 'whisper-base' && voice.fellBack
-              ? 'Whisper tiny is running instead: Whisper base needs WebGPU, which this browser does not offer.'
+              ? `Whisper tiny is running instead. ${webGpuHint(voice.fellBack, navigator.userAgent)}`
               : 'Runs entirely on your machine. Falls back to tiny automatically if WebGPU is missing.',
         )}
         <div class="form-row">

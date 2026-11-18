@@ -62,7 +62,10 @@ export class VoiceInput {
       }
       await this.initMic();
       const gpu = settings.asr === 'whisper-base' && (await hasWebGpu());
-      this.loadWhisper(gpu ? 'base' : 'tiny', settings.asr === 'whisper-base' && !gpu);
+      this.loadWhisper(
+        gpu ? 'base' : 'tiny',
+        settings.asr === 'whisper-base' && !gpu ? 'no-webgpu' : undefined,
+      );
     } catch (err) {
       const name = (err as Error)?.name;
       this.set({
@@ -103,12 +106,12 @@ export class VoiceInput {
     this.ctx = ctx;
   }
 
-  private loadWhisper(model: 'base' | 'tiny', fellBack: boolean) {
+  private loadWhisper(model: 'base' | 'tiny', fellBack?: 'no-webgpu' | 'base-failed') {
     this.backend = 'whisper';
     this.set({
       status: 'loading',
       progress: 0,
-      message: `downloading Whisper ${model}${fellBack ? ' (no WebGPU on this machine)' : ''}…`,
+      message: `downloading Whisper ${model}${fellBack === 'no-webgpu' ? ' (no WebGPU on this machine)' : ''}…`,
     });
     const w = new Worker(new URL('./asr.worker.ts', import.meta.url), { type: 'module' });
     this.worker = w;
@@ -130,7 +133,7 @@ export class VoiceInput {
         w.terminate();
         this.worker = null;
         // base on WebGPU failed (driver, memory): try the small CPU model before giving up.
-        if (model === 'base') this.loadWhisper('tiny', true);
+        if (model === 'base') this.loadWhisper('tiny', 'base-failed');
         else this.set({ status: 'error', message: `Speech model failed to load: ${m.message}` });
       } else if (m.id === this.finalId) this.finish('');
     };

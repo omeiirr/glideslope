@@ -5,6 +5,7 @@ import { Session, type LogEntry } from '../game/session';
 import { DEFAULT_SETTINGS, load, save, type Settings } from '../game/settings';
 import { DEFAULT_DCB } from '../render/realistic/scope';
 import { Tts } from '../speech/tts';
+import { webGpuHint } from '../speech/voice';
 import { sounds } from '../sound/sounds';
 import { VoiceInput } from '../speech/voiceInput';
 import { useSession } from './hooks';
@@ -264,6 +265,9 @@ function Game(p: GameProps) {
   const tower = session.scenario.view === 'tower';
   const realistic = settings.display === 'realistic' && !tower;
   const realTower = settings.display === 'realistic' && tower;
+  // once per browser: Whisper base could not run, and how to turn on WebGPU
+  const [gpuHintSeen, setGpuHintSeen] = useState(() => load('hints', { webgpu: false }).webgpu);
+  const fellBack = settings.asr === 'whisper-base' ? p.voice.state.fellBack : undefined;
   const replay =
     settings.tts === 'off'
       ? undefined
@@ -351,6 +355,21 @@ function Game(p: GameProps) {
           {session.paused && !session.finished && (
             <div class="paused" role="status">
               PAUSED
+            </div>
+          )}
+          {fellBack && !gpuHintSeen && (
+            <div class="toast notice" role="alert">
+              <span>{webGpuHint(fellBack, navigator.userAgent)}</span>
+              <button
+                type="button"
+                class="chipbtn"
+                onClick={() => {
+                  save('hints', { webgpu: true });
+                  setGpuHintSeen(true);
+                }}
+              >
+                Got it
+              </button>
             </div>
           )}
           {p.tts.state.status === 'error' && settings.tts === 'piper' && (

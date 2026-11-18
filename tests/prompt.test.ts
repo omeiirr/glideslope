@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { EHAM } from '../src/core';
 import { asrPrompt, isPromptEcho } from '../src/speech/prompt';
+import { webGpuHint } from '../src/speech/voice';
 
 const aircraft = ['KLM1234', 'BAW432', 'TRA6KL'].map((callsign) => ({
   callsign,
@@ -47,4 +48,16 @@ test('echo: the start of the prompt is dropped, real transmissions are kept', ()
   expect(isPromptEcho('KLM 1234, identified.', p)).toBe(false);
   expect(isPromptEcho('KLM 1234, turn left heading 270', p)).toBe(false);
   expect(isPromptEcho('', p)).toBe(false);
+});
+
+test('WebGPU hint: per browser, and a different note when base failed on WebGPU', () => {
+  const linuxChrome =
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36';
+  const winChrome =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36';
+  const firefox = 'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0';
+  expect(webGpuHint('no-webgpu', linuxChrome)).toContain('chrome://flags');
+  expect(webGpuHint('no-webgpu', winChrome)).toContain('graphics acceleration');
+  expect(webGpuHint('no-webgpu', firefox)).toContain('dom.webgpu.enabled');
+  expect(webGpuHint('base-failed', winChrome)).toContain('graphics driver');
 });

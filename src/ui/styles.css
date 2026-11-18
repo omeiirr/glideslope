@@ -773,6 +773,15 @@ table.score td:last-child {
   color: var(--text2);
   pointer-events: none;
 }
+.toast.notice {
+  bottom: 110px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(640px, calc(100% - 32px));
+  pointer-events: auto;
+  color: var(--text);
+}
 .rt {
   position: absolute;
   display: flex;

@@ -44,6 +44,9 @@ const LABELS_TEXT: Record<LabelMode, string> = { all: 'All', selected: 'Selected
 const VIS_STEPS = [CLEAR_VIS, 3000, 1000, 400];
 const nextVis = (v: number) => VIS_STEPS[(VIS_STEPS.indexOf(v) + 1) % VIS_STEPS.length]!;
 const CEIL_STEPS = [null, 2500, 1000, 400];
+/** The departure runway's holding point, and how far past it a departure must be before its stop bar relights (m). */
+const DEP_HOLD = runwayById(EHAM, EHAM.config.departure).entry!.path.at(-1)!;
+const STOP_BAR_CLEAR_M = 120;
 const nextCeil = (c: number | null) => CEIL_STEPS[(CEIL_STEPS.indexOf(c) + 1) % CEIL_STEPS.length]!;
 
 const isTyping = (e: KeyboardEvent) => {
@@ -190,6 +193,15 @@ export function TowerView({
         apronM: Math.min(Infinity, ...parkedRef.current.map((p) => Math.hypot(p.x - eye.x, p.z - eye.z))),
         paused: s.paused,
       });
+      // the stop bar goes off for a departure cleared onto the runway, until it is past it
+      renderer!.setStopBar(
+        !s.sim.aircraft.some(
+          (a) =>
+            ((a.nav.mode === 'lineup' && !a.nav.ready) || a.nav.mode === 'takeoff') &&
+            isOnGround(a) &&
+            dist(a.pos, DEP_HOLD) * 1852 < STOP_BAR_CLEAR_M,
+        ),
+      );
       let bearing = c.viewBearing + look.current.yaw;
       let depression = look.current.depression;
       // binoculars follow the selected aircraft
@@ -353,6 +365,7 @@ export function TowerView({
       const eye = eyePosition(live.current.cab);
       const p = toWorld(e.ac.pos);
       sounds.touchdown(Math.hypot(p.x - eye.x, p.z - eye.z, eye.y));
+      rendererRef.current?.touchdown(p.x, p.z);
     });
     return () => {
       off();

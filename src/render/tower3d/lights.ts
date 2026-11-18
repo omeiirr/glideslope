@@ -9,6 +9,7 @@
  * - Touchdown zone: pairs of three-light barrettes every 60 m over the first 900 m.
  * - Approach lights on the landing runway: a five-light barrette every 30 m out to 900 m, a crossbar at 300 m.
  * - Taxiways: green centreline lights every 30 m.
+ * - Runway holding positions: a red stop bar across the taxiway, a flashing yellow guard light at each end.
  */
 import { reciprocalRunway, runwayById, type Airport, type Runway } from '../../core';
 import { llToGround, type GroundData, type P2 } from './ground';
@@ -117,6 +118,26 @@ export function taxiwayLights(ap: Pick<Airport, 'lat' | 'lon'>, g: GroundData): 
     }
   }
   return s;
+}
+
+/** Stop bar lights at most this far apart (m; ICAO Annex 14 vol. I 5.3.20, from memory). */
+const STOP_STEP = 3;
+
+/**
+ * One runway holding position (its OSM line across the taxiway): red stop bar lights along it into `bar`, and
+ * a runway guard light 2 m beyond each end into `guard`, flashing (shortcut: together, not alternately).
+ */
+export function holdLights(line: P2[], bar: LightSet, guard: LightSet) {
+  const a = line[0]!;
+  const b = line[line.length - 1]!;
+  const len = Math.hypot(b.x - a.x, b.z - a.z);
+  if (len < 1) return;
+  const n = Math.max(1, Math.round(len / STOP_STEP));
+  for (let i = 0; i <= n; i++)
+    addLight(bar, a.x + ((b.x - a.x) * i) / n, H, a.z + ((b.z - a.z) * i) / n, LIGHT.red, 2.2);
+  const [ux, uz] = [(b.x - a.x) / len, (b.z - a.z) / len];
+  addLight(guard, a.x - ux * 2, H + 0.4, a.z - uz * 2, LIGHT.yellow, 3, 1);
+  addLight(guard, b.x + ux * 2, H + 0.4, b.z + uz * 2, LIGHT.yellow, 3, 1);
 }
 
 /** Blue taxiway edge lights this far apart along each edge (m). */

@@ -1,10 +1,12 @@
 import { expect, test } from 'vitest';
 import ground from '../public/tower/ground.json';
 import { EHAM, runwayById } from '../src/core';
-import type { GroundData } from '../src/render/tower3d/ground';
+import { llToGround, type GroundData } from '../src/render/tower3d/ground';
 import {
   LIGHT,
   airportLights,
+  emptyLights,
+  holdLights,
   taxiwayEdgeLights,
   taxiwayLights,
   type LightSet,
@@ -76,4 +78,32 @@ test('taxiway edge lights: blue, beside the taxiways, never on a runway, apron o
     });
     expect(on).toEqual([]);
   }
+});
+
+test('holding positions: a red stop bar every 3 m or less across the line, a flashing yellow light past each end', () => {
+  const bar = emptyLights();
+  const guard = emptyLights();
+  holdLights(
+    [
+      { x: 0, z: 0 },
+      { x: 30, z: 0 },
+    ],
+    bar,
+    guard,
+  );
+  const b = lights(bar);
+  expect(b).toHaveLength(11);
+  expect(b.every((l) => l.c === is(LIGHT.red))).toBe(true);
+  expect(lights(guard).map((l) => [l.x, l.c])).toEqual([
+    [-2, is(LIGHT.yellow)],
+    [32, is(LIGHT.yellow)],
+  ]);
+  expect(guard.blink).toEqual([1, 1]);
+  // the departure runway's holding point has an OSM holding position line within 40 m
+  const hp = toWorld(runwayById(EHAM, EHAM.config.departure).entry!.path.at(-1)!);
+  const g = ground as unknown as GroundData;
+  const near = g.holds.some((h) =>
+    h.some((p) => Math.hypot(llToGround(EHAM, p).x - hp.x, llToGround(EHAM, p).z - hp.z) < 40),
+  );
+  expect(near).toBe(true);
 });

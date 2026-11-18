@@ -38,6 +38,7 @@ import {
   LIGHT_FOG,
   taxiwayLights,
   taxiwayEdgeLights,
+  holdLights,
   type LightSet,
   type TimeOfDay,
 } from './lights';
@@ -222,6 +223,14 @@ export class TowerRenderer {
   private hemi!: THREE.HemisphereLight;
   private skyGeo!: THREE.SphereGeometry;
   private clouds: THREE.SpriteMaterial[] = [];
+  /** Stop bar at the departure runway's holding point, off while a cleared departure crosses it. */
+  private depBar?: THREE.Points;
+  private stopBarOn = true;
+  /** Pavement materials (runways, taxiways, aprons): darker and reflective when wet. */
+  private paved: THREE.MeshLambertMaterial[] = [];
+  /** Tyre smoke puffs at touchdown, fading out. */
+  private puffs: { sprite: THREE.Sprite; born: number }[] = [];
+  private smokeTex?: THREE.CanvasTexture;
   /** Cloud deck at the ceiling: aircraft above it are hidden where it is closed. */
   private deck?: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   private ceilFt: number | null = null;
@@ -326,6 +335,65 @@ export class TowerRenderer {
     this.poolMat.visible = L.lights > 0;
     this.applyFloodlight();
     for (const p of this.lightPts) p.visible = L.lights > 0;
+    if (this.depBar) this.depBar.visible = L.lights > 0 && this.stopBarOn;
+    this.applyWet();
+  }
+
+  /** Rain below 5 km (as the cab sounds): wet pavement, darker, with the sky in it. */
+  private applyWet() {
+    const wet = this.visM < RAIN_VIS_M;
+    for (const m of this.paved) {
+      m.color.copy(m.userData.base as THREE.Color).multiplyScalar(wet ? 0.72 : 1);
+      if (m.envMap !== (wet ? this.env : null)) {
+        m.envMap = wet ? this.env : null;
+        m.combine = THREE.MixOperation;
+        m.reflectivity = 0.22;
+        m.needsUpdate = true;
+      }
+    }
+  }
+
+  /** The departure runway's stop bar: lit (red) or off (cleared to enter the runway). */
+  setStopBar(on: boolean) {
+    if (on === this.stopBarOn) return;
+    this.stopBarOn = on;
+    if (this.depBar) this.depBar.visible = this.look.lights > 0 && on;
+  }
+
+  /** A puff of tyre smoke where the main wheels touch down (world metres). */
+  touchdown(x: number, z: number) {
+    this.smokeTex ??= smokeTexture();
+    // not tone-mapped (like the clouds): at the day exposure a tone-mapped white is runway grey
+    const mat = new THREE.SpriteMaterial({
+      map: this.smokeTex,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+      toneMapped: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.position.set(x, 2, z);
+    this.scene.add(sprite);
+    this.puffs.push({ sprite, born: performance.now() });
+  }
+
+  /** Puffs grow from 3 to 15 m and fade out over PUFF_S. */
+  private updatePuffs(now: number) {
+    this.puffs = this.puffs.filter((p) => {
+      const t = (now - p.born) / 1000 / PUFF_S;
+      const mat = p.sprite.material;
+      if (t >= 1) {
+        this.scene.remove(p.sprite);
+        mat.dispose();
+        return false;
+      }
+      const s = 3 + 12 * Math.sqrt(t);
+      p.sprite.scale.set(s, s * 0.6, 1);
+      p.sprite.position.y = 1 + s * 0.25;
+      mat.opacity = 0.75 * (1 - t) * Math.min(1, t * 12);
+      mat.color.set(this.look.lights > 0 ? '#5c5f66' : '#f2f2f2');
+      return true;
+    });
   }
 
   private tod: TimeOfDay = 'day';
@@ -494,6 +562,25 @@ export class TowerRenderer {
         holds,
       );
     layer(holds, YELLOW, -42);
+    // stop bars and guard lights; the departure runway's own stop bar is switched (setStopBar)
+    const depHold = ap.runways.find((r) => r.id === ap.config.departure)?.entry?.path.at(-1);
+    const hp = depHold && toWorld(depHold);
+    const bars = emptyLights();
+    const guards = emptyLights();
+    const depBar = emptyLights();
+    for (const h of g.holds) {
+      const line = h.map((p) => llToGround(ap, p));
+      const mine = hp && line.some((p) => Math.hypot(p.x - hp.x, p.z - hp.z) < DEP_HOLD_M);
+      holdLights(line, mine ? depBar : bars, guards);
+    }
+    this.addLights(bars);
+    this.addLights(guards);
+    if (depBar.pos.length) {
+      this.depBar = this.points(depBar, this.airfieldMat);
+      this.depBar.visible = false;
+      this.scene.add(this.depBar);
+      this.disposables.push(this.depBar.geometry);
+    }
 
     polygons(g.runways, RUNWAY, -41, asphalt);
     const surface: number[] = [];
@@ -517,6 +604,7 @@ export class TowerRenderer {
     }
     this.addLights(taxiwayLights(ap, g));
     this.addLights(taxiwayEdgeLights(ap, g));
+    this.applyWet();
   }
 
   /**
@@ -793,7 +881,11 @@ export class TowerRenderer {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
-    if (map && this.macro && this.pavement.has(map)) withMacro(mat, this.macro);
+    if (map && this.pavement.has(map)) {
+      if (this.macro) withMacro(mat, this.macro);
+      mat.userData.base = mat.color.clone();
+      this.paved.push(mat);
+    }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = order;
     mesh.frustumCulled = false;
@@ -931,6 +1023,7 @@ export class TowerRenderer {
 
   /** Draw one frame and report where each aircraft is on screen. */
   render(list: readonly TowerAircraft[], cam: Camera): Anchor[] {
+    this.updatePuffs(performance.now());
     const seen = new Set<number>();
     for (const a of list) {
       seen.add(a.id);
@@ -1026,6 +1119,8 @@ export class TowerRenderer {
     for (const d of this.disposables) d.dispose();
     this.shadowTex.dispose();
     this.setCeiling(null); // frees the deck
+    for (const p of this.puffs) p.sprite.material.dispose();
+    this.smokeTex?.dispose();
     disposeAircraftAssets();
     this.env?.dispose();
     this.renderer.dispose();
@@ -1121,6 +1216,29 @@ function shadowTexture(): THREE.CanvasTexture {
   g.closePath();
   g.fill();
   return new THREE.CanvasTexture(c);
+}
+
+/** Below this visibility it is raining (the cab hears rain too), so the pavement is wet (m). */
+const RAIN_VIS_M = 5000;
+/** The departure runway's holding point is this close to its OSM holding position line (m). */
+const DEP_HOLD_M = 40;
+/** Tyre smoke lasts this long (s). */
+const PUFF_S = 2.5;
+
+/** A soft round puff, white, for tyre smoke. */
+function smokeTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d')!;
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 /** Ceilings at or above this are broken (gaps in the deck); below it, overcast. */

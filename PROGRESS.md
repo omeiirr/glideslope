@@ -42,13 +42,12 @@
 - **Cloud ceiling (2026-11-18)**: a cloud deck in the tower view that hides aircraft above the base (overcast below 2000 ft, broken above), Cloud button next to Vis (Realistic: CLOUD on the DCB), the METAR-style report in the top bar and the tower status line, and the Pro scenario "Low cloud" (OVC004, 3 km, rain). Checked in Chromium: day and dusk, no console errors.
 - **Small touches (2026-11-18)**: tyre smoke at touchdown, wet pavement in rain (below 5 km), stop bars and runway guard lights at the holding positions (the departure one switches off for a cleared departure). Checked in Chromium (day binoculars, night from the centre cab, low cloud): no console errors.
 - **Radar teaching (2026-11-18)**: lessons 6–10 (a whole arrival with a guide path on the scope, joining the localizer, two in a row, separation, departures), guided lessons open at 20 NM centred on the path, a "next step" help card in Beginner free play, and Learn → Arrival procedure with a diagram of the pattern. Tests: every lesson is finished by following it; the advice lands aircraft from every IAF.
-- **Moonshine (2026-11-18)**: Moonshine base as an experimental speech model in Settings. Synthetic test: faster than Whisper tiny but much less accurate (no prompt), so Whisper tiny stays the fallback (DECISIONS.md).
 ## Next
 0. **T5:** tower screen: ~~desk with strip bays and a ground radar~~ (done), ~~dusk and night~~ (done), ~~low visibility and the fog-at-dusk Pro scenario~~ (done), ~~Realistic variant~~ (done). (Smoothness on real hardware not yet reported: in dev builds `__towerMs` and `__towerStats` are on `window`.)
 0a. **Check against the eAIP** (eaip.lvnl.nl blocks automated access): exit names V1–V4 and S7E. (Frequencies: done, from the user 2026-11-17.)
 1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
 1a. **Try by voice:** "runway 18R, cleared to land" in the tower lessons (the prompt fix is only tested with synthetic voices); and listen to the sound levels.
-2. Voice on machines without fast WebGPU: Whisper tiny takes about 2 s per command on one CPU thread. Moonshine base is in Settings (experimental): 2× faster, but 25/64 vs 46/64 commands right on synthetic voices. **Try it with a real voice.**
+2. Voice on machines without fast WebGPU: Whisper tiny takes about 2 s per command on one CPU thread.
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
 
 ## Measured

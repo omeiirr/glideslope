@@ -1,6 +1,6 @@
 import type { Settings } from '../game/settings';
 import type { AsrRequest, AsrResponse } from './asr.worker';
-import { ASR_NAME, vendorBase, type AsrModel } from './models';
+import { vendorBase } from './models';
 import { VOICE_OFF, type VoiceState } from './voice';
 
 const RATE = 16000;
@@ -63,7 +63,7 @@ export class VoiceInput {
       await this.initMic();
       const gpu = settings.asr === 'whisper-base' && (await hasWebGpu());
       this.loadWhisper(
-        settings.asr === 'moonshine' ? 'moonshine' : gpu ? 'base' : 'tiny',
+        gpu ? 'base' : 'tiny',
         settings.asr === 'whisper-base' && !gpu ? 'no-webgpu' : undefined,
       );
     } catch (err) {
@@ -106,12 +106,12 @@ export class VoiceInput {
     this.ctx = ctx;
   }
 
-  private loadWhisper(model: AsrModel, fellBack?: 'no-webgpu' | 'base-failed') {
+  private loadWhisper(model: 'base' | 'tiny', fellBack?: 'no-webgpu' | 'base-failed') {
     this.backend = 'whisper';
     this.set({
       status: 'loading',
       progress: 0,
-      message: `downloading ${ASR_NAME[model]}${fellBack === 'no-webgpu' ? ' (no WebGPU on this machine)' : ''}…`,
+      message: `downloading Whisper ${model}${fellBack === 'no-webgpu' ? ' (no WebGPU on this machine)' : ''}…`,
     });
     const w = new Worker(new URL('./asr.worker.ts', import.meta.url), { type: 'module' });
     this.worker = w;
@@ -124,7 +124,7 @@ export class VoiceInput {
           status: 'ready',
           progress: 1,
           fellBack,
-          message: `${ASR_NAME[m.model]}, on this machine${this.livePartials ? '' : ' (no live transcript: too slow here)'}`,
+          message: `Whisper ${m.model}, on this machine${this.livePartials ? '' : ' (no live transcript: too slow here)'}`,
         });
       } else if (m.type === 'result') {
         if (m.final && m.id === this.finalId) this.finish(m.text);

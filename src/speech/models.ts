@@ -19,7 +19,8 @@ export const PILOT_VOICES: [number, number][] = [
   [39, 0.9], // p294 American, female
 ];
 
-export const WHISPER = {
+/** Speech recognisers: Whisper (OpenAI, MIT) and Moonshine (Useful Sensors, MIT). */
+export const ASR_MODELS = {
   /** ~206 MB: fp32 encoder + 4-bit decoder, the combination that runs well on WebGPU. */
   base: {
     repo: 'Xenova/whisper-base.en',
@@ -28,7 +29,15 @@ export const WHISPER = {
   },
   /** ~41 MB: 8-bit, for machines without WebGPU. */
   tiny: { repo: 'Xenova/whisper-tiny.en', device: 'wasm', dtype: 'q8' },
+  /** ~64 MB, 8-bit: about twice as fast as Whisper tiny on the CPU, but it takes no prompt (see DECISIONS.md). */
+  moonshine: { repo: 'onnx-community/moonshine-base-ONNX', device: 'wasm', dtype: 'q8' },
 } as const;
+export type AsrModel = keyof typeof ASR_MODELS;
+export const ASR_NAME: Record<AsrModel, string> = {
+  base: 'Whisper base',
+  tiny: 'Whisper tiny',
+  moonshine: 'Moonshine base',
+};
 
 /** Absolute URL of the self-hosted runtime files (public/vendor/). */
 export const vendorBase = () => new URL('./vendor/', document.baseURI).href;

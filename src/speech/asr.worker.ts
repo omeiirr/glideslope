@@ -1,23 +1,24 @@
 /// <reference lib="webworker" />
-// Whisper speech recognition via transformers.js. Audio never leaves this worker.
+// Speech recognition (Whisper or Moonshine) via transformers.js. Audio never leaves this worker.
 import { env, pipeline, type AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers';
-import { WHISPER } from './models';
+import { ASR_MODELS, type AsrModel } from './models';
 import { isPromptEcho } from './prompt';
 
 export type AsrRequest =
-  | { type: 'load'; vendor: string; model: keyof typeof WHISPER }
+  | { type: 'load'; vendor: string; model: AsrModel }
   | { type: 'transcribe'; id: number; audio: Float32Array; final: boolean; prompt: string };
 export type AsrResponse =
   | { type: 'progress'; progress: number }
-  | { type: 'ready'; model: keyof typeof WHISPER; ms: number }
+  | { type: 'ready'; model: AsrModel; ms: number }
   | { type: 'result'; id: number; text: string; final: boolean }
   | { type: 'error'; id?: number; message: string; fatal: boolean };
 
 const post = (m: AsrResponse) => (self as DedicatedWorkerGlobalScope).postMessage(m);
 let asr: AutomaticSpeechRecognitionPipeline | null = null;
 let busy = false;
+let current: AsrModel = 'tiny';
 
-async function load(vendor: string, model: keyof typeof WHISPER) {
+async function load(vendor: string, model: AsrModel) {
   env.allowLocalModels = false;
   const wasm = env.backends.onnx.wasm;
   if (wasm) {
@@ -27,7 +28,8 @@ async function load(vendor: string, model: keyof typeof WHISPER) {
     };
     wasm.numThreads = 1;
   }
-  const spec = WHISPER[model];
+  const spec = ASR_MODELS[model];
+  current = model;
   const files = new Map<string, [number, number]>();
   asr = (await pipeline('automatic-speech-recognition', spec.repo, {
     device: spec.device,
@@ -58,6 +60,11 @@ async function load(vendor: string, model: keyof typeof WHISPER) {
  */
 async function transcribe(audio: Float32Array, prompt: string): Promise<string> {
   const p = asr!;
+  // Moonshine has no prompt; cap its output (it can repeat itself) at about 6.5 tokens per second of audio
+  if (current === 'moonshine') {
+    const out = await p(audio, { max_new_tokens: Math.ceil((audio.length / 16000) * 6.5) + 10 });
+    return (Array.isArray(out) ? out[0]?.text : out.text) ?? '';
+  }
   if (!prompt) {
     const out = await p(audio);
     return (Array.isArray(out) ? out[0]?.text : out.text) ?? '';

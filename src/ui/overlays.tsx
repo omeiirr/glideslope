@@ -198,6 +198,7 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
           [
             ['whisper-base', 'Whisper base (WebGPU, best)'],
             ['whisper-tiny', 'Whisper tiny (works without WebGPU)'],
+            ['moonshine', 'Moonshine base (experimental: faster, less accurate)'],
             ['webspeech', 'Browser speech API (may use a cloud service)'],
           ],
           s.asr === 'webspeech'

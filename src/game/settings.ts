@@ -3,7 +3,7 @@ export interface Settings {
   /** Default game mode for free play. */
   mode: 'beginner' | 'pro';
   voice: boolean;
-  asr: 'whisper-base' | 'whisper-tiny' | 'webspeech';
+  asr: 'whisper-base' | 'whisper-tiny' | 'moonshine' | 'webspeech';
   tts: 'piper' | 'system' | 'off';
   ttsVolume: number;
   radioFx: boolean;

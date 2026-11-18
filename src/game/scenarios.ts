@@ -45,6 +45,17 @@ const student = (x: number, y: number, hdg: number, alt: number, ias = 220): Spa
 });
 
 const FINAL = runwayById(EHAM, EHAM.config.landing);
+/**
+ * A point `d` NM out along the landing runway's final (negative: past the threshold), `right` NM to the right of
+ * the inbound course (seen from an aircraft on final; for 18R that is west). The radar lessons' geometry.
+ */
+export function finalPt(d: number, right = 0): { x: number; y: number } {
+  const out = headingVec(FINAL.heading + 180, d);
+  const side = headingVec(FINAL.heading + 90, right);
+  return { x: FINAL.pos.x + out.x + side.x, y: FINAL.pos.y + out.y + side.y };
+}
+/** Other aircraft in the radar lessons. */
+export const LESSON_TRAFFIC = 'BAW432';
 /** Tower scenarios start with one arrival 6 NM out, so there is something to do at once; the rest come from the feed. */
 const firstArrival = (callsign: string, type: string): SpawnSpec & { at: number } => {
   const out = headingVec(FINAL.heading + 180, 6);
@@ -152,6 +163,75 @@ export const SCENARIOS: Scenario[] = [
     wind: CALM,
     traffic: NONE,
     spawns: [student(2.5, 17, 210, 2000, 190)],
+  },
+  {
+    id: 'tut-pattern',
+    lesson: 'pattern',
+    name: '6 · A whole arrival',
+    blurb: 'From its first call to Tower: downwind, base, intercept.',
+    mode: 'beginner',
+    seed: 1,
+    durationMin: 0,
+    wind: CALM,
+    traffic: NONE,
+    // on the west downwind, abeam the runway, calling in
+    spawns: [{ ...student(0, 0, 360, 6000, 240), pos: finalPt(1, 6), onFrequency: false }],
+  },
+  {
+    id: 'tut-intercept',
+    lesson: 'intercept',
+    name: '7 · Joining the localizer',
+    blurb: 'The 30° rule and the glideslope from below, with Professional rules.',
+    mode: 'pro',
+    seed: 1,
+    durationMin: 0,
+    wind: CALM,
+    traffic: NONE,
+    // east of the final, crossing it at right angles
+    spawns: [{ ...student(0, 0, 270, 2000, 210), pos: finalPt(18, -6) }],
+  },
+  {
+    id: 'tut-sequence',
+    lesson: 'sequence',
+    name: '8 · Two in a row',
+    blurb: 'Space two arrivals on final with speed and a longer downwind.',
+    mode: 'beginner',
+    seed: 1,
+    durationMin: 0,
+    wind: CALM,
+    traffic: NONE,
+    spawns: [
+      { ...student(0, 0, 90, 2000, 190), callsign: LESSON_LEADER, type: 'A320', pos: finalPt(14, 3.6) },
+      { ...student(0, 0, 360, 3000, 220), pos: finalPt(11, 6) },
+    ],
+  },
+  {
+    id: 'tut-separation',
+    lesson: 'separation',
+    name: '9 · Separation',
+    blurb: 'Two aircraft converging at the same level: fix it with a level or a turn.',
+    mode: 'beginner',
+    seed: 1,
+    durationMin: 0,
+    wind: CALM,
+    traffic: NONE,
+    // both reach (4, -8) about 3 minutes from now at FL060
+    spawns: [
+      student(16, -8, 270, 6000, 240),
+      { ...student(4, 4, 180, 6000, 240), callsign: LESSON_TRAFFIC, type: 'A320' },
+    ],
+  },
+  {
+    id: 'tut-departure',
+    lesson: 'departure',
+    name: '10 · Departures',
+    blurb: 'Climb a departure out and hand it to Amsterdam Radar.',
+    mode: 'pro',
+    seed: 1,
+    durationMin: 0,
+    wind: CALM,
+    traffic: NONE,
+    spawns: [{ at: 0, kind: 'departure', callsign: STUDENT, type: 'B738', route: 'LEKKO' }],
   },
   {
     id: 'free',

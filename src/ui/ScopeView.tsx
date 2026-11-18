@@ -57,6 +57,7 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
         showIntent: st.showIntent && (s.mode === 'beginner' || !real),
         showConflicts: s.mode === 'beginner' || !real,
         isNew: (cs) => !s.wasContacted(cs),
+        guide: s.finished ? undefined : s.lesson?.guide,
       };
       // conflict alert: predicted conflicts chime only where the scope shows them
       sounds.room(
@@ -81,7 +82,15 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
 
   useEffect(() => {
     fitRange(view.current, range);
-  }, [range, recenter]);
+    // lessons: centre on the path to fly, a little low so the lesson card does not cover its far end
+    const g = session.lesson?.guide;
+    if (g) {
+      const xs = g.path.map((p) => p.x);
+      const ys = g.path.map((p) => p.y);
+      view.current.cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      view.current.cy = (Math.min(...ys) + Math.max(...ys)) / 2 + 3;
+    }
+  }, [range, recenter, session]);
 
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const local = (e: MouseEvent) => {

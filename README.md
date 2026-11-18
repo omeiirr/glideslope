@@ -8,7 +8,7 @@ A free, open-source air traffic control simulator that runs in your browser. You
 
 ## How to play
 
-1. Start with the **Tutorial**: five short lessons on headings, levels, speed, the ILS and handoffs. **Learn** (in the menu and the top bar) is a reference for the phonetic alphabet, how to say numbers, every command, and flight levels vs altitudes.
+1. Start with the **Tutorial**: five short lessons on headings, levels, speed, the ILS and handoffs, then five that put it together: a whole arrival from its first call to Tower, joining the localizer, two arrivals in a row, separation and departures. In Beginner free play the help card says what to do next with the selected aircraft. **Learn** (in the menu and the top bar) is a reference for the phonetic alphabet, how to say numbers, every command, and flight levels vs altitudes.
 2. Select an aircraft by clicking it on the scope or its strip on the left.
 3. Give an instruction:
    - **Voice:** hold **Space** (or the mic button) and speak. The first time, the speech model downloads (about 40–200 MB, depending on your machine) and is cached after that.

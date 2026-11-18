@@ -27,6 +27,8 @@ const C = {
   amber: '#F5B04C',
   amberText: '#F5D59A',
   red: '#FF6B6B',
+  guide: 'rgba(173, 140, 255, 0.55)',
+  guideText: '#C9B8FF',
 };
 const MONO = "'JetBrains Mono Variable', 'JetBrains Mono', monospace";
 
@@ -83,6 +85,31 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
     ctx.stroke();
+  }
+
+  // lesson guide: the path to fly, faint so the traffic stays on top
+  if (scene.guide) {
+    ctx.strokeStyle = C.guide;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 6]);
+    ctx.beginPath();
+    scene.guide.path.forEach((p, i) => {
+      const s = S(p);
+      if (i) ctx.lineTo(s.x, s.y);
+      else ctx.moveTo(s.x, s.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    ctx.save();
+    ctx.fillStyle = C.guideText;
+    ctx.font = `600 10px ${MONO}`;
+    for (const l of scene.guide.labels) {
+      const s = S(l.at);
+      ctx.textAlign = l.left ? 'right' : 'left';
+      ctx.fillText(l.text, s.x + (l.left ? -6 : 6), s.y - 4);
+    }
+    ctx.restore();
   }
 
   // runways (each physical runway once)

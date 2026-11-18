@@ -602,6 +602,153 @@ function Approach() {
   );
 }
 
+// ------------------------------------------------------------------ 5b. procedure
+
+/** px per NM in the pattern diagram; the final runs up from the runway (north up). */
+const PX = 13;
+const RWY_Y = 262;
+const X0 = 180;
+
+/** One side of the pattern: downwind 6 NM out, base at 14 NM, 30° intercept from 3.5 NM off. */
+function PatternSide({ side }: { side: -1 | 1 }) {
+  const dw = X0 + side * 6 * PX;
+  const baseY = RWY_Y - 14 * PX;
+  const ix = X0 + side * 3.5 * PX;
+  const joinY = RWY_Y - (14 - 3.5 * Math.sqrt(3)) * PX;
+  const anchor = side < 0 ? 'end' : 'start';
+  return (
+    <g>
+      <polyline
+        points={`${dw},${RWY_Y + 10} ${dw},${baseY} ${ix},${baseY} ${X0},${joinY}`}
+        fill="none"
+        stroke="var(--violet, #ad8cff)"
+        stroke-width="2"
+        stroke-dasharray="7 4"
+        marker-end="url(#arrow)"
+      />
+      <text x={dw + side * 6} y={RWY_Y - 70} text-anchor={anchor}>
+        downwind
+      </text>
+      <text x={dw + side * 6} y={RWY_Y - 56} text-anchor={anchor} class="dim">
+        3000 ft
+      </text>
+      <text x={dw + side * 6} y={RWY_Y - 42} text-anchor={anchor} class="dim">
+        220 kt
+      </text>
+      <text x={(dw + ix) / 2} y={baseY - 16} text-anchor="middle">
+        base
+      </text>
+      <text x={(dw + ix) / 2} y={baseY - 4} text-anchor="middle" class="dim">
+        2000 ft
+      </text>
+      <text x={ix + side * 4} y={baseY + 46} text-anchor={anchor}>
+        30°
+      </text>
+    </g>
+  );
+}
+
+function Procedure({ say }: { say: Say }) {
+  return (
+    <>
+      <p>
+        How an arrival gets from its first call to {TWR.name}, as this game teaches it (simplified: Schiphol
+        publishes transitions that do much the same). Arrivals from{' '}
+        {EHAM.stars
+          .filter((s) => EHAM.fixes[s.iaf]!.x < 0)
+          .map((s) => s.iaf)
+          .join(' and ')}{' '}
+        join the west side, those from{' '}
+        {EHAM.stars
+          .filter((s) => EHAM.fixes[s.iaf]!.x >= 0)
+          .map((s) => s.iaf)
+          .join(' and ')}{' '}
+        the east side.
+      </p>
+      <svg
+        class="pattern"
+        width="100%"
+        viewBox="-30 0 420 290"
+        role="img"
+        aria-label={`Diagram of the arrival pattern for runway ${EHAM.config.landing}: a downwind leg 6 miles either side of the final at 3000 ft, a base leg about 14 miles out at 2000 ft, then a 30 degree intercept joining the final about 8 miles out.`}
+      >
+        <defs>
+          <marker
+            id="arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto"
+          >
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--violet, #ad8cff)" />
+          </marker>
+        </defs>
+        <line x1={X0} y1={RWY_Y} x2={X0} y2={14} stroke="var(--text2)" stroke-dasharray="5 5" />
+        {[5, 10, 15].map((d) => (
+          <g>
+            <line x1={X0 - 5} x2={X0 + 5} y1={RWY_Y - d * PX} y2={RWY_Y - d * PX} stroke="var(--text2)" />
+            <text x={X0 + 8} y={RWY_Y - d * PX + 4} class="dim">
+              {d}
+            </text>
+          </g>
+        ))}
+        <line x1={X0} y1={RWY_Y} x2={X0} y2={RWY_Y + 24} stroke="var(--text)" stroke-width="5" />
+        <text x={X0 + 8} y={RWY_Y + 20}>
+          {EHAM.config.landing}
+        </text>
+        <PatternSide side={-1} />
+        <PatternSide side={1} />
+        <text x={X0 - 6} y={26} text-anchor="end">
+          final (NM)
+        </text>
+      </svg>
+      <ol class="steps">
+        <li>
+          <b>Answer the check-in.</b> Say “identified”, so the pilot knows you have it on radar.
+        </li>
+        <li>
+          <b>Downwind.</b> Fly it parallel to the final, the opposite way, about 6 miles to the side. Descend
+          to 3000 ft (give the QNH the first time below the transition level) and slow to about 220 kt.
+        </li>
+        <li>
+          <b>Base.</b> About 12–14 miles out, turn it at right angles towards the final and descend to 2000
+          ft, below the glideslope.
+        </li>
+        <li>
+          <b>Intercept.</b> About 3½ miles from the final, turn it to cross the final at 30° (heading 155 from
+          the west, 210 from the east) and clear the ILS approach in the same call. It joins by itself about 8
+          miles out.
+        </li>
+        <li>
+          <b>Hand off.</b> Once established, send it to {TWR.name} on {TWR.mhz}, before about 8 miles.
+        </li>
+      </ol>
+      <CommandDocs
+        docs={[
+          {
+            title: 'The intercept call',
+            cmds: [
+              { type: 'heading', heading: 155, turn: 'right' },
+              { type: 'altitude', altitude: 2000, fl: false },
+              { type: 'ils', runway: EHAM.config.landing },
+            ],
+            note: 'Heading, level and clearance in one transmission: the pilot reads all three back.',
+          },
+        ]}
+        env={env}
+        say={say}
+      />
+      <p class="dim">
+        Several arrivals at once: make the second one's path longer (fly the downwind further before the base
+        turn) or slow it down, so there are at least 3 miles between them on final. Lessons 6–8 practise this,
+        and in Beginner free play the help card says the next step for the selected aircraft.
+      </p>
+    </>
+  );
+}
+
 // ------------------------------------------------------------------ 6. tower
 
 const { landing: LAND, departure: DEP } = EHAM.config;
@@ -703,6 +850,7 @@ const SECTIONS = [
   { id: 'commands', title: 'Commands', Body: Commands },
   { id: 'levels', title: 'Levels and altimetry', Body: Levels },
   { id: 'approach', title: 'Approach concepts', Body: Approach },
+  { id: 'procedure', title: 'Arrival procedure', Body: Procedure },
   { id: 'tower', title: 'Tower', Body: Tower },
 ] as const;
 

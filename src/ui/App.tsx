@@ -73,6 +73,8 @@ export function App() {
     sounds.unlock();
     if (settings.voice && voice.state.status === 'off') void voice.enable(settings);
     setDraft('');
+    // lessons with a path to fly start zoomed in on it
+    if (s.lesson?.guide) setRange(20);
     setSession(s);
   };
 

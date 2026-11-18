@@ -1,3 +1,4 @@
+import { approachAdvice } from '../game/advice';
 import { useEffect, useRef } from 'preact/hooks';
 import { EHAM, isOnGround, runwayById, typeName, type Aircraft, type Command } from '../core';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
@@ -513,30 +514,6 @@ export function TutorialCard({ session, onInsert }: { session: Session; onInsert
 
 /** Beginner command help: example phrases for the selected aircraft. */
 /** Approach example phrases for the aircraft's state. */
-function approachTips(session: Session, ac: Readonly<Aircraft>): string[] {
-  const cs = ac.callsign;
-  const tips: string[] = [];
-  if (!session.wasContacted(cs)) tips.push(`${cs}, ${EHAM.frequencies.approach.name}, identified`);
-  if (ac.kind === 'departure') {
-    tips.push(
-      `${cs}, climb flight level 100`,
-      `${cs}, contact ${EHAM.frequencies.radar.name} ${EHAM.frequencies.radar.mhz}`,
-    );
-  } else if (ac.nav.mode === 'loc') {
-    tips.push(
-      `${cs}, maintain 180 knots until 4 miles final`,
-      `${cs}, contact ${EHAM.frequencies.tower.name} ${EHAM.frequencies.tower.mhz}`,
-    );
-  } else {
-    if (ac.tgtAlt > 5000) tips.push(`${cs}, descend flight level 50`);
-    else if (ac.tgtAlt > 2000) tips.push(`${cs}, descend altitude 2000, QNH ${session.sim.qnh}`);
-    tips.push(`${cs}, turn left heading 270`);
-    if ((ac.tgtIas ?? 250) > 200) tips.push(`${cs}, reduce speed 200 knots`);
-    tips.push(`${cs}, turn left heading 210, cleared ILS approach runway ${EHAM.config.landing}`);
-  }
-  return tips;
-}
-
 /** Tower example phrases for the aircraft's state, in the standard form the feedback expects. */
 export function towerTips(session: Session, ac: Readonly<Aircraft>): string[] {
   const ctx = session.parseContext(false);
@@ -603,10 +580,23 @@ export function HelpCard({ session, onInsert }: { session: Session; onInsert: (t
       </div>
     );
   }
-  const tips = session.tower ? towerTips(session, ac) : approachTips(session, ac);
+  let why: string | undefined;
+  let tips: string[];
+  if (session.tower) tips = towerTips(session, ac);
+  else {
+    const ctx = session.parseContext(false);
+    const next = approachAdvice(ac, session.sim.env.landing, {
+      contacted: session.wasContacted(ac.callsign),
+      qnh: session.sim.qnh,
+      transitionAltFt: EHAM.transitionAltitudeFt,
+    });
+    why = next.why;
+    tips = next.say.map((cmds) => canonicalTransmission(ac.callsign, cmds, ctx));
+  }
   return (
     <div class="help">
-      <b>Try saying</b>
+      <b>{why ? `Next for ${ac.callsign}` : 'Try saying'}</b>
+      {why && <span>{why}</span>}
       {tips.slice(0, 4).map((t) => (
         <button type="button" onClick={() => onInsert(t)}>
           {t}

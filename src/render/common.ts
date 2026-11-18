@@ -54,6 +54,8 @@ export interface Scene {
   showConflicts: boolean;
   /** Callsigns the player has not answered yet (check-in pending). */
   isNew: (callsign: string) => boolean;
+  /** Lessons: a path to fly (NM), with labels along it. */
+  guide?: { path: Vec[]; labels: { at: Vec; text: string; left?: boolean }[] };
 }
 
 /** Clickable areas produced by the last draw, for hit-testing. */

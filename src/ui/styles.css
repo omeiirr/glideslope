@@ -1005,6 +1005,22 @@ table.ref th {
 .cmd-doc h3 {
   margin: 0 0 2px;
 }
+svg.pattern {
+  display: block;
+  max-width: 420px;
+  height: auto;
+  aspect-ratio: 420 / 290;
+  flex-shrink: 0; /* .learn-content is a scrolling flex column */
+  margin: 8px auto 12px;
+  font: 11px var(--mono);
+  fill: var(--text);
+}
+svg.pattern .dim {
+  fill: var(--text2);
+}
+ol.steps li {
+  margin-bottom: 6px;
+}
 dl.defs {
   margin: 0;
 }

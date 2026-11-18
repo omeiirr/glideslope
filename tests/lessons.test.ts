@@ -33,6 +33,7 @@ for (const sc of SCENARIOS.filter((x) => x.lesson)) {
       true,
     );
     expect(s.stats.readbackErrors).toBe(0);
+    expect(s.stats.separationLosses).toBe(0);
     // tower lessons: no automatic go-around (the lesson's own needs the player's "go around"), none needless
     if (sc.view === 'tower') {
       expect(s.log.some((e) => e.kind === 'system' && /no landing clearance/.test(e.text))).toBe(false);

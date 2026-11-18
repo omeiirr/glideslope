@@ -156,6 +156,39 @@ describe('tower mode (T3 core)', () => {
   });
 });
 
+describe('tower mode: immediate and expedite', () => {
+  /** Seconds from the clearance at the holding point until the roll passes 60 kt. */
+  function rollTime(cmds: Parameters<Sim['command']>[1]) {
+    const sim = towerSim();
+    const a = sim.spawn({ kind: 'departure', callsign: 'TRA6015', type: 'B738', route: 'LEKKO' });
+    expect(sim.command(a.callsign, cmds).every((r) => r.ok)).toBe(true);
+    let t = 0;
+    for (; t < 300 && !(a.nav.mode === 'takeoff' && a.ias > 60); t += TICK) sim.step();
+    return t;
+  }
+
+  test('cleared for immediate take-off rolls sooner than a normal take-off', () => {
+    const normal = rollTime([{ type: 'takeoff', runway: '24' }]);
+    const now = rollTime([{ type: 'takeoff', runway: '24', immediate: true }]);
+    expect(now).toBeLessThan(normal - 6);
+  });
+
+  test('expedite vacating: off the runway sooner', () => {
+    const vacated = (expedite: boolean) => {
+      const sim = towerSim();
+      const ac = arrival(sim, { pos: onFinal(3), hdg: rwy.heading, alt: 1000, ias: 145 });
+      runUntil(sim, () => false, 1);
+      sim.command(ac.callsign, [{ type: 'land', runway: '18R' }]);
+      runUntil(sim, () => ac.nav.mode === 'rollout', 200);
+      if (expedite) expect(sim.command(ac.callsign, [{ type: 'expediteVacate' }])).toEqual([{ ok: true }]);
+      let t = 0;
+      for (; t < 300 && sim.runwayOccupants('18R').includes(ac); t += TICK) sim.step();
+      return t;
+    };
+    expect(vacated(true)).toBeLessThan(vacated(false));
+  });
+});
+
 describe('tower mode (T4 rules)', () => {
   /** A Tower that clears every arrival to land on its first call and never says anything else. */
   function perfectTower(

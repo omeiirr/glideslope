@@ -19,8 +19,12 @@ export type Command =
   /** Leave the runway via a named exit, or the first one on a side, or the pilot's choice. */
   | { type: 'vacate'; exit?: string; side?: 'left' | 'right' }
   /** `behind`: conditional line-up, after the described traffic ("behind the departing A320, …, behind"). */
-  | { type: 'lineUp'; runway: string; behind?: Condition }
-  | { type: 'takeoff'; runway: string }
+  /** `immediate`: "…, be ready for immediate departure". */
+  | { type: 'lineUp'; runway: string; behind?: Condition; immediate?: boolean }
+  /** `immediate`: "cleared for immediate take-off": no delay, and a rolling take-off from the holding point. */
+  | { type: 'takeoff'; runway: string; immediate?: boolean }
+  /** "Expedite vacating": brake harder for an earlier exit, and leave the runway faster. */
+  | { type: 'expediteVacate' }
   /** "Hold position" / "cancel take-off": stop, or stay put. */
   | { type: 'cancelTakeoff' }
   /** Traffic information ("traffic, A321 on short final"): no change; the pilot reports it in sight. */

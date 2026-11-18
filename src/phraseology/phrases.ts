@@ -149,10 +149,12 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
       );
     }
     case 'lineUp': {
-      const rw = both(
+      const plain = both(
         `runway ${cmd.runway}, line up and wait`,
         `runway ${spokenRunway(cmd.runway)}, line up and wait`,
       );
+      const ready = both(readback ? 'ready for immediate departure' : 'be ready for immediate departure');
+      const rw = cmd.immediate ? join([plain, ready]) : plain;
       if (!cmd.behind) return rw;
       // ICAO: the condition first, the clearance, then the condition again ("behind")
       const who = `behind the ${cmd.behind.traffic}${cmd.behind.desc ? ` ${cmd.behind.desc}` : ''}`;
@@ -166,7 +168,14 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
             spokenDesc(`traffic${cmd.desc ? `, ${cmd.desc}` : ''}`),
           );
     case 'takeoff':
-      return clearance(cmd.runway, 'cleared for take-off', env, readback);
+      return clearance(
+        cmd.runway,
+        cmd.immediate ? 'cleared for immediate take-off' : 'cleared for take-off',
+        env,
+        readback,
+      );
+    case 'expediteVacate':
+      return both(readback ? 'expediting' : 'expedite vacating');
     case 'cancelTakeoff':
       return both(readback ? 'holding' : 'hold position');
   }
@@ -252,11 +261,13 @@ export function chip(cmd: Command): string {
     case 'vacate':
       return ['VACATE', cmd.side?.[0]!.toUpperCase(), cmd.exit].filter(Boolean).join(' ');
     case 'lineUp':
-      return `LUP ${cmd.runway}${cmd.behind ? ' BHND' : ''}`;
+      return `LUP ${cmd.runway}${cmd.behind ? ' BHND' : ''}${cmd.immediate ? ' RDY' : ''}`;
+    case 'expediteVacate':
+      return 'EXPD VAC';
     case 'trafficInfo':
       return 'TFC';
     case 'takeoff':
-      return `T/O ${cmd.runway}`;
+      return `T/O ${cmd.runway}${cmd.immediate ? ' IMM' : ''}`;
     case 'cancelTakeoff':
       return 'HOLD POS';
   }

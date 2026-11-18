@@ -84,3 +84,10 @@
 {"input": "KLM1234, stop immediately, I say again, stop immediately", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "cancelTakeoff"}], "expectedIssues": [], "role": "tower"}
 {"input": "KLM1234, stop", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "cancelTakeoff"}], "expectedIssues": ["stop-wording"], "role": "tower"}
 {"input": "KLM1234 stop stop stop", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "cancelTakeoff"}], "expectedIssues": ["stop-wording"], "role": "tower"}
+{"input": "Transavia six zero one five, runway two four, cleared for immediate take-off", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "takeoff", "runway": "24", "immediate": true}], "expectedIssues": ["wind-missing"], "role": "tower"}
+{"input": "TRA6015 runway 24 cleared immediate takeoff", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "takeoff", "runway": "24", "immediate": true}], "expectedIssues": ["wind-missing"], "role": "tower"}
+{"input": "Transavia six zero one five, runway two four, line up and wait, be ready for immediate departure", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "lineUp", "runway": "24", "immediate": true}], "expectedIssues": [], "role": "tower"}
+{"input": "TRA6015 line up and wait runway 24 ready for immediate departure", "expectedCallsign": "TRA6015", "expectedCommands": [{"type": "lineUp", "runway": "24", "immediate": true}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, expedite vacating", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "expediteVacate"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234 expedite vacating the runway", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "expediteVacate"}], "expectedIssues": [], "role": "tower"}
+{"input": "KLM1234, vacate left via V2, expedite", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "vacate", "exit": "V2", "side": "left"}, {"type": "expediteVacate"}], "expectedIssues": [], "role": "tower"}

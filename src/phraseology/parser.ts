@@ -496,11 +496,15 @@ const land: Matcher = (c) => {
 const takeoff: Matcher = (c) => {
   if (!c.w(c.i, 'cleared')) return null;
   let i = c.skip(c.i + 1, 'for', 'to');
+  const immediate = c.w(i, 'immediate');
+  if (immediate) i++;
   if (c.w(i, 'takeoff')) i++;
   else if (c.w(i, 'take') && c.w(i + 1, 'off', 'of')) i += 2;
   else return null;
   const r = clearanceRunway(c, i, c.ctx.airport.config.departure);
-  return { next: r.next, cmd: { type: 'takeoff', runway: r.id }, issues: runwayIssue(c, r) };
+  const cmd: Command = { type: 'takeoff', runway: r.id };
+  if (immediate) cmd.immediate = true;
+  return { next: r.next, cmd, issues: runwayIssue(c, r) };
 };
 
 const lineUp: Matcher = (c) => {
@@ -521,7 +525,15 @@ const lineUp: Matcher = (c) => {
   const issues = runwayIssue(c, r);
   if (faa) issues.push(issue('warn', 'faa-position-and-hold', c.said(c.i, r.next)));
   else if (!wait) issues.push(issue('info', 'lineup-wording', c.said(c.i, r.next)));
-  return { next: r.next, cmd: { type: 'lineUp', runway: r.id }, issues };
+  const cmd: Command = { type: 'lineUp', runway: r.id };
+  // "…, be ready for immediate departure"
+  let next = r.next;
+  const j = c.skip(c.skip(next, 'be'), 'ready', 'for');
+  if (j > next && c.w(j, 'immediate') && c.w(j + 1, 'departure', 'takeoff')) {
+    cmd.immediate = true;
+    next = j + 2;
+  }
+  return { next, cmd, issues };
 };
 
 const cancelTakeoff: Matcher = (c) => {
@@ -540,6 +552,12 @@ const cancelTakeoff: Matcher = (c) => {
   }
   return null;
 };
+
+/** "expedite vacating", "expedite vacating the runway", or "…, expedite" after a vacate instruction. */
+const expediteVacate: Matcher = (c) =>
+  c.w(c.i, 'expedite')
+    ? { next: c.skip(c.i + 1, 'vacating', 'vacate', 'the', 'runway'), cmd: { type: 'expediteVacate' } }
+    : null;
 
 const continueApproach: Matcher = (c) =>
   c.w(c.i, 'continue') && c.w(c.i + 1, 'approach')
@@ -596,6 +614,7 @@ const CLAUSE = new Set([
   'go',
   'stop',
   'cancel',
+  'expedite',
   'traffic',
   'when',
   'runway',
@@ -711,6 +730,7 @@ const TOWER_MATCHERS: Matcher[] = [
   cancelTakeoff,
   continueApproach,
   vacate,
+  expediteVacate,
   runwayInfo,
 ];
 

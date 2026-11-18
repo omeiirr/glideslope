@@ -540,7 +540,11 @@ export function towerTips(session: Session, ac: Readonly<Aircraft>): string[] {
   const n = ac.nav;
   if (ac.kind === 'arrival') {
     if (isOnGround(ac))
-      return [say(vacate, { type: 'handoff', to: 'ground' }), say({ type: 'handoff', to: 'ground' })];
+      return [
+        say(vacate, { type: 'handoff', to: 'ground' }),
+        say({ type: 'expediteVacate' }),
+        say({ type: 'handoff', to: 'ground' }),
+      ];
     if (!ac.landClear)
       return [
         say({ type: 'land', runway: landing }),
@@ -566,7 +570,11 @@ export function towerTips(session: Session, ac: Readonly<Aircraft>): string[] {
     return [say({ type: 'lineUp', runway: departure }), say({ type: 'takeoff', runway: departure })];
   }
   if (n.mode === 'lineup' || n.mode === 'taxi')
-    return [say({ type: 'takeoff', runway: departure }), say({ type: 'cancelTakeoff' })];
+    return [
+      say({ type: 'takeoff', runway: departure }),
+      say({ type: 'takeoff', runway: departure, immediate: true }),
+      say({ type: 'cancelTakeoff' }),
+    ];
   if (n.mode === 'takeoff') return [say({ type: 'cancelTakeoff' })];
   return [say({ type: 'handoff', to: 'departure' })];
 }

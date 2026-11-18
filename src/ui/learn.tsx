@@ -627,6 +627,11 @@ const TOWER_COMMANDS: CommandDoc[] = [
     note: `Name the exit (${EXITS.map((e) => e.name).join(', ')} on ${LAND}) and pass the aircraft to ${GND?.name ?? 'Ground'} in the same call.`,
   },
   {
+    title: 'Expedite vacating',
+    cmds: [{ type: 'expediteVacate' }],
+    note: 'The next arrival is close: the pilot brakes harder, takes the first exit it can still make, and taxis off quicker.',
+  },
+  {
     title: 'Line up and wait',
     cmds: [{ type: 'lineUp', runway: DEP }],
     note: 'The departure enters the runway and stops on the centreline, ready to go the moment the runway is yours.',
@@ -645,6 +650,11 @@ const TOWER_COMMANDS: CommandDoc[] = [
     title: 'Take-off clearance',
     cmds: [{ type: 'takeoff', runway: DEP }],
     note: 'Runway, wind, “cleared for take-off”. This is the only phrase that uses the word “take-off”: everywhere else say “departure”.',
+  },
+  {
+    title: 'Immediate take-off',
+    cmds: [{ type: 'takeoff', runway: DEP, immediate: true }],
+    note: 'For a gap in front of an arrival: the pilot rolls without stopping and without the usual few seconds of checks. Warn it early with “line up and wait, be ready for immediate departure”.',
   },
   {
     title: 'Hold position',

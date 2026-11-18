@@ -37,7 +37,7 @@ export type NavMode =
   /** Departure waiting at the runway holding point. */
   | { mode: 'holding' }
   /** Turning onto the centreline, then stopped and waiting for take-off (`ready`). */
-  | { mode: 'lineup'; ready: boolean; timer: number };
+  | { mode: 'lineup'; ready: boolean; timer: number; go?: number };
 
 /** Coarse flight phase; the tower view keys animation off this. */
 export type Phase =
@@ -107,6 +107,10 @@ export interface Aircraft {
   readyAt?: number;
   /** Conditional line-up: lines up once this aircraft (a departure ahead) is rolling or airborne. */
   lineUpBehind?: number;
+  /** Arrival told to expedite vacating. */
+  expedite?: boolean;
+  /** Departure cleared for an immediate take-off. */
+  immediate?: boolean;
 }
 
 export interface Env {
@@ -136,12 +140,17 @@ export type StepEvent =
 
 /** Ground handling (simplified, see DECISIONS.md): braking, taxi and exit speeds. */
 const BRAKE_KT_S = 3;
+/** Expediting: firmer braking for an earlier exit (still well short of maximum, about 5 kt/s; assumed). */
+const BRAKE_HARD_KT_S = 4.5;
+/** A normal take-off clearance when lined up: the crew start the roll this long after it (assumed typical). */
+const TAKEOFF_DELAY_S = 6;
 const TAKEOFF_ACCEL_KT_S = 4;
 const TAXI_KT = 15;
 /** Moving up the departure queue: slow, so it stops short of the aircraft ahead. */
 const QUEUE_KT = 8;
 /** Speed along an exit until clear of the runway (rapid exits are long and shallow). */
 const VACATE_KT = 25;
+const VACATE_EXPEDITE_KT = 30;
 /** About a 22 m turn radius at 15 kt. */
 const TAXI_TURN_DEG_S = 20;
 /** Speed for turning off: rapid exits (turn of 45 degrees or less) are designed for about 50 kt; 35 kt is typical. */
@@ -154,9 +163,15 @@ function exitTurn(e: RunwayExit, rwy: Runway): number {
 }
 
 /** Can the aircraft make exit `e` from `alongM` metres past the threshold at `ias`, braking normally? */
-export function canMakeExit(rwy: Runway, e: RunwayExit, alongM: number, ias: number): boolean {
+export function canMakeExit(
+  rwy: Runway,
+  e: RunwayExit,
+  alongM: number,
+  ias: number,
+  brake = BRAKE_KT_S,
+): boolean {
   const ve = Math.min(exitSpeed(e, rwy), ias);
-  return e.distM >= alongM + ((ias * ias - ve * ve) / (2 * BRAKE_KT_S)) * KTS_TO_M + 30;
+  return e.distM >= alongM + ((ias * ias - ve * ve) / (2 * brake)) * KTS_TO_M + 30;
 }
 
 /** Exits matching Tower's request (all of them without one). */
@@ -350,6 +365,18 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
       break;
     case 'rollout': {
       // on the centreline until the exit, then follow the taxiway off the runway
+      // expediting with no exit named: the earliest one it can still make braking harder
+      const planned = ac.nav.exit;
+      if (ac.expedite && !ac.vacate?.exit && planned) {
+        const along = -frame.along * 1852;
+        const sooner = (rwy.exits ?? []).find(
+          (x) =>
+            x.distM < planned.distM &&
+            (!ac.vacate?.side || x.side === ac.vacate.side[0]!.toUpperCase()) &&
+            canMakeExit(rwy, x, along, ac.ias, BRAKE_HARD_KT_S),
+        );
+        if (sooner) ac.nav = { mode: 'rollout', exit: sooner };
+      }
       const e = ac.nav.exit;
       if (e && -frame.along * 1852 >= e.distM - 5) {
         ac.nav = { mode: 'taxi', path: e.path.slice(1), i: 0, then: 'vacate' };
@@ -386,12 +413,21 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
         const s = -f.along + 40 / 1852;
         const aim = { x: dep.pos.x + Math.sin(c) * s, y: dep.pos.y + Math.cos(c) * s };
         steer(ac, bearing(ac.pos, aim), dt, 0, undefined, TAXI_TURN_DEG_S);
-        if (Math.abs(angleDiff(ac.hdg, dep.heading)) < 3 && Math.abs(f.xte) * 1852 < 5) {
+        // a rolling (immediate) take-off doesn't stop to line up exactly
+        const rolling = ac.takeoffClear && ac.immediate;
+        if (
+          Math.abs(angleDiff(ac.hdg, dep.heading)) < (rolling ? 8 : 3) &&
+          Math.abs(f.xte) * 1852 < (rolling ? 10 : 5)
+        ) {
           n.ready = true;
           ac.hdg = dep.heading;
         }
       } else n.timer += dt;
-      if (n.ready && ac.takeoffClear) clearTakeoff(ac);
+      if (n.ready && ac.takeoffClear) {
+        // the crew start the roll a few seconds after a normal clearance; at once for an immediate one
+        n.go = (n.go ?? (ac.immediate ? 0 : TAKEOFF_DELAY_S)) - dt;
+        if (n.go <= 0) clearTakeoff(ac);
+      }
       break;
     }
   }
@@ -487,8 +523,15 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
   let want: number;
   if (ac.nav.mode === 'rollout') want = ac.nav.exit ? exitSpeed(ac.nav.exit, rwy) : 0;
   else if (ac.nav.mode === 'taxi')
-    want = ac.nav.then === 'vacate' ? VACATE_KT : ac.nav.then === 'hold' ? QUEUE_KT : TAXI_KT;
-  else if (ac.nav.mode === 'lineup') want = ac.nav.ready ? 0 : 6;
+    want =
+      ac.nav.then === 'vacate'
+        ? ac.expedite
+          ? VACATE_EXPEDITE_KT
+          : VACATE_KT
+        : ac.nav.then === 'hold'
+          ? QUEUE_KT
+          : TAXI_KT;
+  else if (ac.nav.mode === 'lineup') want = ac.nav.ready ? 0 : ac.takeoffClear && ac.immediate ? 12 : 6;
   else if (ac.nav.mode === 'holding') want = 0;
   else if (ac.nav.mode === 'takeoff') want = ac.perf.vr + 20;
   else if (ac.nav.mode === 'loc' && frame.along < (ac.speedUntilDme ?? 5)) want = ac.perf.vapp;
@@ -496,7 +539,9 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
   const accel = onGround
     ? want > ac.ias
       ? TAKEOFF_ACCEL_KT_S
-      : BRAKE_KT_S
+      : ac.expedite && ac.nav.mode === 'rollout'
+        ? BRAKE_HARD_KT_S
+        : BRAKE_KT_S
     : want > ac.ias
       ? 1.5
       : ac.vs < -1000

@@ -91,6 +91,13 @@ test('tower: controller phrases with wind, readbacks without, chips and calls', 
     'Runway 24, line up and wait, TRA6015',
   );
   expect(readback('TRA6015', [{ type: 'cancelTakeoff' }], env).text).toBe('Holding, TRA6015');
+  expect(readback('TRA6015', [{ type: 'takeoff', runway: '24', immediate: true }], wenv).text).toBe(
+    'Runway 24, cleared for immediate take-off, TRA6015',
+  );
+  expect(readback('TRA6015', [{ type: 'lineUp', runway: '24', immediate: true }], env).text).toBe(
+    'Runway 24, line up and wait, ready for immediate departure, TRA6015',
+  );
+  expect(readback('KLM1234', [{ type: 'expediteVacate' }], env).text).toBe('Expediting, KLM1234');
   expect(readback('KLM1234', [{ type: 'handoff', to: 'ground' }], env).text).toBe(
     'Schiphol Ground 121.560, KLM1234',
   );

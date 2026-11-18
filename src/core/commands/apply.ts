@@ -13,7 +13,14 @@ import type { Command, CommandResult, Condition } from './commands';
 
 const OK: CommandResult = { ok: true };
 /** Tower instructions a pilot on the ground (not rolling) accepts. */
-const GROUND_OK = new Set<Command['type']>(['lineUp', 'takeoff', 'cancelTakeoff', 'vacate', 'trafficInfo']);
+const GROUND_OK = new Set<Command['type']>([
+  'lineUp',
+  'takeoff',
+  'cancelTakeoff',
+  'vacate',
+  'expediteVacate',
+  'trafficInfo',
+]);
 const LATERAL = new Set<Command['type']>(['heading', 'presentHeading', 'direct', 'hold', 'ils']);
 /** Metres past the landing threshold. */
 const alongM = (ac: Aircraft, env: Env) => -runwayFrame(ac.pos, env.landing).along * 1852;
@@ -96,6 +103,11 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
         return unable(`unable, too late for ${cmd.exit ?? `an exit ${what}`}`);
       return OK;
     }
+    case 'expediteVacate':
+      return ac.kind === 'arrival' &&
+        (onApproach || m === 'rollout' || (m === 'taxi' && ac.nav.then === 'vacate'))
+        ? OK
+        : unable('unable, not on the runway');
     case 'lineUp':
     case 'takeoff':
       if (ac.kind !== 'departure' || !queued) return unable('unable, not at the holding point');
@@ -194,9 +206,13 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
         lineUp(ac, env.departure);
       break;
     }
+    case 'expediteVacate':
+      ac.expedite = true;
+      break;
     case 'takeoff':
       ac.lineUpBehind = undefined;
       ac.takeoffClear = true;
+      ac.immediate = !!cmd.immediate;
       if (ac.nav.mode === 'holding' || (ac.nav.mode === 'taxi' && ac.nav.then === 'hold'))
         lineUp(ac, env.departure);
       break;

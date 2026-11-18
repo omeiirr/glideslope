@@ -319,7 +319,10 @@ export function checkIn(
 }
 
 /** Pilot's first call to Tower: arrivals on the ILS, departures from the holding point. */
-export function towerCheckIn(ac: { callsign: string; kind: string }, env: PhraseEnv): Phrase {
+export function towerCheckIn(
+  ac: { callsign: string; kind: string; priority?: Priority },
+  env: PhraseEnv,
+): Phrase {
   const ap = env.airport;
   const cs = both(ac.callsign, spokenCallsign(ac.callsign, ap.airlines));
   const station = both(ap.frequencies.tower.name);
@@ -329,7 +332,11 @@ export function towerCheckIn(ac: { callsign: string; kind: string }, env: Phrase
     return join([station, cs, ...at, both('ready for departure')]);
   }
   const rw = ap.config.landing;
-  return join([station, cs, both(`ILS ${rw}`, `I L S ${spokenRunway(rw)}`)]);
+  const ils = both(`ILS ${rw}`, `I L S ${spokenRunway(rw)}`);
+  if (ac.priority === 'medical')
+    return join([both('PAN PAN, PAN PAN, PAN PAN'), station, cs, both('medical emergency on board'), ils]);
+  if (ac.priority === 'fuel') return join([station, cs, ils, both('minimum fuel')]);
+  return join([station, cs, ils]);
 }
 
 /** Human-readable explanation for each feedback rule. */

@@ -111,6 +111,12 @@ test('tower: controller phrases with wind, readbacks without, chips and calls', 
   );
   expect(chip({ type: 'vacate', exit: 'V2', side: 'left' })).toBe('VACATE L V2');
   expect(chip({ type: 'handoff', to: 'departure' })).toBe('DEP');
+  expect(towerCheckIn({ callsign: 'KLM1234', kind: 'arrival', priority: 'medical' }, env).text).toBe(
+    'PAN PAN, PAN PAN, PAN PAN, Schiphol Tower, KLM1234, medical emergency on board, ILS 18R',
+  );
+  expect(towerCheckIn({ callsign: 'KLM1234', kind: 'arrival', priority: 'fuel' }, env).text).toBe(
+    'Schiphol Tower, KLM1234, ILS 18R, minimum fuel',
+  );
   expect(towerCheckIn({ callsign: 'KLM1234', kind: 'arrival' }, env).text).toBe(
     'Schiphol Tower, KLM1234, ILS 18R',
   );

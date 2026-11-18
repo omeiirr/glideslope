@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { scenarioById } from '../src/game/scenarios';
-import { Session } from '../src/game/session';
+import { Session, cloudText } from '../src/game/session';
 import { DEFAULT_SETTINGS } from '../src/game/settings';
 import type { Scenario } from '../src/game/scenarios';
 import type { SimEvent } from '../src/core';
@@ -304,4 +304,16 @@ test('priority: random arrivals ask for it; tower hears it on the landline; its 
     s.log.some((e) => e.kind === 'system' && /^Approach \(landline\): KLM1200 is PAN PAN/.test(e.text)),
   ).toBe(true);
   expect(s.stats.priorityGoArounds).toBe(1);
+});
+
+test('cloud: report text; the player chooses it only where the scenario sets no weather', () => {
+  expect([cloudText(null), cloudText(2500), cloudText(400)]).toEqual(['no ceiling', 'BKN025', 'OVC004']);
+  const free = new Session(scenarioById('tower-free'), DEFAULT_SETTINGS);
+  free.setCeiling(1000);
+  expect(free.ceilingFt).toBe(1000);
+  const low = new Session(scenarioById('tower-pro-cloud'), DEFAULT_SETTINGS);
+  expect(low.ceilingFt).toBe(400);
+  low.setCeiling(null);
+  low.setVisibility(10000);
+  expect([low.ceilingFt, low.visibilityM]).toEqual([400, 3000]);
 });

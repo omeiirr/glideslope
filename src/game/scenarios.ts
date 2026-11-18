@@ -20,6 +20,8 @@ export interface Scenario {
   view?: 'tower';
   /** Prevailing visibility in metres (tower view fog). Default: clear, and the player may change it. */
   visibilityM?: number;
+  /** Cloud base in feet above the field (tower view); below 2000 overcast, from 2000 broken. Default: none. */
+  ceilingFt?: number;
   /** Tower view start: time of day. Default: day. */
   timeOfDay?: 'day' | 'dusk' | 'night';
 }
@@ -291,6 +293,29 @@ export const SCENARIOS: Scenario[] = [
       priority: 0.08,
     },
     spawns: [firstArrival('KLM1582', 'E190')],
+  },
+  {
+    id: 'tower-pro-cloud',
+    view: 'tower',
+    name: 'Tower Pro · Low cloud',
+    blurb:
+      '20 minutes under an overcast at 400 ft in rain: arrivals appear out of the cloud about a mile and a half out.',
+    mode: 'pro',
+    seed: 205,
+    durationMin: 20,
+    // a warm front: low stratus, rain, a fresh south-westerly
+    wind: { dir: 220, speed: 16 },
+    qnh: 1004,
+    visibilityM: 3000,
+    ceilingFt: 400,
+    traffic: {
+      arrivalsPerHour: 16,
+      departuresPerHour: 12,
+      types: TOWER_EASY,
+      alnumCallsigns: 0.15,
+      priority: 0.08,
+    },
+    spawns: [firstArrival('KLM1714', 'B738')],
   },
   {
     id: 'pro-light',

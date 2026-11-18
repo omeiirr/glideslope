@@ -60,7 +60,7 @@ Transavia 6015, runway 24, wind 200 degrees 12 knots, cleared for take-off
 You work from either of the two real cabs: **Tower West** for 18R (key `1`) or the **central tower** for 24 (key `2`).
 
 - **Look around:** turn with the left and right arrow keys, look up and down with the up and down arrows (or drag the view). Hold `B` for binoculars, which follow the selected aircraft. `L` switches the aircraft labels.
-- **Light and weather:** switch between day, dusk and night, and lower the visibility for fog.
+- **Light and weather:** switch between day, dusk and night, lower the visibility for fog, and bring the cloud base down so arrivals appear out of the cloud on short final.
 - **On the desk:** strip bays (Arrivals, On runway, Departures) and a ground radar.
 - **The scenery:** the airport, the land around it and the buildings are drawn from OpenStreetMap. Parked aircraft fill the stands, and scenery traffic taxis between the stands and the runways.
 - **Sound:** engines, touchdowns and the cab itself are synthesised in the browser (no sound files). The radar room has its own sounds: a conflict chime and the landline from Tower. One volume control in Settings.

@@ -83,6 +83,11 @@ export const visibilityText = (m: number) =>
       : m >= 1500
         ? `${(m / 1000).toFixed(1).replace(/\.0$/, '')} km`
         : `${m} m`;
+/** Cloud as on a weather report: "BKN025", "OVC004"; "no ceiling" without a base. */
+export const cloudText = (ft: number | null) =>
+  ft === null
+    ? 'no ceiling'
+    : `${ft >= 2000 ? 'BKN' : 'OVC'}${String(Math.round(ft / 100)).padStart(3, '0')}`;
 const LESSON_END_PAUSE_MS = 1500;
 
 /** One game: the sim, the radio, the log and the score. The UI reads it and calls its methods. */
@@ -109,6 +114,8 @@ export class Session {
   lessonStep = 0;
   /** Prevailing visibility (m); the scenario's, or the player's choice in scenarios without one. */
   visibilityM: number;
+  /** Cloud base (ft above the field) or null for none; the scenario's, or the player's choice. */
+  ceilingFt: number | null;
   /** Bumps on every change the panels should re-render for. */
   version = 0;
   private acc = 0;
@@ -142,6 +149,7 @@ export class Session {
     this.rng = new Rng(seed ^ 0x5eed);
     this.radio.blocking = this.mode === 'pro';
     this.visibilityM = scenario.visibilityM ?? CLEAR_VIS;
+    this.ceilingFt = scenario.ceilingFt ?? null;
     this.spawnsLeft = [...(scenario.spawns ?? [])].sort((a, b) => a.at - b.at);
     this.lesson = scenario.lesson ? LESSONS[scenario.lesson] : undefined;
     this.spawnDue();
@@ -156,8 +164,18 @@ export class Session {
   }
   /** The player's visibility choice (tower view); only in scenarios that don't set their own weather. */
   setVisibility(m: number) {
-    if (this.scenario.visibilityM !== undefined) return;
+    if (this.weatherFixed) return;
     this.visibilityM = m;
+    this.changed();
+  }
+  /** Scenarios that set their own weather keep it. */
+  get weatherFixed() {
+    return this.scenario.visibilityM !== undefined || this.scenario.ceilingFt !== undefined;
+  }
+  /** The player's cloud base choice (tower view). */
+  setCeiling(ft: number | null) {
+    if (this.weatherFixed) return;
+    this.ceilingFt = ft;
     this.changed();
   }
   private changed() {

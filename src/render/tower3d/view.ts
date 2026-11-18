@@ -41,7 +41,7 @@ import {
   type LightSet,
   type TimeOfDay,
 } from './lights';
-import { SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
+import { M_PER_FT, SUN, lookDirection, toWorld, shadowPoint, type P3, type Pose } from './math';
 import { apronObjects } from './parked';
 import { parkAircraft, serviceVehicles, type Parked, type StandData } from './stands';
 
@@ -86,6 +86,8 @@ interface Look {
   env: number;
   exposure: number;
   cloud: [string, number];
+  /** Underside of a cloud deck (ceiling), unlit. */
+  deck: string;
   /** Window glow (emissive intensity) and airport/aircraft light brightness; 0 = off. */
   windows: number;
   lights: number;
@@ -102,6 +104,7 @@ const LOOKS: Record<TimeOfDay, Look> = {
     env: 0.6,
     exposure: 0.3,
     cloud: ['#ffffff', 0.92],
+    deck: '#a7adb4',
     windows: 0,
     lights: 0,
   },
@@ -117,6 +120,7 @@ const LOOKS: Record<TimeOfDay, Look> = {
     env: 0.35,
     exposure: 0.6,
     cloud: ['#f2a07c', 0.85],
+    deck: '#6f6672',
     windows: 0.8,
     lights: 0.75,
   },
@@ -132,6 +136,7 @@ const LOOKS: Record<TimeOfDay, Look> = {
     env: 0.12,
     exposure: 0.75,
     cloud: ['#1b2232', 0.5],
+    deck: '#191c24',
     windows: 1.4,
     lights: 1,
   },
@@ -217,6 +222,9 @@ export class TowerRenderer {
   private hemi!: THREE.HemisphereLight;
   private skyGeo!: THREE.SphereGeometry;
   private clouds: THREE.SpriteMaterial[] = [];
+  /** Cloud deck at the ceiling: aircraft above it are hidden where it is closed. */
+  private deck?: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+  private ceilFt: number | null = null;
   private env: THREE.Texture | null = null;
   /** Wall materials with lit windows at dusk and night. */
   private glazed: THREE.MeshStandardMaterial[] = [];
@@ -286,7 +294,9 @@ export class TowerRenderer {
   /** Day, dusk or night: sky, sun (or moon), haze, reflections, window glow and the lights. */
   setTimeOfDay(t: TimeOfDay) {
     this.tod = t;
-    const L = (this.look = foggy(LOOKS[t], FOG_LOOK[t], fogAmount(this.visM)));
+    // a ceiling greys the sky like fog does: overcast more than broken
+    const overcast = this.ceilFt === null ? 0 : this.ceilFt < BROKEN_FT ? 0.75 : 0.4;
+    const L = (this.look = foggy(LOOKS[t], FOG_LOOK[t], Math.max(fogAmount(this.visM), overcast)));
     this.paintSky(L);
     (this.scene.fog as THREE.FogExp2).density = fogDensity(this.visM);
     (this.scene.fog as THREE.FogExp2).color.set(L.haze);
@@ -305,7 +315,10 @@ export class TowerRenderer {
     for (const m of this.clouds) {
       m.color.set(L.cloud[0]);
       m.opacity = L.cloud[1];
+      // sprites ignore depth: under a deck they would show through it
+      m.visible = this.ceilFt === null;
     }
+    this.deck?.material.color.set(L.deck);
     for (const m of this.glazed) m.emissiveIntensity = L.windows;
     this.lightMat.uniforms.uIntensity!.value = L.lights;
     this.applyLightStage();
@@ -321,6 +334,41 @@ export class TowerRenderer {
   setVisibility(m: number) {
     if (m === this.visM) return;
     this.visM = m;
+    this.setTimeOfDay(this.tod);
+  }
+
+  /**
+   * Cloud base in feet above the field, or null for fair-weather cloud only. Below 2000 ft the deck is overcast
+   * (closed); from 2000 ft broken (gaps).
+   */
+  setCeiling(ft: number | null) {
+    if (ft === this.ceilFt) return;
+    this.ceilFt = ft;
+    if (this.deck) {
+      this.scene.remove(this.deck);
+      this.deck.geometry.dispose();
+      this.deck.material.map?.dispose();
+      this.deck.material.dispose();
+      this.deck = undefined;
+    }
+    if (ft !== null) {
+      const geo = new THREE.CircleGeometry(DECK_R, 64);
+      const tex = deckTexture(ft < BROKEN_FT ? 1 : 0.6);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(DECK_R / 2500, DECK_R / 2500);
+      // drawn after the opaque scene: blends over aircraft above it (hidden where closed), not over those below
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false, // like the sky: its colour is the colour seen
+      });
+      this.deck = new THREE.Mesh(geo, mat);
+      this.deck.rotation.x = -Math.PI / 2;
+      this.deck.position.y = ft * M_PER_FT;
+      this.scene.add(this.deck);
+    }
     this.setTimeOfDay(this.tod);
   }
 
@@ -977,6 +1025,7 @@ export class TowerRenderer {
     this.aircraft.clear();
     for (const d of this.disposables) d.dispose();
     this.shadowTex.dispose();
+    this.setCeiling(null); // frees the deck
     disposeAircraftAssets();
     this.env?.dispose();
     this.renderer.dispose();
@@ -1072,6 +1121,55 @@ function shadowTexture(): THREE.CanvasTexture {
   g.closePath();
   g.fill();
   return new THREE.CanvasTexture(c);
+}
+
+/** Ceilings at or above this are broken (gaps in the deck); below it, overcast. */
+const BROKEN_FT = 2000;
+/** Radius of the cloud deck (m): to beyond where it meets the haze. */
+const DECK_R = 60000;
+
+/**
+ * Tileable cloud underside, grey shades; `cover` 0–1 is roughly the part that is cloud. Blobs wrap at
+ * the edges so the tiles join.
+ */
+function deckTexture(cover: number): THREE.CanvasTexture {
+  const N = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const x = c.getContext('2d')!;
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // brightness: soft darker and lighter patches
+  x.fillStyle = 'rgb(225,225,225)';
+  x.fillRect(0, 0, N, N);
+  // alpha: cloud everywhere when overcast; for broken, soft-edged blobs of cloud with gaps between
+  const a = new Float32Array(N * N).fill(cover >= 1 ? 1 : 0);
+  for (let k = 0; k < 140; k++) {
+    const [px, py, r] = [rnd() * N, rnd() * N, 12 + rnd() * 34];
+    const shade = 170 + rnd() * 85;
+    for (const ox of [-N, 0, N])
+      for (const oy of [-N, 0, N]) {
+        const gr = x.createRadialGradient(px + ox, py + oy, 0, px + ox, py + oy, r);
+        gr.addColorStop(0, `rgba(${shade},${shade},${shade},0.5)`);
+        gr.addColorStop(1, `rgba(${shade},${shade},${shade},0)`);
+        x.fillStyle = gr;
+        x.fillRect(px + ox - r, py + oy - r, 2 * r, 2 * r);
+      }
+    if (cover < 1 && k < 140 * cover)
+      for (let yy = -r; yy <= r; yy++)
+        for (let xx = -r; xx <= r; xx++) {
+          const d = Math.hypot(xx, yy) / r;
+          if (d >= 1) continue;
+          const i = (((Math.round(py + yy) % N) + N) % N) * N + (((Math.round(px + xx) % N) + N) % N);
+          a[i] = Math.min(1, a[i]! + (1 - d) * 1.6);
+        }
+  }
+  const img = x.getImageData(0, 0, N, N);
+  for (let i = 0; i < N * N; i++) img.data[i * 4 + 3] = Math.round(a[i]! * 255);
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 function cloudTexture(rnd: () => number): THREE.CanvasTexture {

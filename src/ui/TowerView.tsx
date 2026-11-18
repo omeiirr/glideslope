@@ -13,7 +13,7 @@ import {
 } from '../core';
 import { thrustOf } from '../sound/model';
 import { sounds } from '../sound/sounds';
-import { CLEAR_VIS, visibilityText, type Session } from '../game/session';
+import { CLEAR_VIS, cloudText, visibilityText, type Session } from '../game/session';
 import { aimAt, aircraftPose, eyePosition, toWorld } from '../render/tower3d/math';
 import type { BuildingData, GroundData, LandData } from '../render/tower3d/ground';
 import { buildingRings, orientStands, standFitter, type StandData } from '../render/tower3d/stands';
@@ -43,6 +43,8 @@ const LABELS_TEXT: Record<LabelMode, string> = { all: 'All', selected: 'Selected
 /** Visibility steps for the toolbar button: clear, mist, fog, thick fog. */
 const VIS_STEPS = [CLEAR_VIS, 3000, 1000, 400];
 const nextVis = (v: number) => VIS_STEPS[(VIS_STEPS.indexOf(v) + 1) % VIS_STEPS.length]!;
+const CEIL_STEPS = [null, 2500, 1000, 400];
+const nextCeil = (c: number | null) => CEIL_STEPS[(CEIL_STEPS.indexOf(c) + 1) % CEIL_STEPS.length]!;
 
 const isTyping = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null;
@@ -112,6 +114,10 @@ export function TowerView({
   const visRef = useRef(vis);
   visRef.current = vis;
   useEffect(() => rendererRef.current?.setVisibility(vis), [vis]);
+  const ceil = session.ceilingFt;
+  const ceilRef = useRef(ceil);
+  ceilRef.current = ceil;
+  useEffect(() => rendererRef.current?.setCeiling(ceil), [ceil]);
   const anchors = useRef<Anchor[]>([]);
 
   const resetLook = () => Object.assign(look.current, { yaw: 0, depression: DEFAULT_DEPRESSION });
@@ -281,6 +287,7 @@ export function TowerView({
         renderer = new TowerRenderer(canvas, EHAM);
         rendererRef.current = renderer;
         renderer.setVisibility(visRef.current);
+        renderer.setCeiling(ceilRef.current);
         renderer.setTimeOfDay(todRef.current);
         renderer.setLightStage(stageRef.current);
       } catch {
@@ -426,7 +433,7 @@ export function TowerView({
   const sel = session.selectedId === null ? undefined : session.sim.byId(session.selectedId);
   const w = session.sim.env.wind;
   const left = session.remainingSec;
-  const visAdjustable = session.scenario.visibilityM === undefined;
+  const visAdjustable = !session.weatherFixed;
   const realisticBar = realistic && (
     <nav class="dcb" aria-label="Display control bar">
       {EHAM.towers.map((t) =>
@@ -456,6 +463,13 @@ export function TowerView({
           () => session.setVisibility(nextVis(vis)),
           false,
           `Visibility: ${visibilityText(vis)}`,
+        )}
+      {visAdjustable &&
+        B(
+          `CLOUD\n${ceil === null ? 'NONE' : cloudText(ceil)}`,
+          () => session.setCeiling(nextCeil(ceil)),
+          false,
+          `Cloud: ${cloudText(ceil)}`,
         )}
       {B(session.paused ? 'RESUME' : 'PAUSE', () => session.setPaused(!session.paused), session.paused)}
       {B(
@@ -522,6 +536,7 @@ export function TowerView({
               </span>
               <span>
                 {EHAM.icao} {String(w.dir).padStart(3, '0')}/{w.speed} VIS {visibilityText(vis).toUpperCase()}
+                {ceil !== null && ` ${cloudText(ceil)}`}
               </span>
               <span>
                 TWR {cabShort(cab.name)} {bearingText}° LBL {LBL_SHORT[labels]}
@@ -597,7 +612,7 @@ export function TowerView({
           >
             {TOD_LABEL[tod]}
           </button>
-          {session.scenario.visibilityM === undefined && (
+          {visAdjustable && (
             <button
               type="button"
               class="chipbtn"
@@ -605,6 +620,16 @@ export function TowerView({
               onClick={() => session.setVisibility(nextVis(vis))}
             >
               Vis {visibilityText(vis)}
+            </button>
+          )}
+          {visAdjustable && (
+            <button
+              type="button"
+              class="chipbtn"
+              aria-label={`Cloud: ${cloudText(ceil)}. Change to ${cloudText(nextCeil(ceil))}`}
+              onClick={() => session.setCeiling(nextCeil(ceil))}
+            >
+              {ceil === null ? 'No ceiling' : `Cloud ${cloudText(ceil)}`}
             </button>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EHAM, dist, isOnGround, priorityTag, runwayFrame, type Aircraft } from '../core';
-import { visibilityText, type LogEntry, type Session } from '../game/session';
+import { cloudText, visibilityText, type LogEntry, type Session } from '../game/session';
 import type { Settings } from '../game/settings';
 import { RULE_TEXT, chip } from '../phraseology/phrases';
 import type { ParseResult } from '../phraseology/parser';
@@ -112,6 +112,14 @@ export function TopBar({ session, settings, onDisplay, onSettings, onLearn, onEn
             <span class="dim">Vis </span>
             <span style={session.visibilityM < 1500 ? { color: 'var(--amber)' } : undefined}>
               {visibilityText(session.visibilityM)}
+            </span>
+          </div>
+        )}
+        {session.tower && session.ceilingFt !== null && (
+          <div title="Cloud base">
+            <span class="dim">Cloud </span>
+            <span style={session.ceilingFt < 1000 ? { color: 'var(--amber)' } : undefined}>
+              {cloudText(session.ceilingFt)}
             </span>
           </div>
         )}

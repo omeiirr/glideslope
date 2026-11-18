@@ -106,6 +106,12 @@ export function TowerView({
 
   const resetLook = () => Object.assign(look.current, { yaw: 0, depression: DEFAULT_DEPRESSION });
   const turn = (deg: number) => (look.current.yaw += deg * (live.current.bino ? 0.1 : 1));
+  /** Look down (positive) or up, within the range dragging allows. */
+  const tilt = (deg: number) =>
+    (look.current.depression = Math.max(
+      -20,
+      Math.min(40, look.current.depression + deg * (live.current.bino ? 0.1 : 1)),
+    ));
   /** Binoculars: Tab / Shift+Tab steps through the aircraft in view range, nearest first. */
   const cycle = (step: number) => {
     const { session: s, cab: c } = live.current;
@@ -337,7 +343,7 @@ export function TowerView({
     };
   }, [session]);
 
-  // keys: 1/2 cab, hold B binoculars, arrows look. Never while typing.
+  // keys: 1/2 cab, hold B binoculars, arrows look around and up/down. Never while typing.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -347,6 +353,8 @@ export function TowerView({
       else if (e.key === 'Tab' && live.current.bino) cycle(e.shiftKey ? -1 : 1);
       else if (k === 'arrowleft') turn(-5);
       else if (k === 'arrowright') turn(5);
+      else if (k === 'arrowup') tilt(-2);
+      else if (k === 'arrowdown') tilt(2);
       else if (k >= '1' && k <= '9' && EHAM.towers[+k - 1]) pickCab(EHAM.towers[+k - 1]!.id);
       else return;
       e.preventDefault();

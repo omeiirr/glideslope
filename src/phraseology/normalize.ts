@@ -140,9 +140,6 @@ const PHRASE_FIX: [RegExp, string][] = [
   [/\bx[- ]ray\b/g, 'xray'],
   [/\bflight levels?\b/g, 'fl'],
   [/\bf l\b/g, 'fl'],
-  // Whisper copies "18R" from the prompt: "heading two seven zero" → "27L", "flight level seven zero" → "7L" / "7R0"
-  [/\b(heading|fl)( to)? (\d{1,2})[lr](\d)\b/g, '$1$2 $3$4'],
-  [/\b(heading|fl)( to)? (\d{1,2})[lr]\b/g, '$1$2 $30'],
   [/\bq (and|n|an|in) h\b/g, 'qnh'],
   [/\bqueue? (and|n|an) h\b/g, 'qnh'],
   [/\b(i|eye) l s\b/g, 'ils'],
@@ -191,6 +188,15 @@ export function words(text: string): string[] {
     .replace(/(\d)\.(\d)/g, '$1 decimal $2')
     .replace(/[^a-z0-9]+/g, ' ');
   for (const [re, to] of PHRASE_FIX) s = s.replace(re, to);
+  // Whisper copies "18R" from the prompt: "heading two seven zero" → "27L", "flight level seven zero" → "7L",
+  // "7R0" or "70R". The letter is a lost "zero", unless that gives an impossible heading or level (above FL110).
+  s = s.replace(
+    /\b(heading|fl)( to)? (\d{1,3})[lr](\d?)\b/g,
+    (_, kw: string, to = '', n: string, d: string) => {
+      const zero = n + '0';
+      return `${kw}${to} ${d ? n + d : +zero <= (kw === 'fl' ? 110 : 360) ? zero : n}`;
+    },
+  );
   const out: string[] = [];
   for (const raw of s.match(/[a-z]+|\d+/g) ?? []) {
     const w = WORD_FIX[raw] ?? raw;

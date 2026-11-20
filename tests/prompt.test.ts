@@ -60,4 +60,6 @@ test('WebGPU hint: per browser, and a different note when base failed on WebGPU'
   expect(webGpuHint('no-webgpu', winChrome)).toContain('graphics acceleration');
   expect(webGpuHint('no-webgpu', firefox)).toContain('dom.webgpu.enabled');
   expect(webGpuHint('base-failed', winChrome)).toContain('graphics driver');
+  expect(webGpuHint('no-webgpu', winChrome, 'baseCpu')).toContain('Whisper base runs on the processor');
+  expect(webGpuHint('base-failed', winChrome)).toContain('Whisper tiny runs instead');
 });

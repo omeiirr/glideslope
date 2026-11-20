@@ -58,3 +58,8 @@
 {"input": "KLM1234 descend FL60", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": []}
 {"input": "KLM1234 DESCEND FLIGHT LEVEL 60", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": []}
 {"input": "klm 1234 descend flight level six zero thank you", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 6000, "fl": true}], "expectedIssues": []}
+{"input": "KLM 1234, turn left heading 27L.", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "KLM 1234, turn left heading to 7L.", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "Speedbird 432, climb flight level 7L.", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 7000, "fl": true}], "expectedIssues": []}
+{"input": "Speedbird 432, climb flight level 7R0.", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 7000, "fl": true}], "expectedIssues": []}
+{"input": "KLM 1234, turn right heading 210, cleared ILS approach runway 18R.", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 210, "turn": "right"}, {"type": "ils", "runway": "18R"}], "expectedIssues": []}

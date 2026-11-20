@@ -361,7 +361,7 @@ function Game(p: GameProps) {
           )}
           {fellBack && !gpuHintSeen && (
             <div class="toast notice" role="alert">
-              <span>{webGpuHint(fellBack, navigator.userAgent)}</span>
+              <span>{webGpuHint(fellBack, navigator.userAgent, p.voice.state.model)}</span>
               <button
                 type="button"
                 class="chipbtn"

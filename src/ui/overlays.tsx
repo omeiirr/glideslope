@@ -203,8 +203,8 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
           s.asr === 'webspeech'
             ? 'Warning: in some browsers this sends your audio to a cloud service.'
             : s.asr === 'whisper-base' && voice.fellBack
-              ? `Whisper tiny is running instead. ${webGpuHint(voice.fellBack, navigator.userAgent)}`
-              : 'Runs entirely on your machine. Falls back to tiny automatically if WebGPU is missing.',
+              ? webGpuHint(voice.fellBack, navigator.userAgent, voice.model)
+              : 'Runs entirely on your machine. Without WebGPU it runs on the processor (base on fast machines, else tiny).',
         )}
         <div class="form-row">
           <span>

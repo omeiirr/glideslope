@@ -140,6 +140,9 @@ const PHRASE_FIX: [RegExp, string][] = [
   [/\bx[- ]ray\b/g, 'xray'],
   [/\bflight levels?\b/g, 'fl'],
   [/\bf l\b/g, 'fl'],
+  // Whisper copies "18R" from the prompt: "heading two seven zero" → "27L", "flight level seven zero" → "7L" / "7R0"
+  [/\b(heading|fl)( to)? (\d{1,2})[lr](\d)\b/g, '$1$2 $3$4'],
+  [/\b(heading|fl)( to)? (\d{1,2})[lr]\b/g, '$1$2 $30'],
   [/\bq (and|n|an|in) h\b/g, 'qnh'],
   [/\bqueue? (and|n|an) h\b/g, 'qnh'],
   [/\b(i|eye) l s\b/g, 'ils'],

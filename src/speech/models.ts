@@ -27,8 +27,16 @@ export const WHISPER = {
     dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
   },
   /** ~41 MB: 8-bit, for machines without WebGPU. */
+  /** ~77 MB, 8-bit, on the CPU: base without WebGPU, on machines that can give it 4 threads (DECISIONS.md). */
+  baseCpu: { repo: 'Xenova/whisper-base.en', device: 'wasm', dtype: 'q8' },
   tiny: { repo: 'Xenova/whisper-tiny.en', device: 'wasm', dtype: 'q8' },
 } as const;
+export type WhisperModel = keyof typeof WHISPER;
+export const WHISPER_NAME: Record<WhisperModel, string> = {
+  base: 'Whisper base',
+  baseCpu: 'Whisper base on the CPU',
+  tiny: 'Whisper tiny',
+};
 
 /** Absolute URL of the self-hosted runtime files (public/vendor/). */
 export const vendorBase = () => new URL('./vendor/', document.baseURI).href;

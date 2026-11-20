@@ -1,6 +1,6 @@
 import type { Settings } from '../game/settings';
 import type { AsrRequest, AsrResponse } from './asr.worker';
-import { vendorBase } from './models';
+import { vendorBase, WHISPER_NAME, type WhisperModel } from './models';
 import { VOICE_OFF, type VoiceState } from './voice';
 
 const RATE = 16000;
@@ -61,11 +61,9 @@ export class VoiceInput {
         return;
       }
       await this.initMic();
-      const gpu = settings.asr === 'whisper-base' && (await hasWebGpu());
-      this.loadWhisper(
-        gpu ? 'base' : 'tiny',
-        settings.asr === 'whisper-base' && !gpu ? 'no-webgpu' : undefined,
-      );
+      if (settings.asr === 'whisper-tiny') this.loadWhisper('tiny');
+      else if (await hasWebGpu()) this.loadWhisper('base');
+      else this.loadWhisper(withoutGpu(), 'no-webgpu');
     } catch (err) {
       const name = (err as Error)?.name;
       this.set({
@@ -106,12 +104,12 @@ export class VoiceInput {
     this.ctx = ctx;
   }
 
-  private loadWhisper(model: 'base' | 'tiny', fellBack?: 'no-webgpu' | 'base-failed') {
+  private loadWhisper(model: WhisperModel, fellBack?: 'no-webgpu' | 'base-failed') {
     this.backend = 'whisper';
     this.set({
       status: 'loading',
       progress: 0,
-      message: `downloading Whisper ${model}${fellBack === 'no-webgpu' ? ' (no WebGPU on this machine)' : ''}…`,
+      message: `downloading ${WHISPER_NAME[model]}${fellBack === 'no-webgpu' ? ' (no WebGPU on this machine)' : ''}…`,
     });
     const w = new Worker(new URL('./asr.worker.ts', import.meta.url), { type: 'module' });
     this.worker = w;
@@ -124,7 +122,8 @@ export class VoiceInput {
           status: 'ready',
           progress: 1,
           fellBack,
-          message: `Whisper ${m.model}, on this machine${this.livePartials ? '' : ' (no live transcript: too slow here)'}`,
+          model: m.model,
+          message: `${WHISPER_NAME[m.model]}, on this machine${this.livePartials ? '' : ' (no live transcript: too slow here)'}`,
         });
       } else if (m.type === 'result') {
         if (m.final && m.id === this.finalId) this.finish(m.text);
@@ -132,8 +131,9 @@ export class VoiceInput {
       } else if (m.fatal) {
         w.terminate();
         this.worker = null;
-        // base on WebGPU failed (driver, memory): try the small CPU model before giving up.
-        if (model === 'base') this.loadWhisper('tiny', 'base-failed');
+        // base on WebGPU failed (driver, memory): try a CPU model before giving up.
+        if (model === 'base') this.loadWhisper(withoutGpu(), 'base-failed');
+        else if (model === 'baseCpu') this.loadWhisper('tiny', fellBack);
         else this.set({ status: 'error', message: `Speech model failed to load: ${m.message}` });
       } else if (m.id === this.finalId) this.finish('');
     };
@@ -243,6 +243,14 @@ export class VoiceInput {
 }
 
 const rms = (a: Float32Array) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
+
+/**
+ * Without WebGPU: base on the CPU where it gets 4 threads and 2 cores stay free for the game and the voices
+ * (threads need cross-origin isolation, public/coi.js), else tiny. Synthetic test with light noise: base 52/64
+ * commands right, tiny 39/64; about 1.5 s against 1.0 s per command on 4 threads.
+ */
+const withoutGpu = (): WhisperModel =>
+  self.crossOriginIsolated && navigator.hardwareConcurrency >= 6 ? 'baseCpu' : 'tiny';
 
 async function hasWebGpu(): Promise<boolean> {
   try {

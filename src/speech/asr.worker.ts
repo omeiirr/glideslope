@@ -25,7 +25,10 @@ async function load(vendor: string, model: keyof typeof WHISPER) {
       wasm: `${vendor}ort-wasm-simd-threaded.asyncify.wasm`,
       mjs: `${vendor}ort-wasm-simd-threaded.asyncify.mjs`,
     };
-    wasm.numThreads = 1;
+    // threads need cross-origin isolation (public/coi.js); leave cores for the game and the voices
+    wasm.numThreads = self.crossOriginIsolated
+      ? Math.max(1, Math.min(4, navigator.hardwareConcurrency - 2))
+      : 1;
   }
   const spec = WHISPER[model];
   const files = new Map<string, [number, number]>();

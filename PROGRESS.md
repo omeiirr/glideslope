@@ -47,7 +47,7 @@
 0a. **Check against the eAIP** (eaip.lvnl.nl blocks automated access): exit names V1–V4 and S7E. (Frequencies: done, from the user 2026-11-17.)
 1. ~~Real microphone test~~ and ~~Piper voices by ear~~: done by the user 2026-11-16, both fine. (The 1.5 s readback timing on WebGPU and Firefox's WASM path were not reported separately.)
 1a. **Try by voice:** "runway 18R, cleared to land" in the tower lessons (the prompt fix is only tested with synthetic voices); and listen to the sound levels.
-2. Voice on machines without fast WebGPU: Whisper tiny takes about 2 s per command on one CPU thread.
+2. Voice on machines without fast WebGPU: Whisper tiny now uses up to 4 CPU threads (~1.0 s per command instead of ~1.8 s, headless Chromium, 8 cores). Not yet tried in Firefox or Safari.
 3. Try it with a real screen reader (NVDA/VoiceOver): automated checks pass, but the live regions (radio log, PTT status) may be too chatty.
 
 ## Measured

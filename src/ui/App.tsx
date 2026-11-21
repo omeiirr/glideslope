@@ -166,6 +166,7 @@ export function App() {
     <Learn
       onClose={closeLearn}
       say={(ph) => void tts.speak({ from: 'LEARN', voice: LEARN_VOICE, text: ph.text, speech: ph.speech })}
+      voice={voice}
     />
   );
 

@@ -1,9 +1,12 @@
+import type { FunctionComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { EHAM, runwayById, transitionLevel, wakeMinimum, type Command, type Wake } from '../core';
 import { STUDENT } from '../game/scenarios';
 import { spell, spokenCallsign } from '../phraseology/callsign';
 import type { AcContext } from '../phraseology/parser';
 import { controllerPhrase, readback, RULE_TEXT, spokenAltitude, type Phrase } from '../phraseology/phrases';
+import type { VoiceInput } from '../speech/voiceInput';
+import { PhraseDrill } from './drills';
 import { useDialog } from './overlays';
 
 /** Speak a phrase in a pilot voice (no-op when voices are off). */
@@ -876,7 +879,11 @@ function Tower({ say }: { say: Say }) {
 
 // ------------------------------------------------------------------ dialog
 
-const SECTIONS = [
+interface BodyProps {
+  say: Say;
+  voice?: VoiceInput;
+}
+const SECTIONS: { id: string; title: string; Body: FunctionComponent<BodyProps> }[] = [
   { id: 'basics', title: 'Numbers and letters', Body: Basics },
   { id: 'values', title: 'Saying values and callsigns', Body: Values },
   { id: 'commands', title: 'Commands', Body: Commands },
@@ -884,11 +891,12 @@ const SECTIONS = [
   { id: 'approach', title: 'Approach concepts', Body: Approach },
   { id: 'procedure', title: 'Arrival procedure', Body: Procedure },
   { id: 'tower', title: 'Tower', Body: Tower },
-] as const;
+  { id: 'drill', title: 'Practise phrases', Body: PhraseDrill },
+];
 
-export function Learn({ onClose, say }: { onClose: () => void; say: Say }) {
+export function Learn({ onClose, say, voice }: { onClose: () => void; say: Say; voice?: VoiceInput }) {
   const ref = useDialog(onClose);
-  const [tab, setTab] = useState<(typeof SECTIONS)[number]['id']>('basics');
+  const [tab, setTab] = useState('basics');
   const sec = SECTIONS.find((s) => s.id === tab)!;
   return (
     <div class="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -913,7 +921,7 @@ export function Learn({ onClose, say }: { onClose: () => void; say: Say }) {
           </nav>
           <article class="learn-content" tabIndex={0} aria-labelledby="learn-section">
             <h2 id="learn-section">{sec.title}</h2>
-            <sec.Body say={say} />
+            <sec.Body say={say} voice={voice} />
             <p class="dim learn-src">
               Based on ICAO Annex 10 Vol II, ICAO Doc 4444 and UK CAP 413. Simplified for the game: not for
               real-world use.

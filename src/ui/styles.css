@@ -1393,6 +1393,10 @@ dl.defs dd {
     var(--bg, #05080e);
 }
 .dialog.menu {
-  background: rgba(13, 20, 34, 0.84);
+  background: rgba(13, 20, 34, 0.6);
   backdrop-filter: blur(8px);
+}
+.dialog.menu .card,
+.dialog.menu .seg {
+  background: rgba(17, 26, 43, 0.6);
 }

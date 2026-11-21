@@ -47,6 +47,8 @@ interface PhraseEnv {
   qnh: number;
   /** Surface wind: the controller gives it with landing and take-off clearances. */
   wind?: { dir: number; speed: number };
+  /** Current ATIS letter (default: the airport's). */
+  atis?: string;
 }
 
 /** "wind 200 degrees 12 knots" (direction to the nearest 10 degrees), "wind calm". */
@@ -118,6 +120,8 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
     }
     case 'resumeSpeed':
       return both(cmd.noRestrictions ? 'no ATC speed restrictions' : 'resume normal speed');
+    case 'qnh':
+      return both(`QNH ${cmd.qnh}`, `Q N H ${spell(String(cmd.qnh))}`);
     case 'minimumSpeed':
       return both(readback ? 'minimum approach speed' : 'reduce to minimum approach speed');
     case 'expedite': {
@@ -291,6 +295,8 @@ export function chip(cmd: Command): string {
       return `SPD ${cmd.speed}${cmd.untilDme !== undefined ? ` →${cmd.untilDme}NM` : ''}`;
     case 'resumeSpeed':
       return cmd.noRestrictions ? 'NO SPD RESTR' : 'NORMAL SPD';
+    case 'qnh':
+      return `QNH ${cmd.qnh}`;
     case 'minimumSpeed':
       return 'MIN APP SPD';
     case 'expedite':
@@ -355,7 +361,8 @@ export function checkIn(
   const levelPart = moving
     ? both(`${now.text} descending ${to.text}`, `${now.speech} descending ${to.speech}`)
     : now;
-  const info = both(`information ${ap.atis}`, `information ${spell(ap.atis)}`);
+  const atis = env.atis ?? ap.atis;
+  const info = both(`information ${atis}`, `information ${spell(atis)}`);
   // PAN: urgency signal three times, then station, callsign, the nature of it and intentions (CAP 413 ch. 8)
   if (ac.priority === 'medical')
     return join([

@@ -82,7 +82,9 @@ export class Sim {
   time = 0;
   readonly rng: Rng;
   readonly env: Env;
-  readonly qnh: number;
+  qnh: number;
+  /** Current ATIS letter: pilots report it on first contact. */
+  atis: string;
   private list: Aircraft[] = [];
   private spawner: Spawner;
   private active = new Set<string>();
@@ -102,6 +104,7 @@ export class Sim {
   ) {
     this.rng = new Rng(opts.seed);
     this.qnh = opts.qnh ?? airport.qnh;
+    this.atis = airport.atis;
     this.env = {
       airport,
       landing: runwayById(airport, airport.config.landing),
@@ -116,6 +119,19 @@ export class Sim {
     this.tower = !!opts.tower;
     this.autoTower = opts.autoTower ?? !this.tower;
     if (this.tower && opts.traffic.arrivalsPerHour > 0) this.nextArrival = 30;
+  }
+
+  /**
+   * New weather, as a new ATIS: the next letter, and a new QNH that every pilot has to be given again
+   * (it changes nothing else: altitudes in the sim are true altitudes).
+   */
+  updateWeather(w: { qnh?: number; wind?: { dir: number; speed: number } }) {
+    if (w.qnh !== undefined && w.qnh !== this.qnh) {
+      this.qnh = w.qnh;
+      for (const ac of this.list) ac.qnhGiven = false;
+    }
+    if (w.wind) this.env.wind = w.wind;
+    this.atis = String.fromCharCode(((this.atis.charCodeAt(0) - 65 + 1) % 26) + 65);
   }
 
   /**

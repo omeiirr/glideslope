@@ -5,7 +5,9 @@ import {
   TICK,
   dist,
   isOnGround,
+  norm360,
   runwayFrame,
+  transitionLevel,
   type Aircraft,
   type Command,
   type SimEvent,
@@ -150,6 +152,9 @@ export class Session {
       tower: this.tower,
     });
     this.rng = new Rng(seed ^ 0x5eed);
+    // changing weather in radar free play and the Pro scenarios: lessons and drills keep theirs
+    if (!this.tower && !scenario.lesson && !scenario.drill)
+      this.nextWeatherAt = (8 + this.rng.next() * 6) * 60;
     this.radio.blocking = this.mode === 'pro';
     this.visibilityM = scenario.visibilityM ?? CLEAR_VIS;
     this.ceilingFt = scenario.ceilingFt ?? null;
@@ -289,8 +294,32 @@ export class Session {
     }
   }
 
+  /** Sim time of the next ATIS update (new QNH and wind). */
+  private nextWeatherAt = Infinity;
+
+  /** A new ATIS: the QNH moves by 1–2 hPa (7 times in 10), the wind veers or backs up to 25° and changes speed. */
+  private changeWeather() {
+    const r = () => this.rng.next();
+    const sim = this.sim;
+    const tl = transitionLevel(EHAM, sim.qnh);
+    const dq = r() < 0.7 ? (r() < 0.5 ? -1 : 1) * (r() < 0.6 ? 1 : 2) : 0;
+    const w = sim.env.wind;
+    const dir = norm360(Math.round((w.dir + (r() - 0.5) * 50) / 10) * 10) || 360;
+    const speed = Math.min(25, Math.max(3, Math.round(w.speed + (r() - 0.5) * 10)));
+    sim.updateWeather({ qnh: sim.qnh + dq, wind: { dir, speed } });
+    const tl2 = transitionLevel(EHAM, sim.qnh);
+    const wind = `wind ${String(dir).padStart(3, '0')}/${speed}`;
+    this.system(
+      dq
+        ? `New ATIS, information ${sim.atis}: QNH ${sim.qnh}${tl2 !== tl ? `, transition level FL${String(tl2).padStart(3, '0')}` : ''}, ${wind}. Give the new QNH with the next clearance to an altitude, and to aircraft already at or below ${EHAM.transitionAltitudeFt} ft (“QNH ${sim.qnh}”).`
+        : `New ATIS, information ${sim.atis}: QNH ${sim.qnh} unchanged, ${wind}.`,
+    );
+    this.nextWeatherAt = sim.time + (12 + r() * 8) * 60;
+  }
+
   private housekeeping() {
     const sim = this.sim;
+    if (sim.time >= this.nextWeatherAt) this.changeWeather();
     // Uncaught readback errors
     for (const p of this.pendingErrors.filter((x) => sim.time > x.deadline)) {
       this.pendingErrors = this.pendingErrors.filter((x) => x !== p);

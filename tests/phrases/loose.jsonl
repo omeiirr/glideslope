@@ -331,3 +331,4 @@
 {"input": "KLM 1234 descend at 2000 fpm", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "rate", "fpm": 2000}], "expectedIssues": []}
 {"input": "KLM 1234 slow to minimum approach speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "minimumSpeed"}], "expectedIssues": ["speed-wording"]}
 {"input": "KLM 1234 no a t c speed restrictions", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed", "noRestrictions": true}], "expectedIssues": []}
+{"input": "KLM 1234 QNH 1011", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "qnh", "qnh": 1011}], "expectedIssues": ["qnh-wrong"]}

@@ -168,6 +168,9 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
       ac.tgtIas = null;
       ac.speedUntilDme = undefined;
       break;
+    case 'qnh':
+      ac.qnhGiven = true;
+      break;
     case 'minimumSpeed':
       ac.tgtIas = ac.perf.vapp;
       ac.speedUntilDme = undefined;

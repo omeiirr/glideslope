@@ -262,6 +262,11 @@ const COMMANDS: CommandDoc[] = [
     note: `At or below ${TA} ft use “altitude”, and give the QNH with the first such clearance.`,
   },
   {
+    title: 'Pass a new QNH',
+    cmds: [{ type: 'qnh', qnh: EHAM.qnh }],
+    note: `In longer sessions the weather changes: the log announces a new ATIS letter, QNH and wind. Pilots then need the new QNH: give it with the next clearance to an altitude, and on its own to aircraft already at or below ${TA} ft.`,
+  },
+  {
     title: 'Expedite a climb or descent',
     cmds: [
       { type: 'altitude', altitude: 5000, fl: true },

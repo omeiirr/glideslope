@@ -826,8 +826,13 @@ const TOWER_MATCHERS: Matcher[] = [
   runwayInfo,
 ];
 
-/** A stray "QNH 1013" on its own is harmless information. */
-const qnhInfo: Matcher = (c) => (c.w(c.i, 'qnh') && c.n(c.i + 1) ? { next: c.i + 2 } : null);
+/** "QNH 1011" on its own: passes the QNH (after a change, to aircraft already below the transition level). */
+const qnhInfo: Matcher = (c) => {
+  const n = c.w(c.i, 'qnh') && c.n(c.i + 1);
+  if (!n) return null;
+  const issues = n.v === c.ctx.qnh ? [] : [issue('warn', 'qnh-wrong', c.said(c.i, c.i + 2))];
+  return { next: c.i + 2, cmd: { type: 'qnh', qnh: n.v }, issues };
+};
 
 const MATCHERS: Matcher[] = [
   identify,

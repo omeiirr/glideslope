@@ -334,3 +334,20 @@ test('readback drill: about a third of readbacks are wrong, and a missed one is 
   await settle(s, 50000);
   expect(s.log.some((e) => e.kind === 'system' && e.text.startsWith('Missed readback error, '))).toBe(true);
 });
+
+test('free play: a new ATIS after 8–14 minutes, and pilots need the new QNH', async () => {
+  const s = new Session(scenarioById('free'), DEFAULT_SETTINGS);
+  const atis = s.sim.atis;
+  s.sim.spawn({ kind: 'arrival', callsign: 'KLM9', type: 'B738', onFrequency: true });
+  s.transmit('KLM9, descend altitude 3000, QNH 1013', 'typed');
+  await settle(s, 5000);
+  expect(s.sim.byCallsign('KLM9')!.qnhGiven).toBe(true);
+  const qnh = s.sim.qnh;
+  s.setSpeed(8);
+  for (let i = 0; i < 15 * 60 * 4 && s.sim.atis === atis; i++) s.update(250 / 8 + 0.01);
+  expect(s.sim.atis).not.toBe(atis);
+  expect(
+    s.log.some((e) => e.kind === 'system' && e.text.startsWith(`New ATIS, information ${s.sim.atis}`)),
+  ).toBe(true);
+  if (s.sim.qnh !== qnh) expect(s.sim.byCallsign('KLM9')?.qnhGiven ?? false).toBe(false);
+});

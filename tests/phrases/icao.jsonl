@@ -201,3 +201,4 @@
 {"input": "KLM1234, report heading", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "report", "what": "heading"}], "expectedIssues": []}
 {"input": "Speedbird 432, report level", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "report", "what": "level"}], "expectedIssues": []}
 {"input": "KLM1234, report speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "report", "what": "speed"}], "expectedIssues": []}
+{"input": "KLM1234, QNH 1013", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "qnh", "qnh": 1013}], "expectedIssues": []}

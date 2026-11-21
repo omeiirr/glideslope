@@ -8,6 +8,8 @@ export type Command =
   | { type: 'presentHeading' }
   /** `altitude` is always feet; `fl` records whether it was given as a flight level. */
   | { type: 'altitude'; altitude: number; fl: boolean; qnh?: number }
+  /** "QNH 1011" on its own: passes a (new) QNH. */
+  | { type: 'qnh'; qnh: number }
   | { type: 'speed'; speed: number; untilDme?: number }
   | { type: 'resumeSpeed'; noRestrictions?: boolean }
   /** "Reduce to minimum approach speed". */

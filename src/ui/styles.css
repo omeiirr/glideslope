@@ -247,7 +247,8 @@ button {
   display: flex;
   gap: 6px;
 }
-.scope-tools .chipbtn {
+.scope-tools .chipbtn,
+.toast .chipbtn {
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 6px;
@@ -799,6 +800,10 @@ table.score td:last-child {
   font-size: 12px;
   color: var(--text2);
   pointer-events: none;
+}
+.toast .chipbtn {
+  white-space: nowrap;
+  cursor: pointer;
 }
 .toast.notice {
   bottom: 110px;

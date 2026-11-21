@@ -36,6 +36,8 @@ export function App() {
   const [recenter, setRecenter] = useState(0);
   const [dcb, setDcb] = useState(DEFAULT_DCB);
   const [, bump] = useState(0);
+  // a new session waits, paused, while the pilot voices download (no robotic browser voice first)
+  const [voiceWait, setVoiceWait] = useState<Session | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -59,6 +61,16 @@ export function App() {
     if (p.sfxVolume !== undefined) sounds.setVolume(p.sfxVolume);
   };
 
+  const stopWaiting = () => {
+    voiceWait?.setPaused(false);
+    setVoiceWait(null);
+  };
+  useEffect(() => {
+    if (!voiceWait || (voiceWait === session && tts.state.status === 'loading')) return;
+    if (voiceWait === session) voiceWait.setPaused(false);
+    setVoiceWait(null);
+  });
+
   const start = (sc: Scenario) => {
     // Free play follows the rules chosen in settings.
     const scenario =
@@ -75,6 +87,10 @@ export function App() {
     setDraft('');
     // lessons with a path to fly start zoomed in on it
     if (s.lesson?.guide) setRange(20);
+    if (settings.tts === 'piper' && tts.state.status === 'loading') {
+      s.setPaused(true);
+      setVoiceWait(s);
+    } else setVoiceWait(null);
     setSession(s);
   };
 
@@ -202,6 +218,8 @@ export function App() {
       settings={settings}
       voice={voice}
       tts={tts}
+      waitingForVoices={voiceWait === session}
+      onStartNow={stopWaiting}
       draft={draft}
       setDraft={setDraft}
       inputRef={inputRef}
@@ -242,6 +260,8 @@ interface GameProps {
   settings: Settings;
   voice: VoiceInput;
   tts: Tts;
+  waitingForVoices: boolean;
+  onStartNow: () => void;
   draft: string;
   setDraft: (s: string) => void;
   inputRef: { current: HTMLInputElement | null };
@@ -357,7 +377,7 @@ function Game(p: GameProps) {
           {!realistic && !realTower && !session.lesson && session.mode === 'beginner' && (
             <HelpCard session={session} onInsert={p.insert} />
           )}
-          {session.paused && !session.finished && (
+          {session.paused && !session.finished && !p.waitingForVoices && (
             <div class="paused" role="status">
               PAUSED
             </div>
@@ -382,7 +402,18 @@ function Game(p: GameProps) {
               Pilot voices unavailable ({p.tts.state.message}). Using browser voices.
             </div>
           )}
-          {p.tts.state.status === 'loading' && settings.tts === 'piper' && (
+          {p.waitingForVoices && (
+            <div class="toast notice" role="status">
+              <span>
+                Loading pilot voices… {Math.round(p.tts.state.progress * 100)} %. The game starts when they
+                are ready.
+              </span>
+              <button type="button" class="chipbtn" onClick={p.onStartNow}>
+                Start now with browser voices
+              </button>
+            </div>
+          )}
+          {!p.waitingForVoices && p.tts.state.status === 'loading' && settings.tts === 'piper' && (
             <div class="toast" role="status">
               Downloading pilot voices… {Math.round(p.tts.state.progress * 100)} % (using browser voices
               meanwhile)

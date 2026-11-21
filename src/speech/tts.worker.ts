@@ -17,6 +17,7 @@ interface PiperConfig {
   espeak: { voice: string };
   inference: { noise_scale: number; length_scale: number; noise_w: number };
   num_speakers: number;
+  phoneme_id_map: Record<string, number[]>;
 }
 
 let session: ort.InferenceSession;
@@ -104,15 +105,33 @@ function phonemize(text: string): Promise<number[]> {
   });
 }
 
+/**
+ * The VCTK voices swallow the aɪ and aʊ diphthongs: Whisper heard "right" as "rit" in 8 of 8 voices, "five" as
+ * "fifth", "goodbye" as "could be". The vowel æ followed by the glide j or w was heard right in 8 of 8.
+ * Ids come padded (a, 0, ɪ), so the glide sits two places on.
+ */
+function glides(ids: number[]): number[] {
+  const id = (p: string) => config.phoneme_id_map[p]![0]!;
+  const [a, ae, i, j, u, w] = ['a', 'æ', 'ɪ', 'j', 'ʊ', 'w'].map(id);
+  for (let k = 0; k + 2 < ids.length; k++) {
+    if (ids[k] !== a || (ids[k + 2] !== i && ids[k + 2] !== u)) continue;
+    ids[k] = ae!;
+    ids[k + 2] = ids[k + 2] === i ? j! : w!;
+  }
+  return ids;
+}
+
 async function synth(text: string, speaker: number, speed: number): Promise<Float32Array> {
   // espeak says "kwi-BECK"; ICAO Annex 10 is "keh-BECK". "Tower" is phonemized right (taʊə), but the voice model
   // squeezes it into "tour" (Whisper heard "tour" in 6 of 8 pilot voices); "Tahwer" was heard as "tower" in 8 of 8.
   // espeak reads the ph in Schiphol as f ("Skiffle", 8 of 8); English-speaking pilots say "SKIP-hol".
-  const ids = await phonemize(
-    text
-      .replace(/\bQuebec\b/gi, 'Kebeck')
-      .replace(/\bTower\b/gi, 'Tahwer')
-      .replace(/\bSchiphol\b/gi, 'Skip-hol'),
+  const ids = glides(
+    await phonemize(
+      text
+        .replace(/\bQuebec\b/gi, 'Kebeck')
+        .replace(/\bTower\b/gi, 'Tahwer')
+        .replace(/\bSchiphol\b/gi, 'Skip-hol'),
+    ),
   );
   const feeds: Record<string, ort.Tensor> = {
     input: new ort.Tensor('int64', BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),

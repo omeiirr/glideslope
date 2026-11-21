@@ -2,7 +2,7 @@
 
 A free, open-source (GPL-3.0) air traffic control simulator that runs in your browser. You are **Schiphol Approach**, vectoring arrivals onto the ILS for runway 18R on a radar scope, or **Schiphol Tower**, clearing aircraft to land and take off from a 3D tower view. You talk to pilots with **push-to-talk** or by typing. Pilots answer over the radio, and the game tells you when your phraseology isn't standard ICAO.
 
-**Play:** https://omeiirr.github.io/vectors/
+**Play:** https://omeiirr.github.io/glideslope/
 
 ![Modern display: arrival strips, radar scope, radio log with phraseology feedback](docs/screenshots/modern.png)
 

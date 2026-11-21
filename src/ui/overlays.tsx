@@ -143,7 +143,7 @@ export function Menu({
           </ul>
           <p>
             Full list and licences: THIRD_PARTY.md in the{' '}
-            <a href="https://github.com/omeiirr/vectors" target="_blank" rel="noopener">
+            <a href="https://github.com/omeiirr/glideslope" target="_blank" rel="noopener">
               source code
             </a>
             .

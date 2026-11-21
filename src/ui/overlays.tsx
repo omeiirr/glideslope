@@ -396,6 +396,11 @@ export function Debrief({
       s.unnecessaryGoArounds * w.unnecessaryGoAround,
     ],
     !session.tower && ['Aircraft that left the airspace', s.leftAirspace, s.leftAirspace * w.leftAirspace],
+    s.pilotRequests > 0 && [
+      'Pilot requests answered',
+      `${s.requestsAnswered} of ${s.pilotRequests}`,
+      s.requestsIgnored * w.ignoredRequest,
+    ],
     [
       'Readback errors caught',
       `${s.readbackCaught} of ${s.readbackErrors}`,

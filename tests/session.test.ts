@@ -351,3 +351,30 @@ test('free play: a new ATIS after 8–14 minutes, and pilots need the new QNH', 
   ).toBe(true);
   if (s.sim.qnh !== qnh) expect(s.sim.byCallsign('KLM9')?.qnhGiven ?? false).toBe(false);
 });
+
+test('Pro: a pilot asks for descent; a descent answers it, and so does "unable"', async () => {
+  const s = pro();
+  s.setSpeed(8);
+  const ask = async (cs: string) => {
+    s.sim.spawn({ kind: 'arrival', callsign: cs, type: 'B738', alt: 9000, onFrequency: true });
+    s.transmit(`${cs}, identified`, 'typed');
+    for (
+      let i = 0;
+      i < 400 && !s.log.some((e) => e.kind === 'pilot' && e.text === `${cs}, request descent`);
+      i++
+    )
+      await settle(s, 1000);
+    expect(s.log.some((e) => e.kind === 'pilot' && e.text === `${cs}, request descent`)).toBe(true);
+    await settle(s, 3000); // let the pilot finish: talking over them garbles both in Pro
+  };
+  await ask('KLM71');
+  s.transmit('KLM71, descend flight level 70', 'typed');
+  await settle(s, 3000);
+  expect(s.stats.requestsAnswered).toBe(1);
+  s.sim.command('KLM71', [{ type: 'handoff', to: 'tower' }]);
+  await ask('KLM72');
+  s.transmit('KLM72, unable', 'typed');
+  await settle(s, 3000);
+  expect(s.log.at(-1)).toMatchObject({ kind: 'pilot', text: 'Roger, KLM72' });
+  expect(s.stats).toMatchObject({ requestsAnswered: 2, requestsIgnored: 0 });
+});

@@ -96,6 +96,8 @@ const LESSON_END_PAUSE_MS = 1500;
 /** Tower: a departure still on the Tower frequency at this height above the field is a late handoff. */
 const LATE_DEP_HANDOFF_FT = 2000;
 
+/** A pilot request left this long without an answer counts as ignored (Pro). */
+const REQUEST_S = 90;
 /** Readback drill: about one readback in three has a wrong value. */
 export const DRILL_ERROR_RATE = 0.3;
 
@@ -152,9 +154,12 @@ export class Session {
       tower: this.tower,
     });
     this.rng = new Rng(seed ^ 0x5eed);
+    // weather and pilot requests draw from their own stream, so they don't shift readback errors and the rest
+    this.events = new Rng(seed ^ 0x77e7);
+    const free = !this.tower && !scenario.lesson && !scenario.drill;
     // changing weather in radar free play and the Pro scenarios: lessons and drills keep theirs
-    if (!this.tower && !scenario.lesson && !scenario.drill)
-      this.nextWeatherAt = (8 + this.rng.next() * 6) * 60;
+    if (free) this.nextWeatherAt = (8 + this.events.next() * 6) * 60;
+    if (free && this.mode === 'pro') this.nextRequestAt = 150 + this.events.next() * 150;
     this.radio.blocking = this.mode === 'pro';
     this.visibilityM = scenario.visibilityM ?? CLEAR_VIS;
     this.ceilingFt = scenario.ceilingFt ?? null;
@@ -296,10 +301,50 @@ export class Session {
 
   /** Sim time of the next ATIS update (new QNH and wind). */
   private nextWeatherAt = Infinity;
+  private events: Rng;
+  /** Pro: pilot requests waiting for an answer, by callsign. */
+  private requests = new Map<string, { kind: 'higher' | 'lower' | 'direct'; fix?: string; at: number }>();
+  private nextRequestAt = Infinity;
+
+  /**
+   * Pro: now and then a pilot asks for something: a departure that has levelled off for higher, a vectored
+   * departure for direct to its exit fix, an arrival still high and far out for descent.
+   */
+  private pilotRequest() {
+    const sim = this.sim;
+    if (this.radio.current || this.radio.waiting) {
+      this.nextRequestAt = sim.time + 20;
+      return;
+    }
+    this.nextRequestAt = sim.time + 180 + this.events.next() * 120;
+    type Ask = { ac: Readonly<Aircraft>; kind: 'higher' | 'lower' | 'direct'; fix?: string };
+    const asks = sim.aircraft.flatMap((ac): Ask[] => {
+      if (ac.comms !== 'app' || !this.contacted.has(ac.callsign) || this.requests.has(ac.callsign)) return [];
+      if (ac.kind === 'departure' && !isOnGround(ac)) {
+        if (ac.nav.mode === 'heading') return [{ ac, kind: 'direct', fix: ac.route }];
+        if (ac.tgtAlt < 10000 && ac.alt >= ac.tgtAlt - 300) return [{ ac, kind: 'higher' }];
+      }
+      return [];
+    });
+    const a = asks[Math.floor(this.events.next() * asks.length)];
+    if (a) this.ask(a.ac.callsign, a.kind, a.fix);
+  }
+
+  /** A pilot asks for something; it waits REQUEST_S for an answer. */
+  private ask(cs: string, kind: 'higher' | 'lower' | 'direct', fix?: string) {
+    const sim = this.sim;
+    const what = { higher: 'request higher', lower: 'request descent', direct: `request direct ${fix}` }[
+      kind
+    ];
+    const said = fix ? what.replace(fix, fix[0] + fix.slice(1).toLowerCase()) : what;
+    this.requests.set(cs, { kind, fix, at: sim.time });
+    this.stats.pilotRequests++;
+    this.pilotSays(cs, { text: `${cs}, ${what}`, speech: `${this.spoken(cs)}, ${said}` }, 0);
+  }
 
   /** A new ATIS: the QNH moves by 1–2 hPa (7 times in 10), the wind veers or backs up to 25° and changes speed. */
   private changeWeather() {
-    const r = () => this.rng.next();
+    const r = () => this.events.next();
     const sim = this.sim;
     const tl = transitionLevel(EHAM, sim.qnh);
     const dq = r() < 0.7 ? (r() < 0.5 ? -1 : 1) * (r() < 0.6 ? 1 : 2) : 0;
@@ -320,6 +365,14 @@ export class Session {
   private housekeeping() {
     const sim = this.sim;
     if (sim.time >= this.nextWeatherAt) this.changeWeather();
+    if (sim.time >= this.nextRequestAt) this.pilotRequest();
+    for (const [cs, q] of this.requests) {
+      const ac = sim.byCallsign(cs);
+      if (ac?.comms === 'app' && sim.time - q.at < REQUEST_S) continue;
+      this.requests.delete(cs);
+      // handed off or gone: the request no longer matters
+      if (ac?.comms === 'app') this.stats.requestsIgnored++;
+    }
     // Uncaught readback errors
     for (const p of this.pendingErrors.filter((x) => sim.time > x.deadline)) {
       this.pendingErrors = this.pendingErrors.filter((x) => x !== p);
@@ -354,11 +407,7 @@ export class Session {
         this.rng.next() < 0.05
       ) {
         this.requested.add(ac.id);
-        this.pilotSays(
-          ac.callsign,
-          { text: `${ac.callsign}, request descent`, speech: `${this.spoken(ac.callsign)}, request descent` },
-          0,
-        );
+        this.ask(ac.callsign, 'lower');
       }
     }
     if (
@@ -747,6 +796,12 @@ export class Session {
         if (entry?.kind === 'pilot') entry.rb = 'caught';
         if (!repeats) r.commands.push(fixed);
       }
+    } else if (r.negative && !r.commands.length && this.requests.has(cs)) {
+      // "unable" / "negative" to a request: refused, and that is an answer too
+      this.requests.delete(cs);
+      s.requestsAnswered++;
+      this.pilotSays(cs, { text: `Roger, ${cs}`, speech: `Roger, ${this.spoken(cs)}` }, 700);
+      return r;
     } else if (r.negative && !r.commands.length) {
       this.pilotSays(cs, { text: `Say again, ${cs}`, speech: `Say again, ${this.spoken(cs)}` }, 700);
       return r;
@@ -766,6 +821,19 @@ export class Session {
       return v.ok ? undefined : v.reason;
     });
     const accepted = r.commands.filter((_, i) => !refusals[i]);
+    const req = this.requests.get(cs);
+    if (
+      req &&
+      accepted.some((c) =>
+        req.kind === 'direct'
+          ? c.type === 'direct'
+          : c.type === 'altitude' &&
+            (req.kind === 'higher' ? c.altitude > ac.alt + 100 : c.altitude < ac.alt - 100),
+      )
+    ) {
+      this.requests.delete(cs);
+      s.requestsAnswered++;
+    }
     let flown = accepted;
     let rbCmds: readonly Command[] = r.commands;
     let error: ReturnType<typeof corruptReadback> = null;

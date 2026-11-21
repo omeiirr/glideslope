@@ -16,6 +16,10 @@ export interface Stats {
   notUnderstood: number;
   readbackErrors: number;
   readbackCaught: number;
+  /** Pro: pilot requests made, answered (approved or refused), and left unanswered for 90 s. */
+  pilotRequests: number;
+  requestsAnswered: number;
+  requestsIgnored: number;
   /** Count per feedback rule, for the debrief. */
   rules: Record<string, number>;
   // tower
@@ -43,6 +47,9 @@ export const emptyStats = (): Stats => ({
   notUnderstood: 0,
   readbackErrors: 0,
   readbackCaught: 0,
+  pilotRequests: 0,
+  requestsAnswered: 0,
+  requestsIgnored: 0,
   rules: {},
   runwayIncursions: 0,
   unnecessaryGoArounds: 0,
@@ -83,6 +90,7 @@ interface Weights {
   /** On top of the normal delay and go-around weights. */
   priorityDelayPer10s: number;
   priorityGoAround: number;
+  ignoredRequest: number;
 }
 
 /** Same events, different weights: Beginner only rewards, Pro also punishes. */
@@ -104,6 +112,7 @@ export const WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     depDelayPer10s: 0,
     priorityDelayPer10s: 0,
     priorityGoAround: -20,
+    ignoredRequest: 0,
   },
   pro: {
     landed: 100,
@@ -122,6 +131,7 @@ export const WEIGHTS: Record<'beginner' | 'pro', Weights> = {
     depDelayPer10s: 0,
     priorityDelayPer10s: -2,
     priorityGoAround: -100,
+    ignoredRequest: -15,
   },
 };
 
@@ -162,6 +172,7 @@ export function totalScore(s: Stats, mode: 'beginner' | 'pro', tower = false): n
       s.unnecessaryGoArounds * w.unnecessaryGoAround +
       (s.depDelaySum / 10) * w.depDelayPer10s +
       (s.priorityDelaySum / 10) * w.priorityDelayPer10s +
-      s.priorityGoArounds * w.priorityGoAround,
+      s.priorityGoArounds * w.priorityGoAround +
+      s.requestsIgnored * w.ignoredRequest,
   );
 }

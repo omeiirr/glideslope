@@ -869,7 +869,7 @@ const SOFT = new Set([
   'are',
   'is',
 ]);
-const NEGATIVE = new Set(['negative', 'correction', 'incorrect', 'wrong']);
+const NEGATIVE = new Set(['negative', 'correction', 'incorrect', 'wrong', 'unable']);
 
 // ---------------------------------------------------------------- entry point
 

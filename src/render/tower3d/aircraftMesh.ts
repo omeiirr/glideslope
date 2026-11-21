@@ -21,8 +21,9 @@ function skin(l: Livery): THREE.CanvasTexture {
   const key = `${l.body ?? ''}|${l.cheat ?? ''}`;
   let t = textures.get(key);
   if (t) return t;
-  const W = 256;
-  const H = 1024;
+  // 512 round: windows and doors stay crisp in the binoculars
+  const W = 512;
+  const H = 2048;
   const c = document.createElement('canvas');
   c.width = W;
   c.height = H;
@@ -40,6 +41,11 @@ function skin(l: Livery): THREE.CanvasTexture {
     if (l.cheat) band(u - 0.035, u - 0.015, 0, 1, l.cheat);
     for (let v = 0.17; v < 0.8; v += 0.0105) band(u - 0.007, u + 0.007, v, v + 0.005, '#27313f');
   }
+  // doors just ahead of and behind the window line, outlined like panel seams
+  g.strokeStyle = '#7d8793';
+  g.lineWidth = 2;
+  for (const u of [0.29, 0.71])
+    for (const v of [0.125, 0.81]) g.strokeRect((u - 0.022) * W, (1 - v - 0.012) * H, 0.044 * W, 0.012 * H);
   // cockpit windows wrap over the top of the nose
   g.fillStyle = '#1c2530';
   g.beginPath();
@@ -85,9 +91,9 @@ function surface(pts: [number, number][], thick: number, mat: THREE.Material): T
 }
 
 /** Nose points to -z, wings along x, y up. Origin on the fuselage centreline at mid-length. */
-/** `lo`: about a quarter of the triangles, for parked aircraft seen from the cab. */
+/** `lo`: about 40% of the triangles, for parked aircraft seen from the cab. */
 export function buildAircraft(type: string, airline: string, lo = false): AircraftMesh {
-  const q = (n: number) => (lo ? Math.max(6, Math.round(n / 2.5)) : n);
+  const q = (n: number) => (lo ? Math.max(6, Math.round(n / 1.6)) : n);
   const T = airframe(type);
   const livery = liveryFor(airline);
   const r = T.d / 2;
@@ -95,6 +101,12 @@ export function buildAircraft(type: string, airline: string, lo = false): Aircra
   const g = new THREE.Group() as AircraftMesh;
   const grey = paint('#c3cad2', 0.5);
   const dark = paint('#23282f', 0.9);
+  let metal = mats.get('metal');
+  if (!metal)
+    mats.set(
+      'metal',
+      (metal = new THREE.MeshStandardMaterial({ color: '#b8bec6', roughness: 0.3, metalness: 0.8 })),
+    );
 
   // fuselage: revolve a profile, then droop the nose and sweep the tail up
   const N = q(48);
@@ -178,6 +190,20 @@ export function buildAircraft(type: string, airline: string, lo = false): Aircra
     wing.rotation.z = side * -0.09; // dihedral
     g.add(wing);
 
+    // flap-track fairings: slim pods under the trailing edge
+    if (!T.prop && !lo)
+      for (const f of [0.22, 0.45, 0.68]) {
+        const pod = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), grey);
+        const chord = rootC + (tipC - rootC) * f;
+        pod.scale.set(r * 0.08, r * 0.1, chord * 0.32);
+        pod.position.set(
+          side * semi * f,
+          wingY + semi * 0.09 * f - r * 0.08,
+          wingZ + sweep * f + chord * 0.95,
+        );
+        g.add(pod);
+      }
+
     if (!T.prop) {
       // small upturned wingtip in the tail colour
       const h = T.span * 0.04;
@@ -229,15 +255,32 @@ export function buildAircraft(type: string, airline: string, lo = false): Aircra
       const eg = new THREE.LatheGeometry(ep, q(18));
       eg.rotateX(Math.PI / 2);
       const ex = side * semi * st;
-      const ey = wingY - eR * 0.95;
+      const ey = wingY + Math.sin(0.09) * Math.abs(ex) - eR * 0.95; // follow the dihedral up to the wing
       const ez = wingZ + sweep * st - eL * 0.25;
       const eng = new THREE.Mesh(eg, paint(livery.cowl, 0.35));
       eng.position.set(ex, ey, ez);
       const fan = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.84, q(18)), dark);
       fan.position.set(ex, ey, ez - eL * 0.47);
-      const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.35, eR * 0.9, eL * 0.6), grey);
-      pylon.position.set(ex, ey + eR * 0.95, ez + eL * 0.1);
-      g.add(eng, fan, pylon);
+      // bare metal intake lip and a cone out of the exhaust
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(eR * 0.88, eR * 0.07, q(6), q(18)), metal);
+      lip.position.set(ex, ey, ez - eL * 0.5);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(eR * 0.45, eL * 0.35, q(12)), metal);
+      cone.rotation.x = Math.PI / 2;
+      cone.position.set(ex, ey, ez + eL * 0.6);
+      // pylon: a low swept blade from the back half of the cowl up into the wing
+      const pylon = surface(
+        [
+          [eL * 0.1, 0],
+          [eL * 0.65, 0],
+          [eL * 0.75, eR * 0.12],
+          [eL * 0.3, eR * 0.12],
+        ],
+        0.12,
+        grey,
+      );
+      pylon.rotation.y = -Math.PI / 2;
+      pylon.position.set(ex, ey + eR * 0.8, ez);
+      g.add(eng, fan, lip, cone, pylon);
     }
 
     // main gear
@@ -294,6 +337,23 @@ export function buildAircraft(type: string, airline: string, lo = false): Aircra
   fin.rotation.y = -Math.PI / 2;
   fin.position.set(0, r * 0.95, L * 0.3);
   g.add(fin);
+  // dorsal fillet blending the fin into the top of the fuselage
+  const fillet = surface(
+    [
+      [-L * 0.07, 0],
+      [T.fin * 0.14, T.fin * 0.15],
+      [L * 0.06, 0],
+    ],
+    Math.max(0.1, r * 0.08),
+    paint(livery.tail),
+  );
+  fillet.rotation.y = -Math.PI / 2;
+  fillet.position.set(0, r * 0.95, L * 0.3);
+  // wing-to-body fairing: the belly bulge under the wing root
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(1, q(20), q(10)), paint('#d3d9df', 0.45));
+  belly.scale.set(r * 0.92, r * 0.5, rootC * 0.85);
+  belly.position.set(0, -r * 0.55, wingZ + rootC * 0.45);
+  g.add(fillet, belly);
   return g;
 }
 

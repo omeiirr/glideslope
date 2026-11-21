@@ -818,7 +818,9 @@ export class TowerRenderer {
     };
     const roofs: THREE.BufferGeometry[] = [];
     const parapets: THREE.BufferGeometry[] = [];
+    const units: THREE.BufferGeometry[] = [];
     const rnd = seeded(31);
+    const urnd = seeded(77); // own stream: keeps the wall and roof tones as they were
     const cabs = this.ap.towers.map((t) => toWorld(t.pos));
     const tint = (geo: THREE.BufferGeometry, c: THREE.Color) => {
       const col = geo.attributes.color as THREE.BufferAttribute;
@@ -857,6 +859,7 @@ export class TowerRenderer {
       walls[b.s].push(wall);
       geo.dispose();
       if (b.s !== 'plain') parapets.push(parapet(pts, b.h));
+      if (b.s !== 'plain') units.push(...roofUnits(pts, b.h, urnd));
     }
 
     const add = (
@@ -896,7 +899,8 @@ export class TowerRenderer {
     add(roofs, { color: '#ffffff', map: tex.roof, roughness: 0.92 });
     add(
       walls.terminal,
-      { color: '#ffffff', map: tex.terminal, roughness: 0.55, metalness: 0.15 },
+      // glassier: the sky shows in the facade
+      { color: '#ffffff', map: tex.terminal, roughness: 0.35, metalness: 0.35 },
       tex.terminalGlow,
     );
     add(walls.office, { color: '#ffffff', map: tex.office }, tex.officeGlow);
@@ -904,6 +908,7 @@ export class TowerRenderer {
     add(walls.plain, { color: '#e6e4de' });
     // both faces: seen from outside as the top of the wall, from the roof as its rim
     add(parapets, { color: '#ffffff', roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide });
+    add(units, { color: '#a9afb5', roughness: 0.6, metalness: 0.3 });
   }
 
   private addFlat(
@@ -1671,6 +1676,66 @@ function poolTexture(): THREE.CanvasTexture {
 
 /** Roof edges stand this much above the roof (m). */
 const PARAPET_H = 1;
+/** Air-handling units and service boxes on a big flat roof, kept inside the outline. Seeded, so stable. */
+function roofUnits(pts: { x: number; z: number }[], h: number, rnd: () => number): THREE.BufferGeometry[] {
+  const area = Math.abs(THREE.ShapeUtils.area(pts.map((p) => new THREE.Vector2(p.x, p.z))));
+  const n = Math.min(14, Math.floor(area / 1200));
+  if (!n) return [];
+  const inside = (x: number, z: number) => {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i]!;
+      const b = pts[j]!;
+      if (a.z > z !== b.z > z && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x) c = !c;
+    }
+    return c;
+  };
+  let x0 = Infinity,
+    x1 = -Infinity,
+    z0 = Infinity,
+    z1 = -Infinity;
+  for (const p of pts)
+    [x0, x1, z0, z1] = [Math.min(x0, p.x), Math.max(x1, p.x), Math.min(z0, p.z), Math.max(z1, p.z)];
+  // line the units up with the longest wall
+  let ang = 0;
+  let best = 0;
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length]!;
+    const len = Math.hypot(q.x - p.x, q.z - p.z);
+    if (len > best) [best, ang] = [len, Math.atan2(q.z - p.z, q.x - p.x)];
+  });
+  const [cs, sn] = [Math.cos(ang), Math.sin(ang)];
+  const out: THREE.BufferGeometry[] = [];
+  for (let tries = 0; out.length < n && tries < n * 6; tries++) {
+    const x = x0 + rnd() * (x1 - x0);
+    const z = z0 + rnd() * (z1 - z0);
+    const w = 2.5 + rnd() * 5;
+    const d = 2 + rnd() * 3.5;
+    // all four corners plus a 2 m margin from the parapet
+    const m = 2;
+    if (
+      ![
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ].every(([sx, sz]) =>
+        inside(
+          x + cs * sx! * (w / 2 + m) - sn * sz! * (d / 2 + m),
+          z + sn * sx! * (w / 2 + m) + cs * sz! * (d / 2 + m),
+        ),
+      )
+    )
+      continue;
+    const tall = 1.2 + rnd() * 1.8;
+    const box = new THREE.BoxGeometry(w, tall, d);
+    box.rotateY(-ang);
+    box.translate(x, h + tall / 2, z);
+    out.push(box);
+  }
+  return out;
+}
+
 /**
  * A parapet round a flat roof: a 1 m upstand along the outline with a light metal coping on top and a darker
  * inner face, so each roof level has a bright rim and a shadow line where it meets the roof.

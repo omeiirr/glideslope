@@ -99,7 +99,7 @@ export function Menu({
   const next = lessons.find((s) => !progress.lessons.includes(s.lesson!));
   const start = next ?? SCENARIOS.find((s) => s.id === 'free')!;
   const startLabel = !next
-    ? 'Play: Beginner free play'
+    ? 'Play: Radar free play'
     : next === lessons[0]
       ? 'Start the tutorial'
       : `Continue: lesson ${next.name}`;
@@ -142,10 +142,6 @@ export function Menu({
             {group(
               'Lessons',
               SCENARIOS.filter((s) => s.view === 'tower' && s.lesson),
-            )}
-            {group(
-              'Free play',
-              SCENARIOS.filter((s) => s.view === 'tower' && !s.lesson && s.mode === 'beginner'),
             )}
             {group(
               'Professional scenarios',

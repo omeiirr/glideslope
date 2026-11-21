@@ -237,7 +237,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'free',
-    name: 'Beginner free play',
+    name: 'Radar · Free play',
     blurb: 'Light traffic, no penalties, hints on. Play as long as you like.',
     mode: 'beginner',
     seed: 0,

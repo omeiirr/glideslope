@@ -58,6 +58,7 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
         showConflicts: s.mode === 'beginner' || !real,
         isNew: (cs) => !s.wasContacted(cs),
         guide: s.finished ? undefined : s.lesson?.guide,
+        halos: s.halos,
       };
       // conflict alert: predicted conflicts chime only where the scope shows them
       sounds.room(
@@ -164,6 +165,16 @@ export function ScopeView({ session, realistic, dcb, range, recenter, onCycleRan
           <div class="scope-tools">
             <button type="button" class="chipbtn" onClick={onCycleRange} title="Change range and re-centre">
               Range {range} NM
+            </button>
+            <button
+              type="button"
+              class="chipbtn"
+              disabled={session.selectedId === null}
+              aria-pressed={session.selectedId !== null && session.halos.has(session.selectedId)}
+              onClick={() => session.selectedId !== null && session.toggleHalo(session.selectedId)}
+              title="3 NM separation ring around the selected aircraft (key H)"
+            >
+              Halo <kbd>H</kbd>
             </button>
             <span class="chipbtn">QNH {session.sim.qnh}</span>
             <span class="chipbtn">

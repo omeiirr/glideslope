@@ -581,7 +581,8 @@ function Approach() {
         <dt>Separation</dt>
         <dd>
           Keep aircraft at least <b>3 NM</b> apart horizontally or <b>1000 ft</b> vertically. Either one is
-          enough.
+          enough. To see the 3 NM, select an aircraft and press <kbd>H</kbd> (or the Halo button): a ring of
+          that radius follows it on the scope.
         </dd>
         <dt>Wake turbulence</dt>
         <dd>

@@ -1,4 +1,4 @@
-import { TICK, headingVec, onRadar, priorityTag, type Aircraft, type Vec } from '../../core';
+import { SEP_NM, TICK, headingVec, onRadar, priorityTag, type Aircraft, type Vec } from '../../core';
 import {
   conflictIds,
   finalPoint,
@@ -258,6 +258,16 @@ export const drawModern: DrawScope = (ctx, view, scene, ap) => {
               : C.dim;
     hit.targets.push({ id: ac.id, x: p.x, y: p.y });
 
+    if (scene.halos?.has(ac.id)) {
+      // separation ring: 3 NM radius, so another target inside it is a loss of separation (if level too)
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, SEP_NM * view.scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     if (selected) {
       ctx.fillStyle = 'rgba(92,200,255,0.12)';
       ctx.strokeStyle = C.blue;

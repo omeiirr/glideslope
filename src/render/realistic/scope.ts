@@ -1,4 +1,4 @@
-import { onRadar, priorityTag, type Vec } from '../../core';
+import { SEP_NM, onRadar, priorityTag, type Vec } from '../../core';
 import {
   conflictIds,
   finalPoint,
@@ -162,6 +162,13 @@ export function drawRealistic(
     });
     ctx.globalAlpha = o.brite;
     hit.targets.push({ id: ac.id, x: p.x, y: p.y });
+    if (scene.halos?.has(ac.id)) {
+      ctx.strokeStyle = '#D8D8D8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, SEP_NM * view.scale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     if (ac.comms === 'none') {
       // unassociated target: green cross and altitude only

@@ -56,6 +56,8 @@ export interface Scene {
   isNew: (callsign: string) => boolean;
   /** Lessons: a path to fly (NM), with labels along it. */
   guide?: { path: Vec[]; labels: { at: Vec; text: string; left?: boolean }[] };
+  /** Aircraft with a separation ring (halo) drawn around them. */
+  halos?: ReadonlySet<number>;
 }
 
 /** Clickable areas produced by the last draw, for hit-testing. */

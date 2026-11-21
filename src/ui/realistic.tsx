@@ -58,6 +58,12 @@ export function RealisticDcb({
         `Range rings every ${dcb.rr} miles`,
       )}
       {B('MAPS', () => setDcb({ ...dcb, maps: !dcb.maps }), dcb.maps)}
+      {B(
+        'HALO',
+        () => session.selectedId !== null && session.toggleHalo(session.selectedId),
+        session.selectedId !== null && session.halos.has(session.selectedId),
+        '3 NM separation ring around the selected aircraft (key H)',
+      )}
       {B(`BRITE\n${Math.round(dcb.brite * 100)}`, () =>
         setDcb({ ...dcb, brite: dcb.brite <= 0.5 ? 1 : dcb.brite - 0.25 }),
       )}

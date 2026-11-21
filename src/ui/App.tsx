@@ -94,7 +94,7 @@ export function App() {
   const live = useRef({ pttDown, pttUp, session });
   live.current = { pttDown, pttUp, session };
 
-  // Keyboard: PTT key (hold), Enter to type, Escape to deselect.
+  // Keyboard: PTT key (hold), Enter to type, Escape to deselect, H for a halo on the selected aircraft.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const { session: s, pttDown: d } = live.current;
@@ -107,6 +107,8 @@ export function App() {
         e.preventDefault();
         inputRef.current?.focus();
       } else if (e.key === 'Escape') s.select(null);
+      else if ((e.key === 'h' || e.key === 'H') && s.selectedId !== null && s.scenario.view !== 'tower')
+        s.toggleHalo(s.selectedId);
     };
     const up = (e: KeyboardEvent) => {
       if (e.code === settingsRef.current.pttKey) live.current.pttUp();

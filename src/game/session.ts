@@ -212,6 +212,12 @@ export class Session {
     this.selectedId = id;
     this.changed();
   }
+  /** Aircraft with a 3 NM ring on the scope (display only). */
+  readonly halos = new Set<number>();
+  toggleHalo(id: number) {
+    if (!this.halos.delete(id)) this.halos.add(id);
+    this.changed();
+  }
   setPaused(p: boolean) {
     this.paused = p;
     this.changed();

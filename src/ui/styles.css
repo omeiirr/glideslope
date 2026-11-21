@@ -1385,3 +1385,14 @@ dl.defs dd {
   margin-top: 4vh;
   max-height: calc(100% - 4vh);
 }
+/* the menu over a blurred still of the tower view (public/menu-backdrop.jpg, pre-blurred) */
+.overlay.menu-backdrop {
+  background:
+    linear-gradient(rgba(5, 8, 14, 0.45), rgba(5, 8, 14, 0.6)),
+    url('/menu-backdrop.jpg') center bottom / cover no-repeat,
+    var(--bg, #05080e);
+}
+.dialog.menu {
+  background: rgba(13, 20, 34, 0.84);
+  backdrop-filter: blur(8px);
+}

@@ -104,7 +104,7 @@ export function Menu({
       ? 'Start the tutorial'
       : `Continue: lesson ${next.name}`;
   return (
-    <div class="overlay">
+    <div class="overlay menu-backdrop">
       <div ref={ref} class="dialog menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
         <h1 id="menu-title">Glideslope · Schiphol Approach</h1>
         <p>

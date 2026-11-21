@@ -119,7 +119,15 @@ export function Menu({
     ? 'Play: Radar free play'
     : `${next === lessons[0] ? 'Start the tutorial' : 'Continue'}: ${next.name.replace(/^\d+ · /, '')}, about ${next.minutes} min`;
   return (
-    <div class="overlay menu-backdrop">
+    <div
+      class="overlay menu-backdrop"
+      onMouseMove={(e) => {
+        // -1…1 from the centre of the screen; CSS turns it into a small shift of the backdrop
+        const el = e.currentTarget;
+        el.style.setProperty('--px', ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
+        el.style.setProperty('--py', ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
+      }}
+    >
       <div ref={ref} class="dialog menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
         <div>
           <h1 id="menu-title" class="menu-title">

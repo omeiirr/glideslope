@@ -1392,10 +1392,25 @@ dl.defs dd {
 }
 /* the menu over a blurred still of the central tower view at dusk (public/menu-backdrop.jpg, pre-blurred) */
 .overlay.menu-backdrop {
+  background: var(--bg, #05080e);
+  overflow: hidden;
+}
+/* its own layer, 30 px bigger all round, shifted with the cursor (--px, --py from Menu) */
+.overlay.menu-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: -30px;
+  z-index: -1;
   background:
     linear-gradient(rgba(5, 8, 14, 0.45), rgba(5, 8, 14, 0.6)),
-    url('/menu-backdrop.jpg') center bottom / cover no-repeat,
-    var(--bg, #05080e);
+    url('/menu-backdrop.jpg') center bottom / cover no-repeat;
+  transform: translate(calc(var(--px, 0) * 20px), calc(var(--py, 0) * 8px));
+  transition: transform 0.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay.menu-backdrop::before {
+    transform: none;
+  }
 }
 .dialog.menu {
   background: rgba(13, 20, 34, 0.6);

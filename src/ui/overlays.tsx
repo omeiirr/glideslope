@@ -89,7 +89,7 @@ export function Menu({
   return (
     <div class="overlay">
       <div ref={ref} class="dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-        <h1 id="menu-title">Vectors · Schiphol Approach</h1>
+        <h1 id="menu-title">Glideslope · Schiphol Approach</h1>
         <p>
           You are the approach controller at Amsterdam Schiphol. Vector arrivals onto the ILS for runway 18R
           and hand departures off, using ICAO phraseology. Talk to pilots with push-to-talk (hold Space) or
@@ -125,9 +125,30 @@ export function Menu({
             </button>
           </span>
           <span class="dim" style="font-size:11.5px">
-            Free and open source (MIT) · not for real-world training
+            Free and open source (GPL-3.0) · not for real-world training
           </span>
         </div>
+        <details class="credits">
+          <summary>Credits</summary>
+          <ul>
+            <li>Airport and surroundings: © OpenStreetMap contributors (ODbL 1.0)</li>
+            <li>Airport data: openScope (MIT) and OurAirports (public domain)</li>
+            <li>Pilot voices: Piper, trained on the VCTK corpus (University of Edinburgh, CC BY 4.0)</li>
+            <li>Phonemizer: espeak-ng (GPL-3.0)</li>
+            <li>
+              Speech recognition: OpenAI Whisper via Transformers.js (Apache-2.0) and ONNX Runtime (MIT)
+            </li>
+            <li>Pavement textures: Poly Haven (CC0)</li>
+            <li>3D: three.js (MIT) · UI: Preact (MIT) · Fonts: Inter and JetBrains Mono (SIL OFL 1.1)</li>
+          </ul>
+          <p>
+            Full list and licences: THIRD_PARTY.md in the{' '}
+            <a href="https://github.com/omeiirr/vectors" target="_blank" rel="noopener">
+              source code
+            </a>
+            .
+          </p>
+        </details>
       </div>
     </div>
   );

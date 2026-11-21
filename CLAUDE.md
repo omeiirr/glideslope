@@ -1,6 +1,6 @@
-# Vectors — browser ATC approach simulator with voice
+# Glideslope — browser ATC simulator with voice
 
-> Working title "Vectors" (rename freely). This file is the project spec. Read it fully at the start of every session, then read `PROGRESS.md` and `DECISIONS.md`.
+> Named "Glideslope" (2026-11-21; was "Vectors"). This file is the project spec. Read it fully at the start of every session, then read `PROGRESS.md` and `DECISIONS.md`.
 
 ## 1. What we are building
 
@@ -27,7 +27,7 @@ Inspiration: openScope (radar sim, unmaintained for about 4 years) plus the voic
 | Game modes | **Beginner** (no separation rules or penalties, lots of help) and **Professional** (real separation, wake turbulence and procedure rules, penalties). See §8. |
 | Display modes | **Modern** (default) and **Realistic** (STARS-like). Designs in `docs/design/`. |
 | Hosting | Static site on GitHub Pages; everything client-side |
-| License | MIT. Third-party data, models and voices keep their own licenses, listed in `THIRD_PARTY.md`. |
+| License | GPL-3.0 (2026-11-21; was MIT). Third-party data, models and voices keep their own licenses, listed in `THIRD_PARTY.md`. |
 
 ## 3. Tech stack
 

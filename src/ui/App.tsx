@@ -17,7 +17,7 @@ import { ScopeView } from './ScopeView';
 import { TowerView } from './TowerView';
 import { asrPrompt } from '../speech/prompt';
 
-export const APP_NAME = 'Vectors';
+export const APP_NAME = 'Glideslope';
 const RANGES = [40, 60, 20];
 /** Learn screen voice: VCTK p225 (English, female), the clearest in a Whisper listening test (DECISIONS.md). */
 const LEARN_VOICE = 6;

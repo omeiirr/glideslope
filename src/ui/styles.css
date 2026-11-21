@@ -594,6 +594,22 @@ button {
   color: var(--dim);
   text-transform: uppercase;
 }
+.credits {
+  font-size: 11.5px;
+  color: var(--text2);
+}
+.credits summary {
+  cursor: pointer;
+  color: var(--dim);
+}
+.credits ul {
+  margin: 8px 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.credits a {
+  color: inherit;
+}
 .dialog p {
   margin: 0;
   line-height: 1.5;

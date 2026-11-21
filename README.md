@@ -1,6 +1,6 @@
-# Vectors
+# Glideslope
 
-A free, open-source air traffic control simulator that runs in your browser. You are **Schiphol Approach**, vectoring arrivals onto the ILS for runway 18R on a radar scope, or **Schiphol Tower**, clearing aircraft to land and take off from a 3D tower view. You talk to pilots with **push-to-talk** or by typing. Pilots answer over the radio, and the game tells you when your phraseology isn't standard ICAO.
+A free, open-source (GPL-3.0) air traffic control simulator that runs in your browser. You are **Schiphol Approach**, vectoring arrivals onto the ILS for runway 18R on a radar scope, or **Schiphol Tower**, clearing aircraft to land and take off from a 3D tower view. You talk to pilots with **push-to-talk** or by typing. Pilots answer over the radio, and the game tells you when your phraseology isn't standard ICAO.
 
 **Play:** https://omeiirr.github.io/vectors/
 
@@ -96,6 +96,8 @@ Pushes to `main` deploy to GitHub Pages once lint, typecheck and tests pass.
 
 ## License
 
-MIT. Third-party data, models and voices keep their own licences, listed in [`THIRD_PARTY.md`](THIRD_PARTY.md).
+Copyright (C) 2026 Omeir. Glideslope is free software under the [GNU General Public License v3.0](LICENSE): you may use, change and share it, and copies or changed versions you share must stay under the GPL with their source. Third-party data, models and voices keep their own licences, listed in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
-Vectors is a game, not a training tool for real-world air traffic control.
+The name "Glideslope" and its logo are not covered by the licence: forks must use a different name.
+
+Glideslope is a game, not a training tool for real-world air traffic control.

@@ -6,7 +6,8 @@ Every non-trivial choice, newest milestone last. Format: **decision** — reason
 - **No GitHub remote yet; local commits only.** CI and Pages workflows are written but have never run. The owner creates the remote and pushes.
 - **Commit straight to `main`, tag each finished milestone** (`m0`, `m1`, …).
 - **ASR/TTS models load from the Hugging Face CDN at runtime** and are cached by the browser. Keeps the repo small; no audio leaves the machine, but the browser does contact huggingface.co to fetch model files.
-- **Name stays "Vectors".**
+- **Name stays "Vectors".** Superseded 2026-11-21: renamed **Glideslope**, because Vectrr, Vectorline and Vector Approach are voice/approach ATC games with near names; internal keys (`vectors.` settings, `vectors-models` cache, `__vectors`) keep the old name so saved settings and downloaded models survive.
+- **License GPL-3.0 (2026-11-21, was MIT).** Compatible with the GPL-3.0 espeak-ng in the Piper phonemizer, and copies that are re-hosted must stay open.
 
 ## M0 Scaffold
 - **Fonts self-hosted via `@fontsource-variable/*`** instead of the Google Fonts link in the mockups — no third-party request on page load (spec §12: no trackers).

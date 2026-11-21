@@ -86,6 +86,15 @@ export function Menu({
       </div>
     </>
   );
+  // one obvious first click: the next unfinished lesson, then free play
+  const lessons = SCENARIOS.filter((s) => s.lesson && !s.view);
+  const next = lessons.find((s) => !progress.lessons.includes(s.lesson!));
+  const start = next ?? SCENARIOS.find((s) => s.id === 'free')!;
+  const startLabel = !next
+    ? 'Play: Beginner free play'
+    : next === lessons[0]
+      ? 'Start the tutorial'
+      : `Continue: lesson ${next.name}`;
   return (
     <div class="overlay">
       <div ref={ref} class="dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
@@ -94,6 +103,12 @@ export function Menu({
           You are the approach controller at Amsterdam Schiphol. Vector arrivals onto the ILS for runway 18R
           and hand departures off, using ICAO phraseology. Talk to pilots with push-to-talk (hold Space) or
           type. Everything runs in your browser; nothing you say leaves your machine.
+        </p>
+        <p class="menu-start">
+          <button type="button" class="btn primary" onClick={() => onStart(start)}>
+            {startLabel} →
+          </button>
+          <span class="dim">or pick any lesson, game or scenario below</span>
         </p>
         {group(
           'Tutorial',
@@ -521,7 +536,7 @@ export function TutorialCard({ session, onInsert }: { session: Session; onInsert
       <div class="panel-title" style="padding:0">
         <span>LESSON · {lesson.title.toUpperCase()}</span>
         <span>
-          {session.lessonStep + 1} / {lesson.steps.length}
+          Step {session.lessonStep + 1} of {lesson.steps.length}
         </span>
       </div>
       <div>{step.text}</div>
@@ -538,6 +553,10 @@ export function TutorialCard({ session, onInsert }: { session: Session; onInsert
           </button>
         </>
       )}
+      <div class="dim" style="font-size:11.5px">
+        {step.say ? 'Send it (Enter), then watch the aircraft. ' : ''}The next step appears by itself once
+        it's done.
+      </div>
     </div>
   );
 }

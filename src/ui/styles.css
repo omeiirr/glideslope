@@ -1360,3 +1360,13 @@ dl.defs dd {
   margin: 4px 0 8px;
   padding-left: 18px;
 }
+.menu-start {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.menu-start .btn {
+  font-size: 15px;
+  padding: 10px 18px;
+}

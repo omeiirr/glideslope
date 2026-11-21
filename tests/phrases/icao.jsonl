@@ -190,3 +190,14 @@
 {"input": "Lufthansa niner lima kilo, go around", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
 {"input": "delta lima hotel niner lima kilo, Schiphol Approach, identified", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
 {"input": "Lufthansa niner lima kilo, say again", "expectedCallsign": "DLH9LK", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}
+{"input": "KLM1234, descend altitude 3000, QNH 1013, expedite descent", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}, {"type": "expedite", "climb": false}], "expectedIssues": []}
+{"input": "Speedbird 432, climb flight level 90, expedite climb", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 9000, "fl": true}, {"type": "expedite", "climb": true}], "expectedIssues": []}
+{"input": "KLM1234, expedite descent until passing flight level 80", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "expedite", "climb": false}], "expectedIssues": []}
+{"input": "KLM1234, descend altitude 3000, QNH 1013, at 2000 feet per minute or greater", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}, {"type": "rate", "fpm": 2000, "limit": "greater"}], "expectedIssues": []}
+{"input": "Speedbird 432, climb flight level 100 at 1500 feet per minute or less", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 10000, "fl": true}, {"type": "rate", "fpm": 1500, "limit": "less"}], "expectedIssues": []}
+{"input": "KLM1234, turn left 20 degrees", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 70, "turn": "left", "by": 20}], "expectedIssues": []}
+{"input": "KLM1234, reduce to minimum approach speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "minimumSpeed"}], "expectedIssues": []}
+{"input": "KLM1234, no ATC speed restrictions", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed", "noRestrictions": true}], "expectedIssues": []}
+{"input": "KLM1234, report heading", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "report", "what": "heading"}], "expectedIssues": []}
+{"input": "Speedbird 432, report level", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "report", "what": "level"}], "expectedIssues": []}
+{"input": "KLM1234, report speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "report", "what": "speed"}], "expectedIssues": []}

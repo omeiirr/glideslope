@@ -239,6 +239,11 @@ const COMMANDS: CommandDoc[] = [
     note: 'Give the direction of turn and a three-digit heading. Without a direction, the pilot takes the shorter way.',
   },
   {
+    title: 'Turn by a number of degrees',
+    cmds: [{ type: 'heading', heading: 70, turn: 'left', by: 20 }],
+    note: 'A small correction from the present heading, e.g. to fine-tune the spacing on final.',
+  },
+  {
     title: 'Keep the current heading',
     cmds: [{ type: 'presentHeading' }],
     note: 'Stops a turn, or leaves a route or hold.',
@@ -254,6 +259,22 @@ const COMMANDS: CommandDoc[] = [
     note: `At or below ${TA} ft use “altitude”, and give the QNH with the first such clearance.`,
   },
   {
+    title: 'Expedite a climb or descent',
+    cmds: [
+      { type: 'altitude', altitude: 5000, fl: true },
+      { type: 'expedite', climb: false },
+    ],
+    note: 'The pilot climbs or descends about one and a half times faster than normal until reaching the level. Useful to solve a conflict quickly.',
+  },
+  {
+    title: 'Rate of climb or descent',
+    cmds: [
+      { type: 'altitude', altitude: 5000, fl: true },
+      { type: 'rate', fpm: 2000, limit: 'greater' },
+    ],
+    note: '“Or greater” sets a minimum rate, “or less” a maximum. It applies until the aircraft reaches the level; a pilot refuses a rate the aircraft cannot fly.',
+  },
+  {
     title: 'Reduce speed',
     cmds: [{ type: 'speed', speed: 220 }],
     note: '“Reduce” or “increase” must match the change.',
@@ -266,7 +287,12 @@ const COMMANDS: CommandDoc[] = [
   {
     title: 'Cancel a speed restriction',
     cmds: [{ type: 'resumeSpeed' }],
-    note: 'The pilot flies their own speeds again.',
+    note: 'The pilot flies their own speeds again. “No ATC speed restrictions” means the same.',
+  },
+  {
+    title: 'Slowest approach speed',
+    cmds: [{ type: 'minimumSpeed' }],
+    note: 'The pilot slows to the final approach speed of the type: the most you can slow an aircraft.',
   },
   {
     title: 'Go direct to a fix',
@@ -312,6 +338,11 @@ const COMMANDS: CommandDoc[] = [
       ),
       pilot: p(`Descend altitude 3000, ${STUDENT}`, `Descend altitude ${spokenAltitude(3000)}, ${CS_SPOKEN}`),
     },
+  },
+  {
+    title: 'Check a heading, level or speed',
+    cmds: [{ type: 'report', what: 'level' }],
+    note: '“Report heading”, “report level” or “report speed”: the pilot tells you what the aircraft is actually doing. Handy when a readback sounded wrong.',
   },
   {
     title: 'Priority: PAN PAN or minimum fuel',

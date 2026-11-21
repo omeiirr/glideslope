@@ -66,3 +66,7 @@
 {"input": "Speedbird 432, climb flight level 70R.", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 7000, "fl": true}], "expectedIssues": []}
 {"input": "Speedbird 432, climb flight level 10L.", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 10000, "fl": true}], "expectedIssues": []}
 {"input": "KLM 1234, turn left heading 270L.", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 270, "turn": "left"}], "expectedIssues": []}
+{"input": "Speedbird four three two, climb flight level one zero zero, expedite climb", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "altitude", "altitude": 10000, "fl": true}, {"type": "expedite", "climb": true}], "expectedIssues": []}
+{"input": "KLM one two three four, turn right three zero degrees", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "heading", "heading": 120, "turn": "right", "by": 30}], "expectedIssues": []}
+{"input": "KLM one two three four expedite decent", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "expedite", "climb": false}], "expectedIssues": []}
+{"input": "KLM 1234, descend altitude 3000, QNH 1013, at two thousand feet per minute or more", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}, {"type": "rate", "fpm": 2000, "limit": "greater"}], "expectedIssues": []}

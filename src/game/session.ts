@@ -575,7 +575,14 @@ export class Session {
   parseContext(defaultToSelected: boolean): ParseContext {
     const aircraft: AcContext[] = this.sim.aircraft
       .filter((a) => a.comms === this.mine)
-      .map((a) => ({ callsign: a.callsign, alt: a.alt, hdg: a.hdg, ias: a.ias, qnhGiven: a.qnhGiven }));
+      .map((a) => ({
+        callsign: a.callsign,
+        alt: a.alt,
+        hdg: a.hdg,
+        ias: a.ias,
+        qnhGiven: a.qnhGiven,
+        tgtAlt: a.tgtAlt,
+      }));
     const sel = this.selected;
     return {
       airport: EHAM,

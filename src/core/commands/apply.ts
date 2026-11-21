@@ -2,6 +2,7 @@ import {
   canMakeExit,
   exitsFor,
   isOnGround,
+  MAX_RATE,
   lineUp,
   runwayFrame,
   startGoAround,
@@ -57,6 +58,14 @@ export function validateCommand(ac: Aircraft, cmd: Command, env: Env): CommandRe
       if (cmd.altitude < 1000) return unable('unable, too low');
       if (cmd.altitude > 15000) return unable('unable, too high');
       return OK;
+    case 'expedite':
+    case 'rate': {
+      if (ac.gsEstablished) return unable('unable, on the glideslope');
+      if (cmd.type === 'expedite' || cmd.limit === 'less') return OK;
+      const climbing = ac.tgtAlt > ac.alt + 50;
+      const max = MAX_RATE * (climbing ? ac.perf.climbFpm : ac.perf.descentFpm);
+      return cmd.fpm <= max ? OK : unable(`unable, best rate ${Math.floor(max / 100) * 100} feet per minute`);
+    }
     case 'speed':
       if (cmd.speed < ac.perf.vapp) return unable(`unable, minimum speed ${ac.perf.vapp}`);
       if (cmd.speed > ac.perf.maxIas) return unable(`unable, maximum speed ${ac.perf.maxIas}`);
@@ -158,6 +167,18 @@ export function applyCommand(ac: Aircraft, cmd: Command, env: Env): CommandResul
     case 'resumeSpeed':
       ac.tgtIas = null;
       ac.speedUntilDme = undefined;
+      break;
+    case 'minimumSpeed':
+      ac.tgtIas = ac.perf.vapp;
+      ac.speedUntilDme = undefined;
+      break;
+    case 'expedite':
+      ac.expediteVs = true;
+      break;
+    case 'rate':
+      ac.vRate = { fpm: cmd.fpm, limit: cmd.limit };
+      break;
+    case 'report':
       break;
     case 'direct':
       leaveApproach(ac);

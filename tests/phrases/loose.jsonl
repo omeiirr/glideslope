@@ -236,11 +236,11 @@
 {"input": "KLM1234 maintain 180", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "speed", "speed": 180}], "expectedIssues": ["speed-knots"]}
 {"input": "KLM1234 speed 180 knots until 4 miles", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "speed", "speed": 180, "untilDme": 4}], "expectedIssues": ["speed-wording"]}
 {"input": "KLM1234 maintain 160 knots till 4 DME", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "speed", "speed": 160, "untilDme": 4}], "expectedIssues": []}
-{"input": "KLM 1234 no speed restrictions", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": ["speed-resume-wording"]}
+{"input": "KLM 1234 no speed restrictions", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed", "noRestrictions": true}], "expectedIssues": []}
 {"input": "KLM one two three four normal speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
-{"input": "KLM one two four three no speed restrictions", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": ["speed-resume-wording"]}
+{"input": "KLM one two four three no speed restrictions", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "resumeSpeed", "noRestrictions": true}], "expectedIssues": []}
 {"input": "kilo lima mike one two four three normal speed", "expectedCallsign": "KLM1243", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
-{"input": "bravo alfa whiskey four three two no speed restrictions", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": ["speed-resume-wording"]}
+{"input": "bravo alfa whiskey four three two no speed restrictions", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "resumeSpeed", "noRestrictions": true}], "expectedIssues": []}
 {"input": "Speedbird four three two normal speed", "expectedCallsign": "BAW432", "expectedCommands": [{"type": "resumeSpeed"}], "expectedIssues": []}
 {"input": "Delta seven two direct ARTIP", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "direct", "fix": "ARTIP"}], "expectedIssues": ["direct-wording"]}
 {"input": "DAL72 proceed direct to ARTIP", "expectedCallsign": "DAL72", "expectedCommands": [{"type": "direct", "fix": "ARTIP"}], "expectedIssues": ["direct-wording"]}
@@ -326,3 +326,8 @@
 {"input": "echo zulu yankee four five mike papa good morning, identified", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "identify"}], "expectedIssues": []}
 {"input": "echo zulu yankee four five mike papa going around", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "goAround"}], "expectedIssues": []}
 {"input": "echo zulu yankee four five mike papa repeat", "expectedCallsign": "EZY45MP", "expectedCommands": [{"type": "sayAgain"}], "expectedIssues": []}
+{"input": "KLM 1234 say altitude", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "report", "what": "level"}], "expectedIssues": ["report-wording"]}
+{"input": "KLM 1234 descend altitude 3000 QNH 1013 expedite", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "altitude", "altitude": 3000, "fl": false, "qnh": 1013}, {"type": "expedite", "climb": false}], "expectedIssues": ["expedite-wording"]}
+{"input": "KLM 1234 descend at 2000 fpm", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "rate", "fpm": 2000}], "expectedIssues": []}
+{"input": "KLM 1234 slow to minimum approach speed", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "minimumSpeed"}], "expectedIssues": ["speed-wording"]}
+{"input": "KLM 1234 no a t c speed restrictions", "expectedCallsign": "KLM1234", "expectedCommands": [{"type": "resumeSpeed", "noRestrictions": true}], "expectedIssues": []}

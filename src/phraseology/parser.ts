@@ -19,6 +19,8 @@ export interface AcContext {
   hdg: number;
   ias: number;
   qnhGiven: boolean;
+  /** Cleared level (ft), for the answer to "report level"; the current altitude if not given. */
+  tgtAlt?: number;
 }
 
 export interface ParseContext {
@@ -274,7 +276,7 @@ const heading: Matcher = (c) => {
   if (turn && !hasWord && (by || (degrees && n.v <= 90)) && c.ac) {
     // relative turn: "turn left 20 degrees"
     value = ((Math.round(c.ac.hdg) + (turn === 'left' ? -n.v : n.v) + 359) % 360) + 1;
-    return { next: i, cmd: { type: 'heading', heading: value, turn } };
+    return { next: i, cmd: { type: 'heading', heading: value, turn, by: n.v } };
   }
   if (to && n.s.length === 2 && 200 + n.v <= 360) {
     // "heading to seven zero" is almost always a misheard "two seven zero"
@@ -297,11 +299,20 @@ const speed: Matcher = (c) => {
   // resume normal speed
   const r = c.skip(i, 'resume');
   if (c.w(r, 'normal') && c.w(r + 1, 'speed')) return { next: r + 2, cmd: { type: 'resumeSpeed' } };
-  if (c.w(i, 'no') && c.w(i + 1, 'speed') && c.w(i + 2, 'restriction', 'restrictions'))
+  // "no [ATC] speed restrictions" (ICAO Doc 4444 12.3.1.4)
+  if (c.w(i, 'no')) {
+    let j = i + 1;
+    if (c.w(j, 'atc')) j++;
+    else if (c.w(j, 'a') && c.w(j + 1, 't') && c.w(j + 2, 'c')) j += 3;
+    if (c.w(j, 'speed') && c.w(j + 1, 'restriction', 'restrictions'))
+      return { next: j + 2, cmd: { type: 'resumeSpeed', noRestrictions: true } };
+  }
+  const m = c.skip(i, 'reduce', 'slow', 'down', 'to', 'speed');
+  if (c.w(m, 'minimum') && c.w(m + 1, 'approach') && c.w(m + 2, 'speed'))
     return {
-      next: i + 3,
-      cmd: { type: 'resumeSpeed' },
-      issues: [issue('info', 'speed-resume-wording', c.said(i, i + 3))],
+      next: m + 3,
+      cmd: { type: 'minimumSpeed' },
+      issues: c.w(i, 'reduce') ? [] : [issue('info', 'speed-wording', c.said(i, m + 3))],
     };
   if (c.w(i, 'speed') && c.w(i + 1, 'your') && c.w(i + 2, 'discretion'))
     return {
@@ -428,6 +439,72 @@ const altitude: Matcher = (c) => {
   const cmd: Command = { type: 'altitude', altitude: feet, fl: isFl };
   if (qnh !== undefined && !isFl) cmd.qnh = qnh;
   return { next: i, cmd, issues };
+};
+
+/**
+ * "expedite climb / descent [until passing …]" (Doc 4444 12.3.1.2), or a bare "expedite" after a level
+ * ("descend flight level 70, expedite"). "Until passing" is not modelled: it expedites all the way.
+ */
+const expedite: Matcher = (c) => {
+  if (!c.w(c.i, 'expedite')) return null;
+  let i = c.i + 1;
+  let climb: boolean;
+  const issues: Hit['issues'] = [];
+  if (c.w(i, 'climb')) climb = true;
+  else if (c.w(i, 'descent', 'descend', 'decent')) climb = false;
+  else {
+    // the direction of the level given before it, else of the clearance the aircraft has
+    const verbs = c.t.slice(0, c.i).filter((k) => k.t === 'w' && (k.v === 'climb' || k.v === 'descend'));
+    const last = verbs.at(-1);
+    if (last?.t === 'w') climb = last.v === 'climb';
+    else if (c.ac) climb = (c.ac.tgtAlt ?? c.ac.alt) > c.ac.alt;
+    else return null;
+    issues.push(issue('info', 'expedite-wording', c.said(c.i, i)));
+    i--;
+  }
+  i++;
+  if (c.w(i, 'until') && c.w(i + 1, 'passing')) {
+    i = c.skip(i + 2, 'fl', 'altitude', 'level');
+    if (c.n(i)) i = c.skip(i + 1, 'feet');
+  }
+  return { next: i, cmd: { type: 'expedite', climb }, issues };
+};
+
+/** "[descend] at 2000 feet per minute [or greater / or less]" (Doc 4444 12.3.1.2). */
+const rate: Matcher = (c) => {
+  let i = c.skip(c.i, 'climb', 'descend');
+  if (!c.w(i, 'at')) return null;
+  const n = c.n(i + 1);
+  if (!n || n.v < 300 || n.v > 6000) return null;
+  i += 2;
+  if (c.w(i, 'fpm')) i++;
+  else if (c.w(i, 'feet') && c.w(i + 1, 'per', 'a') && c.w(i + 2, 'minute')) i += 3;
+  else return null;
+  let limit: 'greater' | 'less' | undefined;
+  if (c.w(i, 'or') && c.w(i + 1, 'greater', 'more', 'higher')) limit = 'greater';
+  else if (c.w(i, 'or') && c.w(i + 1, 'less', 'lower')) limit = 'less';
+  if (limit) i += 2;
+  return { next: i, cmd: limit ? { type: 'rate', fpm: n.v, limit } : { type: 'rate', fpm: n.v } };
+};
+
+/** "report heading / level / speed"; "say …" (FAA style) is understood too. */
+const report: Matcher = (c) => {
+  const say = c.w(c.i, 'say');
+  if (!say && !c.w(c.i, 'report')) return null;
+  const i = c.skip(c.i + 1, 'your', 'present', 'current');
+  const what = c.w(i, 'heading')
+    ? 'heading'
+    : c.w(i, 'level', 'altitude', 'fl', 'height')
+      ? 'level'
+      : c.w(i, 'speed', 'airspeed')
+        ? 'speed'
+        : null;
+  if (!what) return null;
+  return {
+    next: i + 1,
+    cmd: { type: 'report', what },
+    issues: say ? [issue('info', 'report-wording', c.said(c.i, i + 1))] : [],
+  };
 };
 
 /** "expect ILS approach runway 18R", "vectors for ILS": information, not a clearance. */
@@ -627,6 +704,7 @@ const CLAUSE = new Set([
   'stop',
   'cancel',
   'expedite',
+  'report',
   'pan',
   'traffic',
   'when',
@@ -761,6 +839,9 @@ const MATCHERS: Matcher[] = [
   handoff,
   hold,
   direct,
+  report,
+  expedite,
+  rate,
   heading,
   speed,
   altitude,

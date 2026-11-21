@@ -60,6 +60,11 @@ export interface ExitPref {
   side?: 'left' | 'right';
 }
 
+/** "Expedite climb / descent": this many times the normal rate (a judgement; DECISIONS.md). */
+export const EXPEDITE_VS = 1.5;
+/** The highest rate a pilot accepts as an assigned rate, as a multiple of the normal rate. */
+export const MAX_RATE = 1.6;
+
 export interface Aircraft {
   id: number;
   /** ICAO form, e.g. "KLM1234". */
@@ -118,6 +123,10 @@ export interface Aircraft {
   expedite?: boolean;
   /** Departure cleared for an immediate take-off. */
   immediate?: boolean;
+  /** Told to expedite the climb or descent; cleared on reaching the level. */
+  expediteVs?: boolean;
+  /** Assigned rate of climb or descent (ft/min); cleared on reaching the level. */
+  vRate?: { fpm: number; limit?: 'greater' | 'less' };
 }
 
 export interface Env {
@@ -511,7 +520,14 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
   } else if (!ac.gsEstablished && !onGround) {
     const target = chase ? Math.max(glideslopeAlt(frame.along, rwy), rwy.elevationFt) : ac.tgtAlt;
     const d = target - ac.alt;
-    const rate = d > 0 ? ac.perf.climbFpm : chase ? 3500 : ac.perf.descentFpm;
+    let rate = d > 0 ? ac.perf.climbFpm : chase ? 3500 : ac.perf.descentFpm;
+    if (!chase) {
+      if (ac.expediteVs) rate *= EXPEDITE_VS;
+      const r = ac.vRate;
+      if (r)
+        rate =
+          r.limit === 'greater' ? Math.max(rate, r.fpm) : r.limit === 'less' ? Math.min(rate, r.fpm) : r.fpm;
+    }
     // chasing a moving target: feed forward the glideslope's own descent rate (~5.3 fpm per kt)
     const lead = chase ? ac.gs * 5.3 : 0;
     const want = d === 0 ? 0 : Math.sign(d) * Math.min(rate, Math.max(300, Math.abs(d) * 4 + lead));
@@ -523,6 +539,8 @@ export function stepAircraft(ac: Aircraft, dt: number, env: Env): StepEvent[] {
     ) {
       ac.alt = target;
       ac.vs = chase ? ac.vs : 0;
+      ac.expediteVs = false;
+      ac.vRate = undefined;
     } else ac.alt += stepFt;
   }
 

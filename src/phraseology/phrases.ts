@@ -73,6 +73,10 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
     case 'acknowledge':
       return both(cmd.what === 'pan' ? 'roger PAN' : 'roger minimum fuel');
     case 'heading': {
+      if (cmd.by !== undefined && cmd.turn) {
+        const t = `${readback ? '' : 'turn '}${cmd.turn} ${cmd.by} degrees`;
+        return both(t, t.replace(String(cmd.by), spell(String(cmd.by))));
+      }
       const dir = cmd.turn ?? (ac ? (angleDiff(ac.hdg, cmd.heading) < 0 ? 'left' : 'right') : undefined);
       const lead = readback ? (cmd.turn ? `${cmd.turn} ` : '') : dir ? `turn ${dir} ` : 'fly ';
       return both(`${lead}heading ${pad3(cmd.heading)}`, `${lead}heading ${spell(pad3(cmd.heading))}`);
@@ -113,7 +117,25 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
       return both(`${lead}${cmd.speed} knots${until}`, `${lead}${spell(String(cmd.speed))} knots${sUntil}`);
     }
     case 'resumeSpeed':
-      return both('resume normal speed');
+      return both(cmd.noRestrictions ? 'no ATC speed restrictions' : 'resume normal speed');
+    case 'minimumSpeed':
+      return both(readback ? 'minimum approach speed' : 'reduce to minimum approach speed');
+    case 'expedite': {
+      const what = cmd.climb ? 'climb' : 'descent';
+      return both(readback ? `expediting ${what}` : `expedite ${what}`);
+    }
+    case 'rate': {
+      // the verb only when the aircraft already has a level to go to (else it follows "descend FL070")
+      const to = ac?.tgtAlt ?? ac?.alt ?? 0;
+      const verb = readback || !ac || Math.abs(to - ac.alt) < 100 ? '' : to > ac.alt ? 'climb ' : 'descend ';
+      const tail = cmd.limit ? ` or ${cmd.limit}` : '';
+      return both(
+        `${verb}at ${cmd.fpm} feet per minute${tail}`,
+        `${verb}at ${spokenAltitude(cmd.fpm)} feet per minute${tail}`,
+      );
+    }
+    case 'report':
+      return readback && ac ? reportAnswer(cmd.what, ac, env) : both(`report ${cmd.what}`);
     case 'direct':
       return both(
         `${readback ? '' : 'proceed '}direct ${cmd.fix}`,
@@ -183,6 +205,29 @@ function element(cmd: Command, env: PhraseEnv, ac?: AcContext, readback = false)
   }
 }
 
+/** The pilot's answer to "report heading / level / speed", from the aircraft's actual state. */
+function reportAnswer(what: 'heading' | 'level' | 'speed', ac: AcContext, env: PhraseEnv): Phrase {
+  if (what === 'heading') {
+    const h = pad3(Math.round(ac.hdg) % 360 || 360);
+    return both(`heading ${h}`, `heading ${spell(h)}`);
+  }
+  if (what === 'speed') {
+    const kt = String(Math.round(ac.ias / 5) * 5);
+    return both(`speed ${kt} knots`, `speed ${spell(kt)} knots`);
+  }
+  const tl = transitionLevel(env.airport, env.qnh) * 100;
+  const lv = (ft: number) => {
+    const r = Math.round(ft / 100) * 100;
+    return level({ type: 'altitude', altitude: r, fl: r >= tl });
+  };
+  const to = ac.tgtAlt ?? ac.alt;
+  const now = lv(ac.alt);
+  if (Math.abs(to - ac.alt) < 150) return both(`maintaining ${now.text}`, `maintaining ${now.speech}`);
+  const verb = to > ac.alt ? 'climbing' : 'descending';
+  const goal = lv(to);
+  return both(`passing ${now.text}, ${verb} ${goal.text}`, `passing ${now.speech}, ${verb} ${goal.speech}`);
+}
+
 /** Canonical controller phrase for one command (used as the "expected" text in feedback). */
 export const canonical = (cmd: Command, ctx: PhraseEnv, ac?: AcContext): string => element(cmd, ctx, ac).text;
 
@@ -245,7 +290,15 @@ export function chip(cmd: Command): string {
     case 'speed':
       return `SPD ${cmd.speed}${cmd.untilDme !== undefined ? ` →${cmd.untilDme}NM` : ''}`;
     case 'resumeSpeed':
-      return 'NORMAL SPD';
+      return cmd.noRestrictions ? 'NO SPD RESTR' : 'NORMAL SPD';
+    case 'minimumSpeed':
+      return 'MIN APP SPD';
+    case 'expedite':
+      return cmd.climb ? 'EXPD CLB' : 'EXPD DES';
+    case 'rate':
+      return `${cmd.fpm} FPM${cmd.limit === 'greater' ? '+' : cmd.limit === 'less' ? '−' : ''}`;
+    case 'report':
+      return `REPORT ${{ heading: 'HDG', level: 'LVL', speed: 'SPD' }[cmd.what]}`;
     case 'direct':
       return `DCT ${cmd.fix}`;
     case 'ils':
@@ -359,6 +412,8 @@ export const RULE_TEXT: Record<string, string> = {
   'speed-wording': 'Use "reduce speed", "increase speed" or "maintain … knots".',
   'speed-verb': '"Reduce" and "increase" must match the direction of the speed change.',
   'speed-resume-wording': 'Standard wording: "resume normal speed".',
+  'expedite-wording': 'Say what to expedite: "expedite descent" or "expedite climb".',
+  'report-wording': 'ICAO wording: "report heading", "report level", "report speed".',
   'direct-wording': 'Standard wording: "proceed direct …".',
   'hold-wording': 'Standard wording: "hold at … as published".',
   'handoff-frequency-missing': 'Give the frequency with a handoff.',

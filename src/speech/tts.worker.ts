@@ -112,9 +112,18 @@ function phonemize(text: string): Promise<number[]> {
  */
 function glides(ids: number[]): number[] {
   const id = (p: string) => config.phoneme_id_map[p]![0]!;
-  const [a, ae, i, j, u, w] = ['a', 'æ', 'ɪ', 'j', 'ʊ', 'w'].map(id);
+  const [a, ae, ah, i, j, u, w] = ['a', 'æ', 'ɑ', 'ɪ', 'j', 'ʊ', 'w'].map(id);
+  const edge = new Set(['^', '$', ' ', ',', '.', '?', '!', ';', ':'].map(id));
+  const stress = new Set(['ˈ', 'ˌ'].map(id));
   for (let k = 0; k + 2 < ids.length; k++) {
     if (ids[k] !== a || (ids[k + 2] !== i && ids[k + 2] !== u)) continue;
+    const before = stress.has(ids[k - 2]!) ? ids[k - 4] : ids[k - 2];
+    const alone = edge.has(before!) && (ids[k + 4] === undefined || edge.has(ids[k + 4]!));
+    // æj on its own is the letter A: the letter I ("I L S") and the word "I" were heard as "A"; ɑɪ is heard as I
+    if (alone && ids[k + 2] === i) {
+      ids[k] = ah!;
+      continue;
+    }
     ids[k] = ae!;
     ids[k + 2] = ids[k + 2] === i ? j! : w!;
   }
@@ -125,12 +134,14 @@ async function synth(text: string, speaker: number, speed: number): Promise<Floa
   // espeak says "kwi-BECK"; ICAO Annex 10 is "keh-BECK". "Tower" is phonemized right (taʊə), but the voice model
   // squeezes it into "tour" (Whisper heard "tour" in 6 of 8 pilot voices); "Tahwer" was heard as "tower" in 8 of 8.
   // espeak reads the ph in Schiphol as f ("Skiffle", 8 of 8); English-speaking pilots say "SKIP-hol".
+  // "I L S" mid-sentence was heard as "ALS" in 7 of 8 voices; "Eye Ell Ess" as "ILS" in 8 of 8.
   const ids = glides(
     await phonemize(
       text
         .replace(/\bQuebec\b/gi, 'Kebeck')
         .replace(/\bTower\b/gi, 'Tahwer')
-        .replace(/\bSchiphol\b/gi, 'Skip-hol'),
+        .replace(/\bSchiphol\b/gi, 'Skip-hol')
+        .replace(/\bI L S\b/g, 'Eye Ell Ess'),
     ),
   );
   const feeds: Record<string, ort.Tensor> = {

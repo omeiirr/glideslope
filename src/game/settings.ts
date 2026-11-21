@@ -1,3 +1,4 @@
+import type { GraphicsSetting } from '../render/tower3d/quality';
 export interface Settings {
   display: 'modern' | 'realistic';
   /** Default game mode for free play. */
@@ -18,6 +19,8 @@ export interface Settings {
   showIntent: boolean;
   /** KeyboardEvent.code of the push-to-talk key. */
   pttKey: string;
+  /** Tower view graphics; auto picks by measured frame time. */
+  graphics: GraphicsSetting;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showTrails: true,
   showIntent: true,
   pttKey: 'Space',
+  graphics: 'auto',
 };
 
 /** localStorage wrapper: never throws (private mode, quota, disabled storage). */

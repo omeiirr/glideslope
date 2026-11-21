@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import type { Airport } from '../../core';
 import { buildAircraft, disposeAircraftAssets, type AircraftMesh } from './aircraftMesh';
+import type { Quality } from './quality';
 import {
   fieldTexture,
   mownGrassTexture,
@@ -164,6 +167,30 @@ function foggy(L: Look, fog: string, k: number): Look {
 
 /** Shadows fade out as the aircraft climbs; above this they are not drawn. */
 const SHADOW_MAX_AGL = 160;
+
+/** Graphics quality: pixel-ratio cap, sun shadow map size, glow round the lights at dusk and night. */
+const QUALITY: Record<Quality, { px: number; shadow: number; glow: boolean }> = {
+  low: { px: 1, shadow: 2048, glow: false },
+  medium: { px: 1.5, shadow: 4096, glow: true },
+  high: { px: 2, shadow: 4096, glow: true },
+};
+/** Light points are on this layer too, so the glow pass can draw them alone. */
+const LIGHT_LAYER = 1;
+
+/** A full-screen texture added over the frame (the glow). */
+function overlay(blending: THREE.Blending, frag: string) {
+  return new FullScreenQuad(
+    new THREE.ShaderMaterial({
+      uniforms: { tex: { value: null }, k: { value: 1 } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `uniform sampler2D tex; uniform float k; varying vec2 vUv; void main() { ${frag} }`,
+      blending,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+}
 /** Surface colours: a modelled airport, no photo (see docs/design/tower3d.md). */
 const RUNWAY = '#74777a';
 const TAXIWAY = '#6e7173';
@@ -258,6 +285,17 @@ export class TowerRenderer {
   private pavement = new Set<THREE.Texture>();
   private macro: THREE.Texture | null = null;
   private apronTex: THREE.Texture | undefined;
+  private q = QUALITY.medium;
+  private dpr = 1;
+  private glow?: { rt: THREE.WebGLRenderTarget; bloom: UnrealBloomPass; quad: FullScreenQuad };
+  /** Glow pass: everything but the lights in black, pushed back so lights on the ground stay in front. */
+  private black = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    fog: false,
+    polygonOffset: true,
+    polygonOffsetFactor: 2,
+    polygonOffsetUnits: 8,
+  });
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -293,6 +331,7 @@ export class TowerRenderer {
     this.sun = sun;
     this.hemi = new THREE.HemisphereLight('#cfe2ff', '#8a8f7a', 2.4);
     this.scene.add(sun, sun.target, this.hemi);
+    this.camera.layers.enable(LIGHT_LAYER);
     this.addSky();
     this.shadowTex = shadowTexture();
     this.disposables.push(this.lightMat, this.airfieldMat);
@@ -471,6 +510,7 @@ export class TowerRenderer {
     geo.setAttribute('blink', new THREE.Float32BufferAttribute(s.blink, 1));
     const p = new THREE.Points(geo, mat);
     p.renderOrder = 10;
+    p.layers.set(LIGHT_LAYER);
     return p;
   }
 
@@ -1015,10 +1055,81 @@ export class TowerRenderer {
   setSize(width: number, height: number, dpr: number) {
     this.w = width;
     this.h = height;
-    // capped: laptops pay for every extra pixel
-    this.renderer.setPixelRatio(Math.min(dpr, 1.5));
+    this.dpr = dpr;
+    // capped by the quality: laptops pay for every extra pixel
+    this.renderer.setPixelRatio(Math.min(dpr, this.q.px));
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
+  }
+
+  setQuality(q: Quality) {
+    this.q = QUALITY[q];
+    this.setSize(this.w, this.h, this.dpr);
+    const sh = this.sun.shadow;
+    if (sh.mapSize.x !== this.q.shadow) {
+      sh.mapSize.set(this.q.shadow, this.q.shadow);
+      sh.map?.dispose();
+      sh.map = null;
+    }
+    if (!this.q.glow) this.disposeGlow();
+  }
+
+  /** Lights glow: the scene in black (to hide lights behind buildings), the lights, blurred, added on top. */
+  private renderGlow() {
+    const r = this.renderer;
+    const size = r.getDrawingBufferSize(new THREE.Vector2());
+    const w = Math.max(1, size.x >> 1);
+    const h = Math.max(1, size.y >> 1);
+    if (!this.glow) {
+      const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType });
+      const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 1.6, 0.7, 0);
+      const quad = overlay(THREE.AdditiveBlending, 'gl_FragColor = vec4(texture2D(tex, vUv).rgb * k, 1.0);');
+      this.glow = { rt, bloom, quad };
+    }
+    const g = this.glow;
+    if (g.rt.width !== w || g.rt.height !== h) {
+      g.rt.setSize(w, h);
+      g.bloom.setSize(w, h);
+    }
+    const clear = r.getClearColor(new THREE.Color());
+    const alpha = r.getClearAlpha();
+    const autoShadow = r.shadowMap.autoUpdate;
+    const u = this.lightMat.uniforms.uPx!;
+    const px = u.value as number;
+    r.shadowMap.autoUpdate = false;
+    r.setRenderTarget(g.rt);
+    r.setClearColor(0x000000, 1);
+    r.clear();
+    this.camera.layers.set(0);
+    this.scene.overrideMaterial = this.black;
+    r.render(this.scene, this.camera);
+    this.scene.overrideMaterial = null;
+    this.camera.layers.set(LIGHT_LAYER);
+    u.value = px * (w / size.x); // same size on screen in the half-size target
+    r.autoClear = false;
+    r.render(this.scene, this.camera);
+    u.value = px;
+    this.camera.layers.set(0);
+    this.camera.layers.enable(LIGHT_LAYER);
+    r.shadowMap.autoUpdate = autoShadow;
+    g.bloom.render(r, g.rt, g.rt, 0, false);
+    // the blurred lights only (UnrealBloomPass keeps them here before blending them back over its input)
+    (g.quad.material as THREE.ShaderMaterial).uniforms.tex!.value =
+      g.bloom.renderTargetsHorizontal[0]!.texture;
+    (g.quad.material as THREE.ShaderMaterial).uniforms.k!.value = 1.6 * this.look.lights;
+    r.setRenderTarget(null);
+    g.quad.render(r);
+    r.autoClear = true;
+    r.setClearColor(clear, alpha);
+  }
+
+  private disposeGlow() {
+    if (!this.glow) return;
+    this.glow.rt.dispose();
+    this.glow.bloom.dispose();
+    this.glow.quad.material.dispose();
+    this.glow.quad.dispose();
+    this.glow = undefined;
   }
 
   /** Draw one frame and report where each aircraft is on screen. */
@@ -1088,6 +1199,9 @@ export class TowerRenderer {
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
     this.renderer.render(this.scene, this.camera);
+    const { triangles, calls } = this.renderer.info.render;
+    this.lastStats = { triangles, calls };
+    if (this.q.glow && this.look.lights > 0) this.renderGlow();
 
     const v = new THREE.Vector3();
     return list.map((a) => {
@@ -1105,9 +1219,9 @@ export class TowerRenderer {
 
   /** Triangles and draw calls of the last frame (dev readout). */
   get stats() {
-    const { triangles, calls } = this.renderer.info.render;
-    return { triangles, calls };
+    return this.lastStats;
   }
+  private lastStats = { triangles: 0, calls: 0 };
 
   dispose() {
     for (const e of this.aircraft.values()) {
@@ -1116,6 +1230,8 @@ export class TowerRenderer {
       (e.shadow.material as THREE.Material).dispose();
     }
     this.aircraft.clear();
+    this.disposeGlow();
+    this.black.dispose();
     for (const d of this.disposables) d.dispose();
     this.shadowTex.dispose();
     this.setCeiling(null); // frees the deck

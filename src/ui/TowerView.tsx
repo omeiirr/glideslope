@@ -19,6 +19,7 @@ import type { BuildingData, GroundData, LandData } from '../render/tower3d/groun
 import { buildingRings, orientStands, standFitter, type StandData } from '../render/tower3d/stands';
 import { GroundTraffic, buildTaxiGraph } from '../render/tower3d/taxi';
 import type { TimeOfDay } from '../render/tower3d/lights';
+import { AutoQuality, type Quality } from '../render/tower3d/quality';
 import type { Anchor, TowerRenderer } from '../render/tower3d/view';
 import { GroundRadar } from '../render/groundradar';
 import { TowerDesk, radarTargets } from './TowerDesk';
@@ -151,14 +152,24 @@ export function TowerView({
     radar.current = new GroundRadar(radarCanvas.current!);
     let renderer: TowerRenderer | null = null;
     let disposed = false;
+    let ready = false;
     let raf = 0;
     const ro = new ResizeObserver(() => {
       const r = canvas.getBoundingClientRect();
       renderer?.setSize(Math.max(100, r.width), Math.max(100, r.height), window.devicePixelRatio || 1);
     });
 
+    const auto = new AutoQuality();
+    let quality: Quality | null = null;
+    let lastNow = 0;
     const frame = (now: number) => {
       const { session: s, cab: c, bino: zoom, labels: mode, realistic: real } = live.current;
+      // graphics: the setting, or Auto stepping down while frames are slow (measured once the airport is in)
+      const g = s.settings.graphics;
+      if (g === 'auto' && ready && lastNow) auto.frame(now - lastNow);
+      lastNow = now;
+      const q = g === 'auto' ? auto.level : g;
+      if (q !== quality) renderer!.setQuality((quality = q));
       s.frame(now);
       const eye = eyePosition(c);
       const list = s.sim.aircraft.map((ac) => ({
@@ -244,6 +255,7 @@ export function TowerView({
           __ghosts: ghosts,
           __sounds: sounds,
           __look: look.current,
+          __quality: quality,
         });
       // Realistic: a bracket round the selected aircraft instead of its label
       const br = bracketRef.current;
@@ -340,6 +352,7 @@ export function TowerView({
         radar.current?.setGround(ground);
         setAttribution(`${ground.attribution}.`);
         setStatus({ kind: 'ready' });
+        ready = true;
       } catch {
         if (!disposed)
           setStatus({

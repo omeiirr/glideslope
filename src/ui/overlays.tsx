@@ -368,6 +368,17 @@ export function SettingsDialog({ settings: s, voice, onChange, onClose }: Settin
           ['modern', 'Modern'],
           ['realistic', 'Realistic (STARS-like)'],
         ])}
+        {select(
+          'graphics',
+          'Tower graphics',
+          [
+            ['auto', 'Auto'],
+            ['high', 'High'],
+            ['medium', 'Medium'],
+            ['low', 'Low'],
+          ],
+          'Auto starts at High and steps down if the 3D view runs slowly. Medium and High add glow round the lights at dusk and night; High draws at full screen resolution.',
+        )}
         {select('mode', 'Rules for free play', [
           ['beginner', 'Beginner'],
           ['pro', 'Professional'],

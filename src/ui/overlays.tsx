@@ -137,9 +137,7 @@ export function Menu({
         </div>
         <p class="menu-tagline">Talk to pilots. Land them at Schiphol.</p>
         <p class="menu-about">
-          You are the approach controller at Amsterdam Schiphol. Vector arrivals onto the ILS for runway 18R
-          and hand departures off, using ICAO phraseology. Talk to pilots with push-to-talk (hold Space) or
-          type. Everything runs in your browser; nothing you say leaves your machine.
+          Guide arrivals onto runway 18R by voice (hold Space) or by typing. Everything stays in your browser.
         </p>
         <p class="menu-start">
           <button type="button" class="btn primary" onClick={() => onStart(start)}>

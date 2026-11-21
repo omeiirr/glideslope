@@ -1395,16 +1395,16 @@ dl.defs dd {
   background: var(--bg, #05080e);
   overflow: hidden;
 }
-/* its own layer, 30 px bigger all round, shifted with the cursor (--px, --py from Menu) */
+/* its own layer, 50 px bigger all round (more than the shift), moved with the cursor (--px, --py from Menu) */
 .overlay.menu-backdrop::before {
   content: '';
   position: absolute;
-  inset: -30px;
+  inset: -50px;
   z-index: -1;
   background:
     linear-gradient(rgba(5, 8, 14, 0.45), rgba(5, 8, 14, 0.6)),
     url('/menu-backdrop.jpg') center bottom / cover no-repeat;
-  transform: translate(calc(var(--px, 0) * 20px), calc(var(--py, 0) * 8px));
+  transform: translate(calc(var(--px, 0) * 40px), calc(var(--py, 0) * 16px));
   transition: transform 0.6s ease-out;
 }
 @media (prefers-reduced-motion: reduce) {

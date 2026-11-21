@@ -56,10 +56,14 @@ export interface Progress {
 // ------------------------------------------------------------------ menu
 
 const TABS = [
-  { id: 'radar', label: 'Radar training' },
-  { id: 'tower', label: 'Tower' },
-  { id: 'free', label: 'Free play' },
-  { id: 'pro', label: 'Professional' },
+  {
+    id: 'radar',
+    label: 'Radar training',
+    hint: 'Start here: guide arrivals onto the ILS, one short lesson at a time.',
+  },
+  { id: 'tower', label: 'Tower', hint: 'Clear aircraft to land and take off, from the tower cab.' },
+  { id: 'free', label: 'Free play', hint: 'No penalties: play radar or tower for as long as you like.' },
+  { id: 'pro', label: 'Professional', hint: 'Real separation rules and penalties, scored.' },
 ] as const;
 
 export function Menu({
@@ -75,39 +79,56 @@ export function Menu({
 }) {
   const ref = useDialog();
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('radar');
-  const group = (title: string, list: Scenario[]) => (
-    <>
-      <h2>{title}</h2>
-      <div class="cards">
-        {list.map((s) => (
-          <button type="button" class="card" key={s.id} onClick={() => onStart(s)}>
-            <b>
-              {s.name}
-              {s.lesson && progress.lessons.includes(s.lesson) ? ' ✓' : ''}
-            </b>
-            <span>{s.blurb}</span>
-            {progress.best[s.id] !== undefined && (
-              <span class="mono">Best {progress.best[s.id]!.toLocaleString('en')}</span>
-            )}
-          </button>
-        ))}
-      </div>
-    </>
-  );
+  const group = (title: string, list: Scenario[]) => {
+    const lessons = list.filter((s) => s.lesson);
+    const done = lessons.filter((s) => progress.lessons.includes(s.lesson!)).length;
+    return (
+      <>
+        <h2>
+          {title}
+          {lessons.length > 0 && (
+            <span class="menu-progress">
+              {done} of {lessons.length} done
+              <progress value={done} max={lessons.length} aria-hidden="true" />
+            </span>
+          )}
+        </h2>
+        <div class="cards">
+          {list.map((s) => (
+            <button type="button" class="card" key={s.id} onClick={() => onStart(s)}>
+              <b>
+                {s.name}
+                {s.lesson && progress.lessons.includes(s.lesson) ? ' ✓' : ''}
+              </b>
+              <span>{s.blurb}</span>
+              {s.minutes && <span class="mono">About {s.minutes} min</span>}
+              {progress.best[s.id] !== undefined && (
+                <span class="mono">Best {progress.best[s.id]!.toLocaleString('en')}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </>
+    );
+  };
   // one obvious first click: the next unfinished lesson, then free play
   const lessons = SCENARIOS.filter((s) => s.lesson && !s.view);
   const next = lessons.find((s) => !progress.lessons.includes(s.lesson!));
   const start = next ?? SCENARIOS.find((s) => s.id === 'free')!;
   const startLabel = !next
     ? 'Play: Radar free play'
-    : next === lessons[0]
-      ? 'Start the tutorial'
-      : `Continue: lesson ${next.name}`;
+    : `${next === lessons[0] ? 'Start the tutorial' : 'Continue'}: ${next.name.replace(/^\d+ · /, '')}, about ${next.minutes} min`;
   return (
     <div class="overlay menu-backdrop">
       <div ref={ref} class="dialog menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-        <h1 id="menu-title">Glideslope · Schiphol Approach</h1>
-        <p>
+        <div>
+          <h1 id="menu-title" class="menu-title">
+            Glideslope
+          </h1>
+          <div class="menu-sub">Schiphol Approach &amp; Tower</div>
+        </div>
+        <p class="menu-tagline">Talk to pilots. Land them at Schiphol.</p>
+        <p class="menu-about">
           You are the approach controller at Amsterdam Schiphol. Vector arrivals onto the ILS for runway 18R
           and hand departures off, using ICAO phraseology. Talk to pilots with push-to-talk (hold Space) or
           type. Everything runs in your browser; nothing you say leaves your machine.
@@ -125,6 +146,7 @@ export function Menu({
             </button>
           ))}
         </div>
+        <p class="dim">{TABS.find((t) => t.id === tab)!.hint}</p>
         {tab === 'radar' && (
           <>
             {group(
@@ -168,12 +190,10 @@ export function Menu({
               Settings
             </button>
           </span>
-          <span class="dim" style="font-size:11.5px">
-            Free and open source (GPL-3.0) · not for real-world training
-          </span>
         </div>
         <details class="credits">
-          <summary>Credits</summary>
+          <summary>About and credits</summary>
+          <p>Free and open source (GPL-3.0). A game, not for real-world training.</p>
           <ul>
             <li>Airport and surroundings: © OpenStreetMap contributors (ODbL 1.0)</li>
             <li>Airport data: openScope (MIT) and OurAirports (public domain)</li>

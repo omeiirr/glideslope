@@ -1400,3 +1400,52 @@ dl.defs dd {
 .dialog.menu .seg {
   background: rgba(17, 26, 43, 0.6);
 }
+.dialog h1.menu-title {
+  font-size: 30px;
+  letter-spacing: -0.5px;
+}
+.menu-sub {
+  color: var(--dim);
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.dialog p.menu-tagline {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dialog p.menu-about {
+  font-size: 13px;
+}
+.dialog .credits p {
+  margin: 8px 0 0;
+}
+.menu-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.menu-progress progress {
+  width: 90px;
+  height: 4px;
+  appearance: none;
+  border: 0;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.menu-progress progress::-webkit-progress-bar {
+  background: var(--line);
+}
+.menu-progress progress::-webkit-progress-value {
+  background: var(--green, #7ad7a8);
+}
+.menu-progress progress::-moz-progress-bar {
+  background: var(--green, #7ad7a8);
+}

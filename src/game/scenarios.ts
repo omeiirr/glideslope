@@ -2,6 +2,8 @@ import { EHAM, headingVec, runwayById, type SpawnSpec, type TrafficConfig } from
 
 /** Pure-data scenario description (JSON-compatible). */
 export interface Scenario {
+  /** Lessons: about how long it takes at 1×, measured with a slow reader (20 s per step). */
+  minutes?: number;
   id: string;
   name: string;
   blurb: string;
@@ -108,6 +110,7 @@ const TOWER_EASY = ['B738', 'A320', 'A20N', 'E190', 'E195', 'A321', 'B38M'];
 export const SCENARIOS: Scenario[] = [
   {
     id: 'tut-heading',
+    minutes: 2,
     lesson: 'heading',
     name: '1 · Headings',
     blurb: 'Turn an aircraft with "turn left heading …".',
@@ -120,6 +123,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-altitude',
+    minutes: 3,
     lesson: 'altitude',
     name: '2 · Levels',
     blurb: 'Flight levels, altitudes and the QNH.',
@@ -132,6 +136,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-speed',
+    minutes: 2,
     lesson: 'speed',
     name: '3 · Speed',
     blurb: 'Slow aircraft down to build a sequence.',
@@ -144,6 +149,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-ils',
+    minutes: 7,
     lesson: 'ils',
     name: '4 · ILS approach',
     blurb: 'Vector onto the localizer and clear the approach.',
@@ -156,6 +162,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-handoff',
+    minutes: 5,
     lesson: 'handoff',
     name: '5 · Handoff',
     blurb: 'Hand an established aircraft to Tower.',
@@ -168,6 +175,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-pattern',
+    minutes: 11,
     lesson: 'pattern',
     name: '6 · A whole arrival',
     blurb: 'From its first call to Tower: downwind, base, intercept.',
@@ -181,6 +189,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-intercept',
+    minutes: 7,
     lesson: 'intercept',
     name: '7 · Joining the localizer',
     blurb: 'The 30° rule and the glideslope from below, with Professional rules.',
@@ -194,6 +203,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-sequence',
+    minutes: 6,
     lesson: 'sequence',
     name: '8 · Two in a row',
     blurb: 'Space two arrivals on final with speed and a longer downwind.',
@@ -209,6 +219,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-separation',
+    minutes: 5,
     lesson: 'separation',
     name: '9 · Separation',
     blurb: 'Two aircraft converging at the same level: fix it with a level or a turn.',
@@ -225,6 +236,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tut-departure',
+    minutes: 5,
     lesson: 'departure',
     name: '10 · Departures',
     blurb: 'Climb a departure out and hand it to Amsterdam Radar.',
@@ -280,6 +292,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tw-land',
+    minutes: 4,
     view: 'tower',
     lesson: 'twLand',
     name: '1 · Landing clearance',
@@ -293,6 +306,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tw-depart',
+    minutes: 4,
     view: 'tower',
     lesson: 'twDepart',
     name: '2 · Line up and take-off',
@@ -306,6 +320,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tw-vacate',
+    minutes: 7,
     view: 'tower',
     lesson: 'twVacate',
     name: '3 · Vacate and handoffs',
@@ -320,6 +335,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 'tw-goaround',
+    minutes: 3,
     view: 'tower',
     lesson: 'twGoAround',
     name: '4 · Go-around',

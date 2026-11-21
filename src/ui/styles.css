@@ -1370,3 +1370,18 @@ dl.defs dd {
   font-size: 15px;
   padding: 10px 18px;
 }
+.menu-tabs {
+  align-self: flex-start;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.menu-tabs button {
+  font-size: 14px;
+  padding: 8px 14px;
+}
+/* top-aligned so switching tabs doesn't make the menu jump */
+.dialog.menu {
+  align-self: flex-start;
+  margin-top: 4vh;
+  max-height: calc(100% - 4vh);
+}

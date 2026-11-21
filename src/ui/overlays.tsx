@@ -1,5 +1,5 @@
 import { approachAdvice } from '../game/advice';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { EHAM, isOnGround, runwayById, typeName, type Aircraft, type Command } from '../core';
 import { SCENARIOS, type Scenario } from '../game/scenarios';
 import { phraseologyPct, weightsFor } from '../game/scoring';
@@ -55,6 +55,13 @@ export interface Progress {
 
 // ------------------------------------------------------------------ menu
 
+const TABS = [
+  { id: 'radar', label: 'Radar training' },
+  { id: 'tower', label: 'Tower' },
+  { id: 'free', label: 'Free play' },
+  { id: 'pro', label: 'Professional' },
+] as const;
+
 export function Menu({
   progress,
   onStart,
@@ -67,6 +74,7 @@ export function Menu({
   onLearn: () => void;
 }) {
   const ref = useDialog();
+  const [tab, setTab] = useState<(typeof TABS)[number]['id']>('radar');
   const group = (title: string, list: Scenario[]) => (
     <>
       <h2>{title}</h2>
@@ -97,7 +105,7 @@ export function Menu({
       : `Continue: lesson ${next.name}`;
   return (
     <div class="overlay">
-      <div ref={ref} class="dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+      <div ref={ref} class="dialog menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
         <h1 id="menu-title">Glideslope · Schiphol Approach</h1>
         <p>
           You are the approach controller at Amsterdam Schiphol. Vector arrivals onto the ILS for runway 18R
@@ -108,28 +116,53 @@ export function Menu({
           <button type="button" class="btn primary" onClick={() => onStart(start)}>
             {startLabel} →
           </button>
-          <span class="dim">or pick any lesson, game or scenario below</span>
+          <span class="dim">or choose below</span>
         </p>
-        {group(
-          'Tutorial',
-          SCENARIOS.filter((s) => s.lesson && !s.view),
+        <div class="seg menu-tabs" role="group" aria-label="What to play">
+          {TABS.map((t) => (
+            <button type="button" key={t.id} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {tab === 'radar' && (
+          <>
+            {group(
+              'Lessons',
+              SCENARIOS.filter((s) => s.lesson && !s.view),
+            )}
+            {group(
+              'Practice',
+              SCENARIOS.filter((s) => s.drill),
+            )}
+          </>
         )}
-        {group(
-          'Free play',
-          SCENARIOS.filter((s) => !s.lesson && !s.view && !s.drill && s.mode === 'beginner'),
+        {tab === 'tower' && (
+          <>
+            {group(
+              'Lessons',
+              SCENARIOS.filter((s) => s.view === 'tower' && s.lesson),
+            )}
+            {group(
+              'Free play',
+              SCENARIOS.filter((s) => s.view === 'tower' && !s.lesson && s.mode === 'beginner'),
+            )}
+            {group(
+              'Professional scenarios',
+              SCENARIOS.filter((s) => s.view === 'tower' && !s.lesson && s.mode === 'pro'),
+            )}
+          </>
         )}
-        {group(
-          'Practice',
-          SCENARIOS.filter((s) => s.drill),
-        )}
-        {group(
-          'Tower',
-          SCENARIOS.filter((s) => s.view === 'tower'),
-        )}
-        {group(
-          'Professional scenarios',
-          SCENARIOS.filter((s) => !s.lesson && !s.view && s.mode === 'pro'),
-        )}
+        {tab === 'free' &&
+          group(
+            'Free play',
+            SCENARIOS.filter((s) => !s.lesson && !s.view && !s.drill && s.mode === 'beginner'),
+          )}
+        {tab === 'pro' &&
+          group(
+            'Professional scenarios',
+            SCENARIOS.filter((s) => !s.lesson && !s.view && s.mode === 'pro'),
+          )}
         <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
           <span style="display:flex;gap:8px">
             <button type="button" class="btn" onClick={onLearn}>

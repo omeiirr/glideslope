@@ -468,7 +468,7 @@ export function RadioPanel({
             key={e.id}
             e={e}
             verbosity={settings.feedback}
-            reveal={session.finished}
+            reveal={session.finished || !!session.scenario.drill}
             onReplay={e.kind === 'pilot' ? onReplay : undefined}
           />
         ))}

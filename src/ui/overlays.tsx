@@ -101,7 +101,11 @@ export function Menu({
         )}
         {group(
           'Free play',
-          SCENARIOS.filter((s) => !s.lesson && !s.view && s.mode === 'beginner'),
+          SCENARIOS.filter((s) => !s.lesson && !s.view && !s.drill && s.mode === 'beginner'),
+        )}
+        {group(
+          'Practice',
+          SCENARIOS.filter((s) => s.drill),
         )}
         {group(
           'Tower',

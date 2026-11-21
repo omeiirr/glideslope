@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { corruptReadback } from '../src/phraseology/readbackError';
 import { EHAM } from '../src/core';
 import { matchCallsign, spokenCallsign } from '../src/phraseology/callsign';
 import { words } from '../src/phraseology/normalize';
@@ -129,4 +130,14 @@ test('tower: controller phrases with wind, readbacks without, chips and calls', 
       wind: { dir: 0, speed: 0 },
     }),
   ).toBe('KLM1234, runway 18R, wind calm, cleared to land');
+});
+
+test('a misread relative turn changes the degrees and the heading together', () => {
+  const cmd = { type: 'heading', heading: 70, turn: 'left', by: 20 } as const;
+  for (const r of [0.1, 0.9]) {
+    const e = corruptReadback([cmd], 3000, () => r)!;
+    const w = e.commands[0]!;
+    expect(w.type === 'heading' && w.by).not.toBe(20);
+    if (w.type === 'heading') expect(w.heading).toBe(((90 - w.by! + 359) % 360) + 1);
+  }
 });

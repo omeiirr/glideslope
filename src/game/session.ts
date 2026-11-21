@@ -94,6 +94,9 @@ const LESSON_END_PAUSE_MS = 1500;
 /** Tower: a departure still on the Tower frequency at this height above the field is a late handoff. */
 const LATE_DEP_HANDOFF_FT = 2000;
 
+/** Readback drill: about one readback in three has a wrong value. */
+export const DRILL_ERROR_RATE = 0.3;
+
 export class Session {
   readonly sim: Sim;
   /** The player is Schiphol Tower (tower scenarios), else Schiphol Approach. */
@@ -292,7 +295,11 @@ export class Session {
     for (const p of this.pendingErrors.filter((x) => sim.time > x.deadline)) {
       this.pendingErrors = this.pendingErrors.filter((x) => x !== p);
       const entry = this.log.find((e) => e.id === p.entryId);
-      if (entry?.kind === 'pilot') entry.rb = 'missed';
+      if (entry?.kind === 'pilot') {
+        entry.rb = 'missed';
+        // the drill says so at once (in both displays); elsewhere the debrief reveals it
+        if (this.scenario.drill) this.system(`Missed readback error, ${p.callsign}: ${entry.detail}.`, 'bad');
+      }
     }
     if (this.tower) this.towerHousekeeping();
     for (const ac of sim.aircraft) {
@@ -733,12 +740,12 @@ export class Session {
     let flown = accepted;
     let rbCmds: readonly Command[] = r.commands;
     let error: ReturnType<typeof corruptReadback> = null;
+    const drill = this.scenario.drill === 'readback';
     if (
-      this.mode === 'pro' &&
-      !this.lesson &&
+      ((this.mode === 'pro' && !this.lesson) || drill) &&
       !refusals.some(Boolean) &&
       !pending &&
-      this.rng.next() < this.settings.readbackErrorRate
+      this.rng.next() < (drill ? DRILL_ERROR_RATE : this.settings.readbackErrorRate)
     ) {
       const exits = (this.sim.env.landing.exits ?? []).map((e) => e.name);
       error = corruptReadback(r.commands, EHAM.transitionAltitudeFt, () => this.rng.next(), exits);
@@ -766,7 +773,7 @@ export class Session {
     }
     this.pilotSays(cs, rb, 500 + this.rng.next() * 700, {
       // In Pro nothing marks a readback as right or wrong: the player has to listen.
-      rb: error ? 'hidden' : this.mode === 'beginner' && accepted.length ? 'ok' : undefined,
+      rb: error ? 'hidden' : this.mode === 'beginner' && !drill && accepted.length ? 'ok' : undefined,
       detail: error?.detail,
       onStart: () => {
         const ac = this.sim.byCallsign(cs);
@@ -792,7 +799,10 @@ export class Session {
 }
 
 function sameValue(a: Command, b: Command): boolean {
-  if (a.type === 'heading' && b.type === 'heading') return a.heading === b.heading;
+  if (a.type === 'heading' && b.type === 'heading')
+    return a.by !== undefined && b.by !== undefined
+      ? a.by === b.by && a.turn === b.turn
+      : a.heading === b.heading;
   if (a.type === 'altitude' && b.type === 'altitude') return a.altitude === b.altitude;
   if (a.type === 'speed' && b.type === 'speed') return a.speed === b.speed;
   if ((a.type === 'land' || a.type === 'lineUp' || a.type === 'takeoff') && a.type === b.type)

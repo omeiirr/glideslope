@@ -24,6 +24,8 @@ export interface Scenario {
   ceilingFt?: number;
   /** Tower view start: time of day. Default: day. */
   timeOfDay?: 'day' | 'dusk' | 'night';
+  /** Practice: readback errors in a third of readbacks, shown as soon as one is caught or missed. */
+  drill?: 'readback';
 }
 
 /** The tutorial aircraft. */
@@ -241,6 +243,40 @@ export const SCENARIOS: Scenario[] = [
     seed: 0,
     durationMin: 0,
     traffic: { arrivalsPerHour: 12, departuresPerHour: 4, alnumCallsigns: 0, priority: 0.08 },
+  },
+  {
+    id: 'drill-readback',
+    drill: 'readback',
+    name: 'Readback drill',
+    blurb:
+      'Pilots read back a wrong value about one time in three. Listen, and correct it: “negative”, then the right instruction.',
+    mode: 'beginner',
+    seed: 31,
+    durationMin: 10,
+    wind: { dir: 200, speed: 10 },
+    traffic: { arrivalsPerHour: 18, departuresPerHour: 0, alnumCallsigns: 0 },
+    spawns: [
+      {
+        at: 0,
+        kind: 'arrival',
+        callsign: 'BAW432',
+        type: 'A320',
+        pos: { x: 22, y: 14 },
+        hdg: 250,
+        alt: 7000,
+        onFrequency: true,
+      },
+      {
+        at: 0,
+        kind: 'arrival',
+        callsign: 'EZY81Q',
+        type: 'A320',
+        pos: { x: -22, y: 12 },
+        hdg: 120,
+        alt: 7000,
+        onFrequency: true,
+      },
+    ],
   },
   {
     id: 'tw-land',

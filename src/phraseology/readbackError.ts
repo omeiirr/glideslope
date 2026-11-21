@@ -48,7 +48,13 @@ export function corruptReadback(
   const sign = rand() < 0.5 ? -1 : 1;
   let wrong: Command;
   let detail: string;
-  if (cmd.type === 'heading') {
+  if (cmd.type === 'heading' && cmd.by !== undefined && cmd.turn) {
+    // "left 20 degrees" read back as "left 30 degrees": the turn, not the heading, is misheard
+    const by = cmd.by + (sign < 0 && cmd.by > 10 ? -10 : 10);
+    const h = ((cmd.heading + (cmd.turn === 'left' ? -1 : 1) * (by - cmd.by) + 359) % 360) + 1;
+    wrong = { ...cmd, heading: h, by };
+    detail = `cleared ${cmd.turn} ${cmd.by} degrees, read back ${by} degrees`;
+  } else if (cmd.type === 'heading') {
     const h = ((cmd.heading + sign * (rand() < 0.5 ? 10 : 20) + 359) % 360) + 1;
     wrong = { ...cmd, heading: h };
     detail = `cleared heading ${String(cmd.heading).padStart(3, '0')}, read back ${String(h).padStart(3, '0')}`;

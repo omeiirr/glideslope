@@ -317,3 +317,20 @@ test('cloud: report text; the player chooses it only where the scenario sets no 
   low.setVisibility(10000);
   expect([low.ceilingFt, low.visibilityM]).toEqual([400, 3000]);
 });
+
+test('readback drill: about a third of readbacks are wrong, and a missed one is announced at once', async () => {
+  const s = new Session(scenarioById('drill-readback'), DEFAULT_SETTINGS);
+  await settle(s, 3000);
+  let ok = 0;
+  // a new heading each time: repeating one would count as catching an earlier error
+  for (let i = 0; i < 12; i++) {
+    s.transmit(`${i % 2 ? 'BAW432' : 'EZY81Q'}, turn left heading ${200 + i * 5}`, 'typed');
+    await settle(s, 4000);
+    if (s.log.some((e) => e.kind === 'pilot' && e.rb === 'ok')) ok++;
+  }
+  expect(s.stats.readbackErrors).toBeGreaterThanOrEqual(1);
+  expect(s.stats.readbackCaught).toBe(0);
+  expect(ok).toBe(0); // no ✓ marks: they would give the wrong ones away
+  await settle(s, 50000);
+  expect(s.log.some((e) => e.kind === 'system' && e.text.startsWith('Missed readback error, '))).toBe(true);
+});

@@ -137,8 +137,8 @@ export function Menu({
         </div>
         <p class="menu-tagline">Talk to pilots. Land them at Schiphol.</p>
         <p class="menu-about">
-          Work Schiphol approach on the radar or tower from the cab. Talk to pilots by voice (hold Space) or
-          type. Everything stays in your browser.
+          Guide aircraft through your airspace on the radar, or watch them land and take off from the tower.
+          Talk to pilots by voice (hold Space) or type. Everything stays in your browser.
         </p>
         <p class="menu-start">
           <button type="button" class="btn primary" onClick={() => onStart(start)}>

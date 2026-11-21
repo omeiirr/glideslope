@@ -156,7 +156,7 @@ export function Menu({
         {tab === 'free' &&
           group(
             'Free play',
-            SCENARIOS.filter((s) => !s.lesson && !s.view && !s.drill && s.mode === 'beginner'),
+            SCENARIOS.filter((s) => !s.lesson && !s.drill && s.mode === 'beginner'),
           )}
         {tab === 'pro' &&
           group(

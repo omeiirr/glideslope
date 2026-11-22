@@ -129,7 +129,8 @@ export class Sounds {
       const id = setInterval(() => {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
-        this.burst(t, 1800, 4, 0.03, 0.05);
+        // the sweep: a dry tick, like a strip click (a narrow quiet band was inaudible)
+        this.burst(t, 2200, 1.5, 0.025, 0.2);
         // a data block updating somewhere: a short high bip on about one sweep in four
         if (++sweep > 2 && Math.random() < 0.25) {
           sweep = 0;

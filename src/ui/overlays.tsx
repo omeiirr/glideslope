@@ -150,7 +150,7 @@ export function Menu({
             <span aria-hidden="true">{sound ? '🔊' : '🔈'}</span> Sound {sound ? 'on' : 'off'}
           </button>
         </div>
-        <p class="menu-tagline">Talk to pilots. Land them at Schiphol.</p>
+        <p class="menu-tagline">Bring them in to Schiphol, by voice.</p>
         <p class="menu-about">
           Guide aircraft through your airspace on the radar, or watch them land and take off from the tower.
           Talk to pilots by voice (hold Space) or type. Everything stays in your browser.

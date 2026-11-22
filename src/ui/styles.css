@@ -18,7 +18,7 @@
   --amber-line: #5c4419;
   --amber-text: #f5d59a;
   --red: #ff6b6b;
-  --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  --mono: 'Atkinson Hyperlegible Mono Variable', 'Atkinson Hyperlegible Mono', ui-monospace, monospace;
   /* tower desk height (strip bays and ground radar) */
   --desk-h: clamp(200px, 28vh, 260px);
 }
@@ -34,7 +34,8 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  font-family: 'Atkinson Hyperlegible Next Variable', 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   overflow: hidden;
 }
@@ -1420,20 +1421,33 @@ dl.defs dd {
 .dialog.menu .seg {
   background: rgba(17, 26, 43, 0.6);
 }
+.menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.menu-sound {
+  font-size: 12px;
+  white-space: nowrap;
+}
 .dialog h1.menu-title {
-  font-size: 30px;
+  font-size: 36px;
+  font-weight: 800;
   letter-spacing: -0.5px;
 }
 .menu-sub {
   color: var(--dim);
+  font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   margin-top: 2px;
 }
 .dialog p.menu-tagline {
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
   color: var(--text);
 }
 .dialog p.menu-about {

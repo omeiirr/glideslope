@@ -21,6 +21,8 @@ export interface Settings {
   pttKey: string;
   /** Tower view graphics; auto picks by measured frame time. */
   graphics: GraphicsSetting;
+  /** Radar-room ambience on the menu (off until the player turns it on). */
+  menuSound: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showIntent: true,
   pttKey: 'Space',
   graphics: 'auto',
+  menuSound: false,
 };
 
 /** localStorage wrapper: never throws (private mode, quota, disabled storage). */

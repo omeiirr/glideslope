@@ -71,11 +71,15 @@ export function Menu({
   onStart,
   onSettings,
   onLearn,
+  sound,
+  onSound,
 }: {
   progress: Progress;
   onStart: (s: Scenario) => void;
   onSettings: () => void;
   onLearn: () => void;
+  sound: boolean;
+  onSound: (on: boolean) => void;
 }) {
   const ref = useDialog();
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('radar');
@@ -129,11 +133,22 @@ export function Menu({
       }}
     >
       <div ref={ref} class="dialog menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-        <div>
-          <h1 id="menu-title" class="menu-title">
-            Glideslope
-          </h1>
-          <div class="menu-sub">Schiphol Approach &amp; Tower</div>
+        <div class="menu-head">
+          <div>
+            <h1 id="menu-title" class="menu-title">
+              Glideslope
+            </h1>
+            <div class="menu-sub">Schiphol Approach &amp; Tower</div>
+          </div>
+          <button
+            type="button"
+            class="btn menu-sound"
+            aria-pressed={sound}
+            title="Radar room sounds on the menu"
+            onClick={() => onSound(!sound)}
+          >
+            <span aria-hidden="true">{sound ? '🔊' : '🔈'}</span> Sound {sound ? 'on' : 'off'}
+          </button>
         </div>
         <p class="menu-tagline">Talk to pilots. Land them at Schiphol.</p>
         <p class="menu-about">
@@ -210,7 +225,9 @@ export function Menu({
               Speech recognition: OpenAI Whisper via Transformers.js (Apache-2.0) and ONNX Runtime (MIT)
             </li>
             <li>Pavement textures: Poly Haven (CC0)</li>
-            <li>3D: three.js (MIT) · UI: Preact (MIT) · Fonts: Inter and JetBrains Mono (SIL OFL 1.1)</li>
+            <li>
+              3D: three.js (MIT) · UI: Preact (MIT) · Fonts: Atkinson Hyperlegible Next and Mono (SIL OFL 1.1)
+            </li>
           </ul>
           <p>
             Full list and licences: THIRD_PARTY.md in the{' '}

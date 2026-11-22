@@ -71,6 +71,24 @@ export function App() {
     setVoiceWait(null);
   });
 
+  // menu ambience, if turned on: browsers only allow audio after a click or key, so start on the first one
+  useEffect(() => {
+    if (session || !settings.menuSound) return;
+    const go = () => {
+      sounds.setVolume(settingsRef.current.sfxVolume);
+      sounds.unlock();
+      sounds.menu(true);
+    };
+    if (navigator.userActivation?.hasBeenActive) go();
+    addEventListener('pointerdown', go, { once: true });
+    addEventListener('keydown', go, { once: true });
+    return () => {
+      removeEventListener('pointerdown', go);
+      removeEventListener('keydown', go);
+      sounds.menu(false);
+    };
+  }, [session, settings.menuSound]);
+
   const start = (sc: Scenario) => {
     // Free play follows the rules chosen in settings.
     const scenario =
@@ -199,6 +217,13 @@ export function App() {
           onStart={start}
           onSettings={() => setShowSettings(true)}
           onLearn={openLearn}
+          sound={settings.menuSound}
+          onSound={(on) => {
+            patch({ menuSound: on });
+            sounds.setVolume(settings.sfxVolume);
+            sounds.unlock();
+            sounds.menu(on);
+          }}
         />
         {showSettings && (
           <SettingsDialog

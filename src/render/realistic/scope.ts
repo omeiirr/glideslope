@@ -22,7 +22,7 @@ export interface RealisticOptions {
   brite: number;
 }
 
-const MONO = "'JetBrains Mono Variable', 'JetBrains Mono', monospace";
+const MONO = "'Atkinson Hyperlegible Mono Variable', 'Atkinson Hyperlegible Mono', monospace";
 const SWEEP = 4; // seconds between position updates, like a real approach radar
 
 /** Per-aircraft positions frozen at the last sweep. */

@@ -192,7 +192,7 @@ export class GroundRadar {
       g.restore();
     }
 
-    g.font = '10px "JetBrains Mono", ui-monospace, monospace';
+    g.font = '10px "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace';
     g.textBaseline = 'middle';
     for (const t of s.targets) {
       const p = targetPx(f, t.pos);
@@ -269,7 +269,7 @@ export class GroundRadar {
       }
     }
     // runways from the sim's own data, so they match where aircraft land; each pair drawn once
-    g.font = '10px "JetBrains Mono", ui-monospace, monospace';
+    g.font = '10px "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     const done = new Set<string>();

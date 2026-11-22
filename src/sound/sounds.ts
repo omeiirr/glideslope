@@ -3,7 +3,8 @@
  * - tower cab: engines of the nearest aircraft (power, distance, Doppler), tyre chirps at touchdown, the apron's
  *   APU hum, the cab's air conditioning, wind, and rain on the glass in poor visibility;
  * - radar room: room tone, the conflict-alert chime, the landline buzzer;
- * - both: a click when a strip moves.
+ * - both: a click when a strip moves;
+ * - the menu (opt-in): room hiss, a soft tick each 4 s radar sweep and now and then a quiet beep.
  * Heard through the cab glass and the room: everything sits under a gentle low-pass.
  */
 import { perfFor } from '../core';
@@ -50,7 +51,7 @@ export class Sounds {
   private noise: AudioBuffer | null = null;
   /** Loops for the current place (cab or radar room), stopped when leaving it. */
   private loops: { stop(): void }[] = [];
-  private place: 'cab' | 'room' | null = null;
+  private place: 'cab' | 'room' | 'menu' | null = null;
   private voices: Voice[] = [];
   private cabGains: { aircon: GainNode; wind: GainNode; rain: GainNode; apu: GainNode } | null = null;
   private last = new Map<number, { pos: P3; t: number }>();
@@ -117,11 +118,28 @@ export class Sounds {
     this.conflicts.clear();
   }
 
-  private enter(place: 'cab' | 'room') {
+  private enter(place: 'cab' | 'room' | 'menu') {
     if (this.place === place || !this.ctx) return;
     this.stop();
     this.place = place;
     const ctx = this.ctx;
+    if (place === 'menu') {
+      this.loop(this.noise!, 'lowpass', 600).gain.value = 0.02;
+      let sweep = 0;
+      const id = setInterval(() => {
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+        this.burst(t, 1800, 4, 0.03, 0.05);
+        // a data block updating somewhere: a short high bip on about one sweep in four
+        if (++sweep > 2 && Math.random() < 0.25) {
+          sweep = 0;
+          this.tone(t + 0.9, 1320, 0.07, 0.025);
+          this.tone(t + 1.0, 1320, 0.07, 0.02);
+        }
+      }, 4000);
+      this.loops.push({ stop: () => clearInterval(id) });
+      return;
+    }
     if (place === 'room') {
       // air handling: a soft hiss (a rumble or a tone reads as a hum, and small speakers drop the lows)
       this.loop(this.noise!, 'lowpass', 600).gain.value = 0.02;
@@ -290,6 +308,12 @@ export class Sounds {
     const t = this.ctx.currentTime;
     this.tone(t, 880, 0.22, 0.12);
     this.tone(t + 0.24, 660, 0.3, 0.12);
+  }
+
+  /** The menu's ambience on or off (needs `unlock` first, from a user gesture). */
+  menu(on: boolean) {
+    if (on) this.enter('menu');
+    else if (this.place === 'menu') this.stop();
   }
 
   /** A strip moving in its holder. */

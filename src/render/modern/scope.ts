@@ -30,7 +30,7 @@ const C = {
   guide: 'rgba(173, 140, 255, 0.55)',
   guideText: '#C9B8FF',
 };
-const MONO = "'JetBrains Mono Variable', 'JetBrains Mono', monospace";
+const MONO = "'Atkinson Hyperlegible Mono Variable', 'Atkinson Hyperlegible Mono', monospace";
 
 /** Modern scope: smooth motion, intent lines, conflict prediction, friendly data blocks. */
 export const drawModern: DrawScope = (ctx, view, scene, ap) => {

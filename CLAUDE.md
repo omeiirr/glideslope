@@ -164,7 +164,7 @@ Scenarios: a JSON scenario format (seed, traffic list or spawn rates, wind, dura
 
 ## 9. UI
 
-- Follow `docs/design/Main.dc.html` (Modern) and `docs/design/Realistic.dc.html` (Realistic). They're static HTML mockups: match the layout, colors, typography (Inter + JetBrains Mono) and information hierarchy, not their markup.
+- Follow `docs/design/Main.dc.html` (Modern) and `docs/design/Realistic.dc.html` (Realistic). They're static HTML mockups: match the layout, colors, typography (Atkinson Hyperlegible Next + Atkinson Hyperlegible Mono since 2026-11-22; the mockups use Inter + JetBrains Mono) and information hierarchy, not their markup.
 - **Modern layout:**
   - Top bar: airport, frequency, clock, traffic, score, mode switch, pause, speed.
   - Left: arrival-sequence strips, drag to reorder.

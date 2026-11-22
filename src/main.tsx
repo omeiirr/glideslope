@@ -1,6 +1,6 @@
 import { render } from 'preact';
-import '@fontsource-variable/inter';
-import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/atkinson-hyperlegible-next';
+import '@fontsource-variable/atkinson-hyperlegible-mono';
 import './ui/styles.css';
 import { App } from './ui/App';
 

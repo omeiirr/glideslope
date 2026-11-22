@@ -4,7 +4,7 @@
  *   APU hum, the cab's air conditioning, wind, and rain on the glass in poor visibility;
  * - radar room: room tone, the conflict-alert chime, the landline buzzer;
  * - both: a click when a strip moves;
- * - the menu (opt-in): room hiss, a sonar-like ping each 4 s radar sweep and now and then a quiet beep.
+ * - the menu (opt-in): room hiss, a sonar-like ping each 6 s sweep and now and then a quiet beep.
  * Heard through the cab glass and the room: everything sits under a gentle low-pass.
  */
 import { perfFor } from '../core';
@@ -129,16 +129,15 @@ export class Sounds {
       const id = setInterval(() => {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
-        // the sweep: a sonar-like ping with a faint echo
+        // the sweep: a sonar-like ping
         this.ping(t, 0.05);
-        this.ping(t + 0.45, 0.012);
         // a data block updating somewhere: a short high bip on about one sweep in four
         if (++sweep > 2 && Math.random() < 0.25) {
           sweep = 0;
           this.tone(t + 0.9, 1320, 0.07, 0.025);
           this.tone(t + 1.0, 1320, 0.07, 0.02);
         }
-      }, 4000);
+      }, 6000);
       this.loops.push({ stop: () => clearInterval(id) });
       return;
     }
@@ -277,8 +276,8 @@ export class Sounds {
   private ping(at: number, level: number) {
     const ctx = this.ctx!;
     const o = ctx.createOscillator();
-    o.frequency.setValueAtTime(1050, at);
-    o.frequency.exponentialRampToValueAtTime(1000, at + 1.5);
+    o.frequency.setValueAtTime(800, at);
+    o.frequency.exponentialRampToValueAtTime(760, at + 1.5);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, at);
     g.gain.linearRampToValueAtTime(level, at + 0.005);
